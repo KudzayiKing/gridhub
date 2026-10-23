@@ -12,6 +12,7 @@ import { expect, test } from "@playwright/test";
 const PUBLIC_ROUTES = [
   "/",
   "/tools",
+  "/free-tools",
   "/collections",
   "/pricing",
   "/how-it-works",
@@ -36,6 +37,23 @@ for (const route of PUBLIC_ROUTES) {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 }
+
+test("public free calculator pages render without an account", async ({ page }) => {
+  const slugs = [
+    "debt-payoff-calculator",
+    "monthly-budget-calculator",
+    "rental-property-calculator",
+    "savings-goal-calculator",
+    "profit-margin-calculator",
+    "invoice-total-calculator",
+  ];
+
+  for (const slug of slugs) {
+    const response = await page.goto(`/free-tools/${slug}`);
+    expect(response!.status(), `/free-tools/${slug} did not return 200`).toBe(200);
+    await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+  }
+});
 
 test("tool detail page renders for every catalog slug", async ({ page }) => {
   // These are the `slug` values from lib/catalog.ts, not the tool ids. They differ:

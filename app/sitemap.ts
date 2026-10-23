@@ -1,13 +1,15 @@
 import type { MetadataRoute } from "next";
 import { COLLECTIONS, TOOLS } from "@/lib/catalog";
+import { FREE_TOOLS } from "@/lib/free-tool-catalog";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const base = "https://gridhub.online";
   const now = new Date();
 
   const staticRoutes = [
     "",
     "/tools",
+    "/free-tools",
     "/collections",
     "/gridhub-ai",
     "/pricing",
@@ -39,6 +41,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.6,
+    })),
+    ...FREE_TOOLS.map((tool) => ({
+      url: `${base}/free-tools/${tool.id}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     })),
   ];
 }

@@ -3,6 +3,7 @@ import { GridhubAIProvider } from "@/components/ai/ai-provider";
 import { getSessionUser, isSupabaseConfigured } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { recordCountryActivity } from "@/lib/admin";
+import { FreeToolDraftNotice } from "@/components/free-tools/draft-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
             : null
         }
       >
-        {children}
+        <FreeToolDraftNotice>{children}</FreeToolDraftNotice>
       </AppShell>
     </GridhubAIProvider>
   );
