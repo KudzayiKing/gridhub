@@ -1,26 +1,784 @@
 @import "tailwindcss";
 
+/*
+ * Class-based dark mode.
+ *
+ * Tailwind v4 ships `dark:` as a `prefers-color-scheme` media query by default.
+ * Gridhub lets the user choose light / dark / system (next-themes writes a `.dark`
+ * class on <html>), so the variant has to be rebound to the class — otherwise the
+ * in-app toggle would be ignored whenever the OS preference disagreed.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Registered custom properties for the liquid button's rim.
+ *
+ * These have to be `@property` and not plain custom properties: only a registered <angle> is
+ * interpolable, so only a registered one can be animated by a transition. Without this the
+ * conic highlight snaps between its rest and hover angles instead of sweeping around the edge.
+ * `inherits: false` keeps each button's angle to itself.
+ */
+@property --angle-1 {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: -75deg;
+}
+
+@property --angle-2 {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: -45deg;
+}
+
+/* ==========================================================================
+   Gridhub Design System — tokens
+   ========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --gp-ink: #171a18;
+  --gp-ivory: #f7f7f2;
+  --gp-sage: #c0d4bc;
+  --gp-slate: #6d756d;
+  --gp-mist: #e9ebe4;
+
+  --gp-glass-light: rgba(255, 255, 255, 0.74);
+  --gp-glass-dark: rgba(24, 24, 28, 0.76);
+  --gp-glass-border-light: rgba(255, 255, 255, 0.55);
+  --gp-glass-border-dark: rgba(255, 255, 255, 0.12);
+  --gp-glass-blur: 18px;
+  --gp-card-radius: 20px;
+
+  /* semantic (light) */
+  --bg: #f7f7f2;
+  --bg-elevated: #fdfdfa;
+  --bg-subtle: #eef0e9;
+  --surface: rgba(255, 255, 255, 0.74);
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --surface-hover: rgba(255, 255, 255, 0.96);
+  /* Sticky headers. Light keeps the translucent wash it always had — this is exactly
+     `--surface` at the 85% opacity the header used to apply inline. */
+  --header: rgba(255, 255, 255, 0.63);
+  --border: rgba(23, 26, 24, 0.09);
+  --border-strong: rgba(23, 26, 24, 0.16);
+  --fg: #171a18;
+  --fg-muted: #5c645c;
+  --fg-subtle: #8a918a;
+  /* Gridhub brand green. Fixed in both themes: it is the tile behind "Grid" in the wordmark,
+     and a tile that changed colour with the theme would no longer be the same logo. Deliberately
+     separate from --accent, which is the muted sage the UI chrome uses for interactive states.
+     A saturated brand green and a calm accent are different jobs. */
+  --brand: #00d587;
+  --brand-ink: #ffffff;
+  --accent: #3f5c46;
+  --accent-fg: #ffffff;
+  --accent-soft: #e3ecdf;
+  --positive: #2f6b45;
+  --negative: #a4442f;
+  --warning: #8a6a1f;
+  --ring: rgba(63, 92, 70, 0.45);
+
+  /* Categorical chart palette — distinct, on-brand hues for category breakdowns.
+     Paired with labels and legends so meaning never rides on colour alone. */
+  --chart-1: #3f5c46;
+  --chart-2: #6d756d;
+  --chart-3: #b08968;
+  --chart-4: #7a6f9b;
+  --chart-5: #437c8c;
+  --chart-6: #b89a3e;
+  --chart-7: #a4442f;
+  --chart-8: #577a4a;
+
+  --shadow-soft: 0 1px 2px rgba(23, 26, 24, 0.04), 0 8px 24px -12px rgba(23, 26, 24, 0.14);
+  --shadow-lift: 0 2px 4px rgba(23, 26, 24, 0.05), 0 20px 48px -24px rgba(23, 26, 24, 0.24);
+}
+
+/*
+ * Dark mode is deliberately neutral.
+ *
+ * The previous scale (#10130F / #171B16 / #1C211B) was derived from the sage accent, so every
+ * dark surface carried a green cast and the whole app read as mossy. #121214 is a near-neutral
+ * black; the green now lives only in --accent and its derived tokens, where it is a highlight
+ * instead of the room. Light mode is untouched.
+ */
+.dark {
+  --bg: #121214;
+  --bg-elevated: #17171a;
+  --bg-subtle: #1d1d21;
+  --surface: rgba(24, 24, 28, 0.76);
+  --surface-strong: rgba(29, 29, 34, 0.94);
+  --surface-hover: rgba(35, 35, 41, 0.96);
+  /* Headers are opaque and exactly the page colour, so the top bar reads as part of the
+     canvas with only its hairline border separating it. */
+  --header: #121214;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --fg: #f3f3f5;
+  --fg-muted: #b1b1b9;
+  --fg-subtle: #86868f;
+  --accent: #c0d4bc;
+  --accent-fg: #14180f;
+  --accent-soft: rgba(192, 212, 188, 0.14);
+  --positive: #8fd0a4;
+  --negative: #e79c88;
+  --warning: #d9bd7a;
+
+  /* Categorical chart palette (dark) — lighter, desaturated variants of the light ramp. */
+  --chart-1: #c0d4bc;
+  --chart-2: #aab2a6;
+  --chart-3: #d7b48f;
+  --chart-4: #b3a8d4;
+  --chart-5: #8fc0cf;
+  --chart-6: #e6cf86;
+  --chart-7: #e79c88;
+  --chart-8: #a6c98f;
+  --ring: rgba(192, 212, 188, 0.5);
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35), 0 24px 56px -28px rgba(0, 0, 0, 0.65);
+
+  /* Native scrollbars, form controls and overscroll gutters follow the theme. */
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-header: var(--header);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-ink: var(--gp-ink);
+  --color-ivory: var(--gp-ivory);
+  --color-sage: var(--gp-sage);
+  --color-slate: var(--gp-slate);
+  --color-mist: var(--gp-mist);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: var(--gp-card-radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  /* Tabular numerals for all data surfaces */
+  table, .tnum, input[type="number"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  input, textarea, select, button {
+    font: inherit;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* ---------- Glass surfaces ---------- */
+  .glass {
+    background: var(--surface);
+    -webkit-backdrop-filter: blur(var(--gp-glass-blur)) saturate(140%);
+    backdrop-filter: blur(var(--gp-glass-blur)) saturate(140%);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass-strong {
+    background: var(--surface-strong);
+    -webkit-backdrop-filter: blur(calc(var(--gp-glass-blur) + 8px)) saturate(150%);
+    backdrop-filter: blur(calc(var(--gp-glass-blur) + 8px)) saturate(150%);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .glass-panel {
+    background: var(--surface);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--border);
+  }
+
+  /* Hairline highlight along the top edge of a card */
+  .glass-sheen {
+    position: relative;
+  }
+  .glass-sheen::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.7) 30%,
+      rgba(255, 255, 255, 0.7) 70%,
+      transparent
+    );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .dark .glass-sheen::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.14) 30%,
+      rgba(255, 255, 255, 0.14) 70%,
+      transparent
+    );
+  }
+
+  .gp-card {
+    border-radius: var(--gp-card-radius);
+    background: var(--surface);
+    -webkit-backdrop-filter: blur(var(--gp-glass-blur)) saturate(140%);
+    backdrop-filter: blur(var(--gp-glass-blur)) saturate(140%);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* ---------- Liquid button ---------- */
+  /*
+   * Ported from the supplied reference. The anatomy is three layers, and each does one job:
+   *
+   *   .liquid-btn           positioning shell (also the hover proxy, see below)
+   *   .liquid-btn__shadow   an oversized, blurred copy of the pill sitting *behind* it, which
+   *                         gives the button weight and tightens on hover
+   *   .liquid-btn__core     the interactive element: glass fill + inset shadows
+   *     ::after             conic rim that rotates on hover
+   *     .liquid-btn__label  text
+   *       ::after           the travelling specular sweep
+   *
+   * Sizes are all `em`, driven by the font-size on the shell, so one component covers every
+   * size and the proportions never drift.
+   *
+   * Two things differ from the reference, both deliberate:
+   * - Selectors are scoped classes, not bare `button`/`span`, because the app already has a
+   *   Button component and a global `button` rule would repaint half the product.
+   * - Colours are tokens rather than literals, so the button works on the ivory canvas and on
+   *   #121214. The reference is light-only; the dark variant swaps the rim from black arcs to
+   *   white ones, which is the whole trick — a black rim is invisible on a black surface.
+   */
+  .liquid-btn {
+    --lb-time: 400ms;
+    --lb-ease: cubic-bezier(0.25, 1, 0.5, 1);
+    --lb-border: clamp(1px, 0.09em, 4px);
+
+    /*
+     * The face is two radial speculars, not a wash. Light lands on the top-left and
+     * bottom-right corners of the bevel and falls off inward, so the middle of the pill stays
+     * clear — a broad diagonal gradient across the face is what makes a pill look like a
+     * painted grey lozenge rather than a piece of glass.
+     *
+     * `farthest-corner` is the only sizing keyword that anchors a highlight to a corner:
+     * `closest-side` is degenerate when the gradient centre sits exactly on a corner, and any
+     * percentage large enough to matter washes the whole face. The stops are tight (0 / 6 /
+     * 20) so the glow is a corner *shading* that dies out a fifth of the way in.
+     */
+    --lb-fill:
+      radial-gradient(
+        farthest-corner at 0% 0%,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.55) 6%,
+        rgba(255, 255, 255, 0) 20%
+      ),
+      radial-gradient(
+        farthest-corner at 100% 100%,
+        rgba(255, 255, 255, 0.8) 0%,
+        rgba(255, 255, 255, 0.45) 6%,
+        rgba(255, 255, 255, 0) 20%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+    /* Rim base runs corner to corner, so it is lit where the speculars are lit. */
+    --lb-arc-base: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(23, 26, 24, 0.12) 26%,
+      rgba(23, 26, 24, 0.12) 74%,
+      rgba(255, 255, 255, 0.9) 100%
+    );
+    --lb-arc: rgba(0, 0, 0, 0.5);
+    --lb-arc-inset: rgba(255, 255, 255, 0.5);
+    --lb-text: #323232;
+    --lb-text-shadow: 0 0.06em 0.06em rgba(0, 0, 0, 0.28);
+    --lb-text-shadow-hover: 0 0.03em 0.03em rgba(0, 0, 0, 0.25);
+    --lb-text-shadow-active: 0 0.08em 0.06em rgba(0, 0, 0, 0.32);
+    --lb-shadow-color: rgba(0, 0, 0, 0.16);
+    --lb-inset-top: rgba(0, 0, 0, 0.05);
+    --lb-inset-bottom: rgba(255, 255, 255, 0.5);
+    --lb-drop: rgba(0, 0, 0, 0.2);
+    --lb-drop-strong: rgba(0, 0, 0, 0.25);
+    --lb-ring: rgba(255, 255, 255, 0.2);
+    --lb-ring-strong: rgba(255, 255, 255, 0.5);
+    --lb-lift-1: rgba(0, 0, 0, 0.05);
+    --lb-lift-2: rgba(255, 255, 255, 0.75);
+    --lb-lift-3: rgba(0, 0, 0, 0.15);
+
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    border-radius: 999px;
+    background: transparent;
+    /* The shell is larger than the pill because of the shadow layer; letting it swallow
+       pointer events would make a ring of dead space around every button clickable. */
+    pointer-events: none;
+    transition: all var(--lb-time) var(--lb-ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dark .liquid-btn {
+    --lb-fill:
+      radial-gradient(
+        farthest-corner at 0% 0%,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.55) 6%,
+        rgba(255, 255, 255, 0) 20%
+      ),
+      radial-gradient(
+        farthest-corner at 100% 100%,
+        rgba(255, 255, 255, 0.8) 0%,
+        rgba(255, 255, 255, 0.45) 6%,
+        rgba(255, 255, 255, 0) 20%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+    --lb-arc: rgba(255, 255, 255, 0.62);
+    --lb-arc-0: rgba(255, 255, 255, 0);
+    --lb-arc-base: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.07) 28%,
+      rgba(255, 255, 255, 0.07) 72%,
+      rgba(255, 255, 255, 0.5) 100%
+    );
+    --lb-arc-inset: rgba(255, 255, 255, 0.1);
+    --lb-text: #f3f3f5;
+    --lb-text-shadow: 0 0.06em 0.06em rgba(0, 0, 0, 0.5);
+    --lb-text-shadow-hover: 0 0.03em 0.03em rgba(0, 0, 0, 0.45);
+    --lb-text-shadow-active: 0 0.08em 0.06em rgba(0, 0, 0, 0.55);
+    --lb-shadow-color: rgba(0, 0, 0, 0.62);
+    --lb-inset-top: rgba(0, 0, 0, 0.35);
+    --lb-inset-bottom: rgba(255, 255, 255, 0.1);
+    --lb-drop: rgba(0, 0, 0, 0.6);
+    --lb-drop-strong: rgba(0, 0, 0, 0.7);
+    --lb-ring: rgba(255, 255, 255, 0.07);
+    --lb-ring-strong: rgba(255, 255, 255, 0.22);
+    --lb-lift-1: rgba(0, 0, 0, 0.4);
+    --lb-lift-2: rgba(255, 255, 255, 0.1);
+    --lb-lift-3: rgba(0, 0, 0, 0.45);
+  }
+
+  /*
+   * The contact shadow.
+   *
+   * The reference paints a blurred, offset copy of the pill *behind* it. That only works
+   * because its pill is fairly opaque; ours is a translucent pane, so the blurred dark shape
+   * shows straight through the lower half of the button and reads as a smudge rather than a
+   * shadow. A box-shadow is drawn outside the border box, so it can never bleed inside, and it
+   * keeps the same "lifts and tightens" behaviour when transitioned.
+   */
+  .liquid-btn__shadow {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    pointer-events: none;
+    box-shadow: 0 0.32em 0.5em -0.12em var(--lb-shadow-color);
+    transition: box-shadow var(--lb-time) var(--lb-ease);
+  }
+
+  .liquid-btn__core {
+    position: relative;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    text-decoration: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    pointer-events: auto;
+    border-radius: 999px;
+    background: var(--lb-fill);
+    box-shadow:
+      inset 0 0.125em 0.125em var(--lb-inset-top),
+      inset 0 -0.125em 0.125em var(--lb-inset-bottom),
+      0 0.25em 0.125em -0.125em var(--lb-drop),
+      0 0 0.1em 0.25em inset var(--lb-ring);
+    -webkit-backdrop-filter: blur(clamp(1px, 0.125em, 4px));
+    backdrop-filter: blur(clamp(1px, 0.125em, 4px));
+    transition: all var(--lb-time) var(--lb-ease);
+  }
+
+  /* Conic rim. `mask-composite: exclude` keeps only the frame of the padding box. */
+  .liquid-btn__core::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    width: calc(100% + var(--lb-border));
+    height: calc(100% + var(--lb-border));
+    top: calc(var(--lb-border) / -2);
+    left: calc(var(--lb-border) / -2);
+    padding: var(--lb-border);
+    box-sizing: border-box;
+    border-radius: 999px;
+    background:
+      conic-gradient(
+        from var(--angle-1) at 50% 50%,
+        var(--lb-arc),
+        var(--lb-arc-0) 5% 40%,
+        var(--lb-arc) 50%,
+        var(--lb-arc-0) 60% 95%,
+        var(--lb-arc)
+      ),
+      var(--lb-arc-base);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    box-shadow: inset 0 0 0 calc(var(--lb-border) / 2) var(--lb-arc-inset);
+    pointer-events: none;
+    transition:
+      all var(--lb-time) var(--lb-ease),
+      --angle-1 500ms ease;
+  }
+
+  .liquid-btn__label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    user-select: none;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 500;
+    font-size: 1em;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+    color: var(--lb-text);
+    text-shadow: var(--lb-text-shadow);
+    padding-inline: 1.5em;
+    padding-block: 0.875em;
+    transition: all var(--lb-time) var(--lb-ease);
+  }
+
+  /* The travelling highlight. `screen` only brightens, so it never muddies the glass. */
+  .liquid-btn__label::after {
+    content: "";
+    display: block;
+    position: absolute;
+    width: calc(100% - var(--lb-border));
+    height: calc(100% - var(--lb-border));
+    top: calc(var(--lb-border) / 2);
+    left: calc(var(--lb-border) / 2);
+    box-sizing: border-box;
+    border-radius: 999px;
+    overflow: clip;
+  /*
+   * The travelling highlight, parked.
+   *
+   * The image is 3x the pill on both axes and the band sits on the image's main diagonal.
+   * At rest `background-position: 0% 0%` shows only the top-left ninth of that image, and the
+   * diagonal only crosses that ninth at its far, transparent end — so the resting pill paints
+   * nothing here at all. Hovering walks the window to `100% 100%`, sweeping the band from the
+   * top-left corner through the centre to the bottom-right one, and it is invisible again the
+   * moment it arrives.
+   *
+   * This is a rewrite, not a tweak. The earlier version used `background-size: 200% 200%`
+   * with `background-position: 0% 50%`, which shows the *left half* of the image — and the
+   * band at 70% of a -45deg gradient line lands squarely inside that half. It lit up the
+   * middle of every pill at rest, which is precisely the "white in the middle" the design is
+   * supposed to avoid. Parking the band outside the window *by construction* is the only way
+   * to be sure: 3x sizing with a 9th-of-the-image window leaves a whole gradient stop range
+   * (42%-58%) that no resting pixel can ever sample.
+   */
+  background: linear-gradient(
+    var(--angle-2),
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0) 42%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0) 58%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 300% 300%;
+  background-position: 0% 0%;
+  background-repeat: no-repeat;
+  z-index: 3;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+@keyframes lb-sweep {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: 100% 100%;
+  }
+}
+
+  /*
+   * The shell cannot receive hover itself (`pointer-events: none`), so every stateful rule
+   * hangs off `:has()` on the core. That is what the reference does, and it is the reason the
+   * shadow can tighten and the rim can rotate in sync with the button.
+   */
+  .liquid-btn:has(.liquid-btn__core:hover) .liquid-btn__core {
+    transform: scale(0.975);
+    -webkit-backdrop-filter: blur(0.01em);
+    backdrop-filter: blur(0.01em);
+    box-shadow:
+      inset 0 0.125em 0.125em var(--lb-inset-top),
+      inset 0 -0.125em 0.125em var(--lb-inset-bottom),
+      0 0.15em 0.05em -0.1em var(--lb-drop-strong),
+      0 0 0.05em 0.1em inset var(--lb-ring-strong);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:hover) .liquid-btn__core::after {
+    --angle-1: -125deg;
+  }
+
+  .liquid-btn:has(.liquid-btn__core:hover) .liquid-btn__label {
+    text-shadow: var(--lb-text-shadow-hover);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:hover) .liquid-btn__label::after,
+  .liquid-btn:has(.liquid-btn__core:focus-visible) .liquid-btn__label::after {
+    animation: lb-sweep calc(var(--lb-time) * 1.75) var(--lb-ease);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:hover) .liquid-btn__shadow {
+    box-shadow: 0 0.2em 0.34em -0.12em var(--lb-shadow-color);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:active) {
+    transform: rotate3d(1, 0, 0, 25deg);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:active) .liquid-btn__core {
+    box-shadow:
+      inset 0 0.125em 0.125em var(--lb-inset-top),
+      inset 0 -0.125em 0.125em var(--lb-inset-bottom),
+      0 0.125em 0.125em -0.125em var(--lb-drop),
+      0 0 0.1em 0.25em inset var(--lb-ring),
+      0 0.225em 0.05em 0 var(--lb-lift-1),
+      0 0.25em 0 0 var(--lb-lift-2),
+      inset 0 0.25em 0.05em 0 var(--lb-lift-3);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:active) .liquid-btn__core::after {
+    --angle-1: -75deg;
+  }
+
+  .liquid-btn:has(.liquid-btn__core:active) .liquid-btn__label {
+    text-shadow: var(--lb-text-shadow-active);
+  }
+
+  .liquid-btn:has(.liquid-btn__core:active) .liquid-btn__shadow {
+    box-shadow: 0 0.1em 0.2em -0.12em var(--lb-shadow-color);
+  }
+
+  .liquid-btn__core:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  .liquid-btn[data-disabled="true"] {
+    opacity: 0.5;
+  }
+
+  .liquid-btn[data-disabled="true"] .liquid-btn__core {
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  /* Touch: a rotating rim and a 3D press read as jitter, so pin the angles. */
+  @media (hover: none) and (pointer: coarse) {
+    .liquid-btn__core::after,
+    .liquid-btn:has(.liquid-btn__core:hover) .liquid-btn__core::after,
+    .liquid-btn:has(.liquid-btn__core:active) .liquid-btn__core::after {
+      --angle-1: -75deg;
+    }
+    .liquid-btn__label::after,
+    .liquid-btn:has(.liquid-btn__core:active) .liquid-btn__label::after {
+      --angle-2: -45deg;
+      animation: none;
+    }
+    .liquid-btn:has(.liquid-btn__core:active) {
+      transform: none;
+    }
+  }
+
+  /* Ambient background wash */
+  .gp-ambient {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(192, 212, 188, 0.32), transparent 60%),
+      radial-gradient(760px 420px at 92% 4%, rgba(233, 235, 228, 0.85), transparent 62%),
+      radial-gradient(700px 500px at 50% 108%, rgba(192, 212, 188, 0.18), transparent 60%);
+  }
+  .dark .gp-ambient {
+    /* No wash. Any radial here would tint the canvas away from #121214 and reintroduce the
+       very green cast this palette was changed to remove. Depth in dark mode comes from
+       surface elevation and hairline borders instead. */
+    background: none;
+  }
+
+  /* ---------- Typography helpers ---------- */
+  .display-xl {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+  }
+
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+
+  /* ---------- Motion ---------- */
+  .press {
+    transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background-color 160ms ease,
+      border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+
+  .lift {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease,
+      border-color 220ms ease, background-color 220ms ease;
+  }
+  @media (hover: hover) {
+    .lift:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lift);
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-subtle) 25%,
+      rgba(128, 138, 128, 0.14) 37%,
+      var(--bg-subtle) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Scrollbars */
+  .thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+  }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  /*
+   * A horizontal strip of pills — quick actions, tool tabs, filter chips, the period selector —
+   * has to scroll on a narrow screen, but a scrollbar rail under a single row of pills is chrome
+   * the design never asked for. The cut-off pill on the right already says "there is more", and
+   * keyboard focus still scrolls the active item into view. Used by every tab menu in the app.
+   * Both properties are needed: `scrollbar-width` is the standards-track answer for Firefox,
+   * `::-webkit-scrollbar` is everything else.
+   */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Reduced transparency fallback */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-strong, .glass-panel, .gp-card {
+    background: var(--bg-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .glass-strong, .glass-panel, .gp-card {
+    background: var(--bg-elevated);
+  }
+}
+
+/* Print: invoice / report output */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; color: #000; }
+  .gp-card, .glass, .glass-strong {
+    box-shadow: none;
+    border-color: #ddd;
+    background: #fff;
+  }
 }

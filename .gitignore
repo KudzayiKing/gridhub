@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# The template contains no secrets (publishable key only) and a clone needs it.
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +41,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated AI runtime assets (scripts/vendor-ai-assets.mjs). Not committed: they are
+# reproducible from pinned versions and total ~230 MB.
+/public/ai/
+
+# Test artifacts
+/test-results/
+/playwright-report/
+
+# Local verification screenshots (not part of the product)
+/outputs/
+
+# Assistant workspace data: memory notes and verification screenshots
+/.workbuddy-ai/
