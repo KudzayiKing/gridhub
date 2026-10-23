@@ -79,7 +79,8 @@ export default async function AdminOverviewPage() {
 
       <InlineAlert tone="info" title="What this page does not tell you">
         Row counts are not revenue, retention or engagement. The Countries page reports
-        aggregate country-level workspace activity; Gridhub does not record a general pageview trail.
+        aggregate country-level workspace activity. Public calculator funnel counts are opt-in and
+        available on the Marketing page.
       </InlineAlert>
     </>
   );
