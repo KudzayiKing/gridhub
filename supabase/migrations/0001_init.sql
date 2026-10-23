@@ -1235,15 +1235,15 @@ declare
   t text;
 begin
   foreach t in array array[
-    'workspaces','workspace_members','dashboard_layouts','dashboard_widgets','tool_activations',
+    'workspace_members','dashboard_layouts','dashboard_widgets','tool_activations',
     'money_accounts','money_categories','money_transactions','money_budgets','money_recurring_bills',
     'money_pay_schedules','money_paychecks','money_paycheck_allocations','money_debts',
     'money_debt_payments','money_savings_goals','money_goal_movements','money_assets',
     'money_liabilities','money_investment_holdings','money_valuation_snapshots','businesses',
     'business_accounts','business_contacts','business_categories','business_transactions',
     'business_products','business_suppliers','business_inventory_movements',
-    'business_inventory_cost_state','business_sales','business_sale_lines','business_sales_targets',
-    'business_invoices','business_invoice_lines','business_payments','business_payment_allocations',
+    'business_inventory_cost_state','business_sales','business_sales_targets',
+    'business_invoices','business_payments',
     'business_cash_forecasts','business_forecast_scenarios','life_weddings','life_wedding_guests',
     'life_wedding_rsvps','life_wedding_vendors','life_wedding_expenses','life_wedding_seating',
     'life_wedding_tasks','life_properties','life_property_units','life_property_bookings',
@@ -1267,6 +1267,84 @@ begin
     execute format('create policy "owner_delete" on public.%I for delete using (auth.uid() = user_id)', t);
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Tables that do NOT fit the uniform auth.uid() = user_id assumption.
+-- ---------------------------------------------------------------------------
+
+-- workspaces is owned by owner_id, not user_id.
+alter table public.workspaces enable row level security;
+drop policy if exists "owner_select" on public.workspaces;
+drop policy if exists "owner_insert" on public.workspaces;
+drop policy if exists "owner_update" on public.workspaces;
+drop policy if exists "owner_delete" on public.workspaces;
+create policy "owner_select" on public.workspaces for select using (auth.uid() = owner_id);
+create policy "owner_insert" on public.workspaces for insert with check (auth.uid() = owner_id);
+create policy "owner_update" on public.workspaces for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+create policy "owner_delete" on public.workspaces for delete using (auth.uid() = owner_id);
+
+-- business_sale_lines has no owner column; ownership resolves through its parent sale.
+alter table public.business_sale_lines enable row level security;
+drop policy if exists "owner_select" on public.business_sale_lines;
+drop policy if exists "owner_insert" on public.business_sale_lines;
+drop policy if exists "owner_update" on public.business_sale_lines;
+drop policy if exists "owner_delete" on public.business_sale_lines;
+create policy "owner_select" on public.business_sale_lines for select using (
+  exists (select 1 from public.business_sales s where s.id = business_sale_lines.sale_id and s.user_id = auth.uid())
+);
+create policy "owner_insert" on public.business_sale_lines for insert with check (
+  exists (select 1 from public.business_sales s where s.id = business_sale_lines.sale_id and s.user_id = auth.uid())
+);
+create policy "owner_update" on public.business_sale_lines for update using (
+  exists (select 1 from public.business_sales s where s.id = business_sale_lines.sale_id and s.user_id = auth.uid())
+) with check (
+  exists (select 1 from public.business_sales s where s.id = business_sale_lines.sale_id and s.user_id = auth.uid())
+);
+create policy "owner_delete" on public.business_sale_lines for delete using (
+  exists (select 1 from public.business_sales s where s.id = business_sale_lines.sale_id and s.user_id = auth.uid())
+);
+
+-- business_invoice_lines has no owner column; ownership resolves through its parent invoice.
+alter table public.business_invoice_lines enable row level security;
+drop policy if exists "owner_select" on public.business_invoice_lines;
+drop policy if exists "owner_insert" on public.business_invoice_lines;
+drop policy if exists "owner_update" on public.business_invoice_lines;
+drop policy if exists "owner_delete" on public.business_invoice_lines;
+create policy "owner_select" on public.business_invoice_lines for select using (
+  exists (select 1 from public.business_invoices i where i.id = business_invoice_lines.invoice_id and i.user_id = auth.uid())
+);
+create policy "owner_insert" on public.business_invoice_lines for insert with check (
+  exists (select 1 from public.business_invoices i where i.id = business_invoice_lines.invoice_id and i.user_id = auth.uid())
+);
+create policy "owner_update" on public.business_invoice_lines for update using (
+  exists (select 1 from public.business_invoices i where i.id = business_invoice_lines.invoice_id and i.user_id = auth.uid())
+) with check (
+  exists (select 1 from public.business_invoices i where i.id = business_invoice_lines.invoice_id and i.user_id = auth.uid())
+);
+create policy "owner_delete" on public.business_invoice_lines for delete using (
+  exists (select 1 from public.business_invoices i where i.id = business_invoice_lines.invoice_id and i.user_id = auth.uid())
+);
+
+-- business_payment_allocations has no owner column; ownership resolves through its parent payment.
+alter table public.business_payment_allocations enable row level security;
+drop policy if exists "owner_select" on public.business_payment_allocations;
+drop policy if exists "owner_insert" on public.business_payment_allocations;
+drop policy if exists "owner_update" on public.business_payment_allocations;
+drop policy if exists "owner_delete" on public.business_payment_allocations;
+create policy "owner_select" on public.business_payment_allocations for select using (
+  exists (select 1 from public.business_payments p where p.id = business_payment_allocations.payment_id and p.user_id = auth.uid())
+);
+create policy "owner_insert" on public.business_payment_allocations for insert with check (
+  exists (select 1 from public.business_payments p where p.id = business_payment_allocations.payment_id and p.user_id = auth.uid())
+);
+create policy "owner_update" on public.business_payment_allocations for update using (
+  exists (select 1 from public.business_payments p where p.id = business_payment_allocations.payment_id and p.user_id = auth.uid())
+) with check (
+  exists (select 1 from public.business_payments p where p.id = business_payment_allocations.payment_id and p.user_id = auth.uid())
+);
+create policy "owner_delete" on public.business_payment_allocations for delete using (
+  exists (select 1 from public.business_payments p where p.id = business_payment_allocations.payment_id and p.user_id = auth.uid())
+);
 
 -- Profiles: a user may read/update only their own row.
 alter table public.profiles enable row level security;
