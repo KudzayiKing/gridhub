@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminCheck, adminEmails } from "@/lib/admin";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { Logo } from "@/components/brand/logo";
 import { Card, InlineAlert } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ function Blocked({
 }) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center gap-4 px-5 py-16">
-      <Link href="/" aria-label="Gridhub home" className="inline-flex">
+      <Link href="/app" aria-label="Gridhub workspace" className="inline-flex">
         <Logo />
       </Link>
       <Card className="p-5">
@@ -82,7 +83,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Link href="/admin" aria-label="Admin home" className="inline-flex">
+          <Link href="/app" aria-label="Gridhub workspace" className="inline-flex">
             <Logo />
           </Link>
           <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">
@@ -104,7 +105,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         what the database actually contains — no demo figures are injected anywhere.
       </InlineAlert>
 
-      <main className="flex flex-col gap-4 pb-10">{children}</main>
+      <main className="flex flex-col gap-4 pb-28 lg:pb-10">{children}</main>
+      <AdminMobileNav />
     </div>
   );
 }
