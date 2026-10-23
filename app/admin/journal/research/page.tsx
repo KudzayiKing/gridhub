@@ -1,0 +1,5 @@
+import { SectionHeading, Card } from "@/components/ui/card";
+import { JournalAdminNav } from "@/components/journal/journal-admin-nav";
+import { OpportunityWorkbench } from "@/components/journal/admin-workspace";
+export const dynamic = "force-dynamic";
+export default function JournalResearchPage() { return <><SectionHeading eyebrow="Evidence first" title="Keyword research" description="Import actual provider exports, preserve their source and observation date, and keep unavailable metrics explicitly unverified."/><JournalAdminNav/><Card className="p-4"><p className="text-xs leading-relaxed text-fg-muted">Search Console reports GridHub&apos;s own queries and impressions; it does not provide complete keyword volumes. No Google OAuth/Search Console or paid keyword provider is configured here. Use verified CSV exports while credentials are unavailable. CSV demand is logarithmically normalized and displayed with score coverage; blank metrics do not become zero.</p></Card><OpportunityWorkbench/></>; }

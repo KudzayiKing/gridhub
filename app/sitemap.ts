@@ -1,15 +1,20 @@
 import type { MetadataRoute } from "next";
 import { COLLECTIONS, TOOLS } from "@/lib/catalog";
 import { FREE_TOOLS } from "@/lib/free-tool-catalog";
+import { getJournalCategories, getPublishedArticles } from "@/lib/journal/data";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://gridhub.online";
   const now = new Date();
+  const [journalCategories, journalArticles] = await Promise.all([getJournalCategories(), getPublishedArticles({ limit: 5000 })]);
 
   const staticRoutes = [
     "",
     "/tools",
     "/free-tools",
+    "/journal",
     "/collections",
     "/gridhub-ai",
     "/pricing",
@@ -47,6 +52,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.8,
+    })),
+    ...journalCategories.map((category) => ({
+      url: `${base}/journal/${category.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    })),
+    ...journalArticles.map((article) => ({
+      url: `${base}/journal/${article.slug}`,
+      lastModified: article.updated_at ? new Date(article.updated_at) : new Date(article.published_at ?? now),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
     })),
   ];
 }

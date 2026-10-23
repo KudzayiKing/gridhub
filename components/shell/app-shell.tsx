@@ -46,6 +46,7 @@ const MOBILE_NAV = [
   { href: "/app/explore", label: "Explore", icon: "explore" },
   { href: "/app/settings", label: "Account", icon: "user" },
 ];
+const ADMIN_NAV_ITEM = { href: "/admin", label: "Admin", icon: "shield" };
 
 function isCurrent(pathname: string, href: string) {
   if (href === "/app") return pathname === "/app";
@@ -97,11 +98,12 @@ function NavLink({
 export interface AppShellProps {
   children: React.ReactNode;
   buildVersion?: string;
+  isAdmin?: boolean;
   user?: { email?: string | null; name?: string | null } | null;
   workspaceName?: string;
 }
 
-export function AppShell({ children, user, buildVersion = "local" }: AppShellProps) {
+export function AppShell({ children, user, isAdmin = false, buildVersion = "local" }: AppShellProps) {
   const pathname = usePathname() || "/app";
   const router = useRouter();
   const { active } = useActiveTools();
@@ -152,6 +154,7 @@ export function AppShell({ children, user, buildVersion = "local" }: AppShellPro
   }, [query]);
 
   const initials = (user?.name || user?.email || "G").slice(0, 1).toUpperCase();
+  const mobileNav = isAdmin ? [...MOBILE_NAV, ADMIN_NAV_ITEM] : MOBILE_NAV;
 
   /*
    * Rendered as a function so the mobile drawer can close itself on navigation. Without
@@ -220,6 +223,13 @@ export function AppShell({ children, user, buildVersion = "local" }: AppShellPro
               onNavigate={onNavigate}
             />
           ))}
+          {isAdmin ? (
+            <NavLink
+              {...ADMIN_NAV_ITEM}
+              active={isCurrent(pathname, ADMIN_NAV_ITEM.href)}
+              onNavigate={onNavigate}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -362,7 +372,7 @@ export function AppShell({ children, user, buildVersion = "local" }: AppShellPro
         aria-label="Primary"
       >
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-1">
-          {MOBILE_NAV.map((item) => {
+          {mobileNav.map((item) => {
             const current = isCurrent(pathname, item.href);
             return (
               <Link

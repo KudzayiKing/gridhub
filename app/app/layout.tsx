@@ -4,6 +4,7 @@ import { getSessionUser, isSupabaseConfigured } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { recordCountryActivity } from "@/lib/admin";
 import { FreeToolDraftNotice } from "@/components/free-tools/draft-notice";
+import { isAdminEmail } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
     <GridhubAIProvider>
       <AppShell
         buildVersion={buildVersion}
+        isAdmin={isAdminEmail(user?.email)}
         user={
           user
             ? {

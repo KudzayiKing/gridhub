@@ -10,6 +10,7 @@ const ITEMS: { href: string; label: string; icon: string }[] = [
   { href: "/admin/users", label: "Users", icon: "users" },
   { href: "/admin/countries", label: "Countries", icon: "globe" },
   { href: "/admin/marketing", label: "Marketing", icon: "chart-column" },
+  { href: "/admin/journal", label: "Journal", icon: "book-open" },
   { href: "/admin/tools", label: "Tools", icon: "tools" },
   { href: "/admin/subscriptions", label: "Subscriptions", icon: "repeat" },
   { href: "/admin/billing", label: "Billing events", icon: "billing" },

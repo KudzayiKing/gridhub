@@ -12,6 +12,7 @@ const NAV = [
   { href: "/tools", label: "Tools" },
   { href: "/collections", label: "Collections" },
   { href: "/free-tools", label: "Free Tools", wideOnly: true },
+  { href: "/journal", label: "Journal", wideOnly: true },
   /*
    * Shown from `lg` only. Measured: at 768–1023px the header has no room for a sixth item (the
    * row needs 862px at 768), and dropping it in would either wrap or push the page into a
@@ -122,6 +123,7 @@ export function SiteFooter() {
           <ul className="flex flex-col gap-1.5 text-[12.5px] text-fg-muted">
             <li><Link className="hover:text-fg" href="/tools">All 16 tools</Link></li>
             <li><Link className="hover:text-fg" href="/free-tools">Free Tools</Link></li>
+            <li><Link className="hover:text-fg" href="/journal">GridHub Journal</Link></li>
             <li><Link className="hover:text-fg" href="/collections">Collections</Link></li>
             <li><Link className="hover:text-fg" href="/gridhub-ai">GridHub AI</Link></li>
             <li><Link className="hover:text-fg" href="/pricing">Pricing</Link></li>

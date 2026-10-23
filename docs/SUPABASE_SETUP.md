@@ -60,9 +60,15 @@ Do not assume. Open `/admin/system`; it runs a count against `public.profiles` a
 either "Database reachable" or the exact Postgres error. A reachable database with a missing
 table and an unreachable database are different problems and the page distinguishes them.
 
-Apply new numbered migrations (including `0002_country_activity.sql`) with `supabase db push`
+Apply new numbered migrations (including `0002_country_activity.sql` and
+`0004_gridhub_journal.sql`) with `supabase db push`
 before deploying features that depend on them. The owner account is allowlisted in server
 code; add any additional operators to `ADMIN_EMAILS` on the production host.
+
+The Journal CMS also requires `SUPABASE_SERVICE_ROLE_KEY` server-side. To enable scheduled
+publishing, set `JOURNAL_CRON_SECRET` and configure the hosting platform to POST
+`/api/cron/journal/publish` with `Authorization: Bearer <secret>`. The endpoint does not
+create a hosting schedule by itself. Do not expose the service-role key in client variables.
 
 ## 4. Confirm RLS is on
 

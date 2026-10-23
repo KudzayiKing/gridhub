@@ -1,0 +1,3 @@
+import Link from "next/link";
+const links = [["/admin/journal", "Overview"], ["/admin/journal/research", "Research"], ["/admin/journal/opportunities", "Opportunities"], ["/admin/journal/briefs", "Briefs"], ["/admin/journal/articles", "Articles"], ["/admin/journal/calendar", "Calendar"], ["/admin/journal/analytics", "Analytics"], ["/admin/journal/settings", "Settings"], ["/admin/journal/jobs", "Jobs"]] as const;
+export function JournalAdminNav() { return <nav aria-label="Journal administration" className="no-scrollbar flex gap-1 overflow-x-auto pb-1">{links.map(([href, label]) => <Link key={href} href={href} className="press shrink-0 rounded-full border border-line px-3 py-1.5 text-xs text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg">{label}</Link>)}</nav>; }
