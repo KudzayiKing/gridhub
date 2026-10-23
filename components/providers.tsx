@@ -77,7 +77,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Service worker + sync triggers
   React.useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {
         /* offline support is progressive; never block the app */
       });
     }

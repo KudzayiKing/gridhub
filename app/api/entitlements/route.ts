@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
 import { getSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { isAdminEmail } from "@/lib/admin";
+import { ALL_TOOL_IDS } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -46,15 +48,19 @@ export async function GET() {
     return NextResponse.json({ configured: true, plan: null, tools: [], status: "anonymous" }, { status: 401 });
   }
 
-  const { data: entitlement } = await supabase!
-    .from("billing_entitlements")
-    .select("plan, tools, status, current_period_end, grace_until")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const adminAccess = isAdminEmail(user.email);
+  const { data: entitlement } = adminAccess
+    ? { data: null }
+    : await supabase!
+        .from("billing_entitlements")
+        .select("plan, tools, status, current_period_end, grace_until")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-  const plan = entitlement?.plan ?? "free";
-  const tools: string[] = entitlement?.tools ?? [];
-  const status = entitlement?.status ?? "free";
+  // Admins always receive the complete tool set for product testing, independent of billing rows.
+  const plan = adminAccess ? "unlimited" : entitlement?.plan ?? "free";
+  const tools: string[] = adminAccess ? ALL_TOOL_IDS : entitlement?.tools ?? [];
+  const status = adminAccess ? "active" : entitlement?.status ?? "free";
 
   let grant: string | null = null;
   const secret = process.env.ENTITLEMENT_SIGNING_SECRET;
@@ -76,7 +82,8 @@ export async function GET() {
     plan,
     tools,
     status,
-    currentPeriodEnd: entitlement?.current_period_end ?? null,
+    currentPeriodEnd: adminAccess ? null : entitlement?.current_period_end ?? null,
+    adminAccess,
     grant,
     gracePeriodDays: 7,
   });

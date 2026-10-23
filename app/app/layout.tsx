@@ -8,6 +8,11 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = isSupabaseConfigured() ? await getSessionUser() : null;
+  const buildVersion =
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.VERCEL_URL ||
+    process.env.VERCEL_DEPLOYMENT_ID ||
+    "local";
 
   if (user) {
     const requestHeaders = await headers();
@@ -32,6 +37,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   return (
     <GridhubAIProvider>
       <AppShell
+        buildVersion={buildVersion}
         user={
           user
             ? {

@@ -22,7 +22,9 @@ different interval.
 
 ## The entitlement record
 
-`billing_entitlements` is the single authoritative answer to "what may this account use".
+`billing_entitlements` is the authoritative paid-customer entitlement. Server-allowlisted
+admins receive a virtual Unlimited entitlement from `/api/entitlements` for testing; this
+does not modify their billing row or create a Stripe subscription.
 
 ```sql
 create table public.billing_entitlements (
@@ -59,8 +61,9 @@ entitlement to read rather than a null that every consumer has to special-case.
 
 ## Read path
 
-`GET /api/entitlements` (server, session-verified) returns the row plus a signed offline
-grant. The client never computes entitlement from the plan name it last saw.
+`GET /api/entitlements` (server, session-verified) returns the billing row (or an admin's
+virtual Unlimited entitlement) plus a signed offline grant. The client never computes
+entitlement from the plan name it last saw.
 
 ## Offline grants
 

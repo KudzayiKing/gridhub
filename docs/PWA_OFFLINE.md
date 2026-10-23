@@ -17,20 +17,17 @@ behind.
 | Service worker | `public/sw.js`, registered only in production |
 | HTTPS | Required — `localhost` is exempt |
 
-### Install prompt — not implemented
+### Install and update prompts
 
-There is **no in-app install prompt** yet. The browser's own install affordance (Chrome's
-address-bar icon, iOS Safari's Share → Add to Home Screen) works because the manifest is
-valid, but Gridhub does not nudge, does not detect `beforeinstallprompt`, and does not show
-an "Install app" banner.
+The signed-in workspace shows a branded, bottom-anchored install prompt on mobile browsers
+when Gridhub is not already installed. Browsers that support `beforeinstallprompt` get a
+native install action. iOS Safari gets the instructions “Share → Add to Home Screen”. A
+dismissed install prompt stays dismissed on that device.
 
-If you add one, the constraints that matter:
-
-- iOS Safari does not fire `beforeinstallprompt`. Any prompt must be an instruction sheet
-  ("Share → Add to Home Screen"), not a button.
-- Never show a prompt on first load. Show it after the user has created a record.
-- Respect dismissal permanently, not per session.
-- Do not claim "works offline" before the service worker has actually activated.
+Vercel deployments expose the Git commit through `/api/version`. Open workspaces check for a
+new version on focus and every five minutes; the prompt lets the user reload when ready. A
+service worker update also waits until the user chooses to apply it. Both prompts use the
+theme-matched wordmark and sit above the mobile navigation.
 
 ## Caching strategy
 
@@ -48,8 +45,9 @@ gridhub-v1-assets    hashed JS/CSS/font/image output
 | `/api/*` | **Never cached** | A cached sync or entitlement response is a lie the app will act on |
 | Cross-origin | Passed through | No opaque responses in the cache |
 
-Caches are versioned by name. Bumping `CACHE_VERSION` on deploy creates fresh caches and the
-`activate` handler deletes the old ones, so a stale bundle cannot survive a release.
+Caches are versioned by name. Hashed Next.js assets naturally get new URLs when their content
+changes. Bump the service worker cache version when changing its caching strategy or changing
+same-URL cached assets; activating an approved worker removes the previous Gridhub caches.
 
 ### Why `/api/*` is excluded
 
@@ -124,7 +122,6 @@ a bug, not a cosmetic issue.
 ## Known gaps
 
 - No background sync (`SyncManager`). A closed tab does not upload; sync runs on next open.
-- No install prompt UI.
 - `navigator.storage.persist()` not requested.
 - No conflict UI. A rejected write leaves the local record intact and dirty; the user is not
   yet shown a merge or overwrite choice.

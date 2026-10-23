@@ -87,14 +87,10 @@ Cloud Console, the authorised redirect URI stays
 
 ## 6. Service worker
 
-`public/sw.js` is registered only in production. On every deploy that changes assets:
-
-1. Bump `CACHE_VERSION` in `public/sw.js`.
-2. Deploy.
-
-The `activate` handler deletes caches whose names do not match the new version. Without the
-bump, users keep a stale HTML shell pointing at deleted asset hashes and see a blank page
-until they hard-refresh. This is the single most common PWA deploy failure.
+`public/sw.js` is registered only in production. The app checks the Vercel commit version and
+offers a branded reload prompt. Service worker updates wait for the user to apply them. Bump
+the cache version in `public/sw.js` when changing its caching strategy or same-URL cached
+assets; content-hashed Next.js assets refresh automatically.
 
 ## 7. Post-deploy verification
 

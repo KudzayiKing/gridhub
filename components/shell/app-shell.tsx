@@ -22,6 +22,7 @@ import {
 import { SyncIndicator, ThemeToggle } from "./sync-indicator";
 import { GridhubAIFab } from "@/components/ai/ai-fab";
 import { GridhubAIPanel } from "@/components/ai/ai-panel";
+import { AppPrompts } from "@/components/pwa/app-prompts";
 import { useGridhubAI } from "@/components/ai/ai-provider";
 import { COLLECTIONS, TOOL_MAP, toolsByCollection, type ToolId } from "@/lib/catalog";
 import { useActiveTools } from "@/lib/use-tools";
@@ -95,11 +96,12 @@ function NavLink({
 
 export interface AppShellProps {
   children: React.ReactNode;
+  buildVersion?: string;
   user?: { email?: string | null; name?: string | null } | null;
   workspaceName?: string;
 }
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, user, buildVersion = "local" }: AppShellProps) {
   const pathname = usePathname() || "/app";
   const router = useRouter();
   const { active } = useActiveTools();
@@ -424,6 +426,7 @@ export function AppShell({ children, user }: AppShellProps) {
 
       <GridhubAIFab />
       <GridhubAIPanel />
+      <AppPrompts buildVersion={buildVersion} />
       <Splash />
     </div>
   );

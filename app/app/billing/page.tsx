@@ -17,6 +17,7 @@ interface EntitlementResponse {
   status?: string;
   currentPeriodEnd?: string;
   configured?: boolean;
+  adminAccess?: boolean;
 }
 
 export default function BillingPage() {
@@ -97,14 +98,16 @@ export default function BillingPage() {
             <p className="text-[11px] uppercase tracking-[0.08em] text-fg-subtle">Current plan</p>
             <p className="mt-0.5 text-lg font-semibold capitalize">{entitlement?.plan ?? "No active subscription"}</p>
             <p className="text-[12px] text-fg-muted">
-              {entitlement?.currentPeriodEnd
+              {entitlement?.adminAccess
+                ? "Admin testing access · no payment required."
+                : entitlement?.currentPeriodEnd
                 ? `Renews ${entitlement.currentPeriodEnd}`
                 : "Local preview — no payment method on file."}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge tone={entitlement?.status === "active" ? "positive" : "neutral"}>
-              {entitlement?.status ?? "local"}
+              {entitlement?.adminAccess ? "Admin" : entitlement?.status ?? "local"}
             </Badge>
             <Button variant="secondary" size="sm" icon="billing" onClick={openPortal} disabled={busy === "portal"}>
               Manage billing
@@ -157,7 +160,11 @@ export default function BillingPage() {
               </ul>
 
               <div className="mt-auto pt-1">
-                {plan.id === "free" ? (
+                {entitlement?.adminAccess ? (
+                  <Button variant="outline" size="sm" className="w-full" disabled>
+                    Included for admins
+                  </Button>
+                ) : plan.id === "free" ? (
                   <Button variant="outline" size="sm" className="w-full" disabled>
                     {isCurrent ? "Current plan" : "Included"}
                   </Button>
