@@ -1,11 +1,33 @@
 import { AppShell } from "@/components/shell/app-shell";
 import { GridhubAIProvider } from "@/components/ai/ai-provider";
 import { getSessionUser, isSupabaseConfigured } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { recordCountryActivity } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const user = isSupabaseConfigured() ? await getSessionUser() : null;
+
+  if (user) {
+    const requestHeaders = await headers();
+    // These headers are set by the hosting edge. No IP address is read or persisted.
+    const countryCode = [
+      requestHeaders.get("x-vercel-ip-country"),
+      requestHeaders.get("cf-ipcountry"),
+      requestHeaders.get("cloudfront-viewer-country"),
+    ]
+      .find((value) => value && /^[A-Za-z]{2}$/.test(value))
+      ?.toUpperCase();
+
+    if (countryCode) {
+      try {
+        await recordCountryActivity(user.id, countryCode);
+      } catch (error) {
+        console.error("Country activity could not be recorded:", error);
+      }
+    }
+  }
 
   return (
     <GridhubAIProvider>

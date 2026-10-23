@@ -1,7 +1,7 @@
 # Database
 
-The authoritative definition is `supabase/migrations/0001_init.sql`. This document explains
-the model and the decisions behind it; the SQL wins any disagreement.
+The authoritative schema is the numbered migration sequence in `supabase/migrations/`.
+This document explains the model and the decisions behind it; the SQL wins any disagreement.
 
 ## Conventions
 
@@ -33,6 +33,7 @@ bug a user can see.
 | `dashboard_widgets` | Widget instances: `widget_id`, `tool_id`, `position`, `size`, `hidden`, `pinned`, `config` |
 | `tool_catalog` | The sixteen tools, seeded by the migration; `visible` and `sort_order` drive marketing |
 | `tool_activations` | Which tools an account has switched on; `(user_id, tool_id)` primary key |
+| `user_country_activity` | Per-account country and daily visit count for aggregate market reporting; no IP addresses |
 
 ### Billing
 

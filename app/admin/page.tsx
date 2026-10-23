@@ -78,8 +78,8 @@ export default async function AdminOverviewPage() {
       </Card>
 
       <InlineAlert tone="info" title="What this page does not tell you">
-        Row counts are not revenue, retention or engagement. Gridhub ships no analytics
-        pipeline, so this page reports what the database holds and nothing more.
+        Row counts are not revenue, retention or engagement. The Countries page reports
+        aggregate country-level workspace activity; Gridhub does not record a general pageview trail.
       </InlineAlert>
     </>
   );

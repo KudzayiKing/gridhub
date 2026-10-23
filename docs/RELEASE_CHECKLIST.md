@@ -15,7 +15,7 @@ command and saw the result — not that the code looks right.
 | Unit tests | ✅ 68/68 |
 | Runtime smoke (`next start`, 7 routes) | ✅ all 200 |
 | Playwright E2E executed | ❌ browsers installed, suite not run |
-| Migration applied | ❌ |
+| Migration applied | ✅ |
 | Google OAuth configured | ❌ |
 | Stripe products and prices created | ❌ |
 | Deployed | ❌ |

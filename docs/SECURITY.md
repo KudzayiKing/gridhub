@@ -41,15 +41,16 @@ than a half-authenticated one.
 | Another user's rows | Blocked by RLS; no API path bypasses it |
 | Billing tables | Owner read-only; writes require the service role |
 | `billing_events` | No client policy at all |
-| `/admin/*` | Server-side allowlist (`ADMIN_EMAILS`), checked in the layout |
+| `/admin/*` | Server-side owner allowlist plus `ADMIN_EMAILS`, checked in the layout |
 | `/app/*` | Middleware session gate; page data is per-user from IndexedDB |
 
 ### Why admin is an env allowlist
 
 A `profiles.role` column would be the obvious design, and it would be a privilege-escalation
-path the moment users can update their own profile row. An env allowlist can only be changed
-by someone who can deploy. The check lives in `app/admin/layout.tsx`, so it covers every
-nested route by construction rather than by each page remembering to call it.
+path the moment users can update their own profile row. The owner email is allowlisted in
+server code, while additional operators come from the `ADMIN_EMAILS` environment variable.
+The check lives in `app/admin/layout.tsx`, so it covers every nested route by construction
+rather than by each page remembering to call it.
 
 ## Secrets
 

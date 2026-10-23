@@ -22,7 +22,8 @@ NEXT_PUBLIC_APP_URL=https://gridhub.online
 ```
 
 Add `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and the eight `STRIPE_PRICE_*` variables to
-enable billing. Add `ADMIN_EMAILS` to enable `/admin`.
+enable billing. The owner account is allowlisted for `/admin`; add `ADMIN_EMAILS` for other
+operators.
 
 `NEXT_PUBLIC_APP_URL` must match the deployed origin exactly — it is used to build absolute
 Checkout success and cancel URLs, and a mismatch sends paying users to a host that will not
@@ -31,12 +32,15 @@ fails quietly at the worst moment.
 
 ## 2. Database
 
-Apply the migration **before** the first deploy that expects it:
+Apply any pending migrations **before** deploying code that expects them:
 
 ```bash
 supabase link --project-ref <ref>
 supabase db push
 ```
+
+The country activity report requires `0002_country_activity.sql` to be applied. To run the
+SQL files directly, apply `0001_init.sql` first, then `0002_country_activity.sql`.
 
 Or `psql "$DATABASE_URL" -f supabase/migrations/0001_init.sql`.
 

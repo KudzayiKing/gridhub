@@ -28,7 +28,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 # 32+ random bytes, e.g. openssl rand -base64 48
 ENTITLEMENT_SIGNING_SECRET=
 
-# Optional, for the operator surface
+# Optional additional operators; the owner account is built into the server allowlist.
 ADMIN_EMAILS=you@example.com
 ```
 
@@ -59,6 +59,10 @@ numbered migration.
 Do not assume. Open `/admin/system`; it runs a count against `public.profiles` and reports
 either "Database reachable" or the exact Postgres error. A reachable database with a missing
 table and an unreachable database are different problems and the page distinguishes them.
+
+Apply new numbered migrations (including `0002_country_activity.sql`) with `supabase db push`
+before deploying features that depend on them. The owner account is allowlisted in server
+code; add any additional operators to `ADMIN_EMAILS` on the production host.
 
 ## 4. Confirm RLS is on
 

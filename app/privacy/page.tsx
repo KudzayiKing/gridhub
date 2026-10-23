@@ -25,6 +25,7 @@ export default function PrivacyPage() {
           <li><strong>Workspace records:</strong> the records you create in the tools you use — transactions, invoices, guests, meals, tasks and so on.</li>
           <li><strong>Preferences:</strong> currency, locale, time zone, theme and dashboard layout.</li>
           <li><strong>Billing data:</strong> Stripe customer and subscription identifiers, plan, status and renewal date. Card details are handled by Stripe and never reach our servers.</li>
+          <li><strong>Approximate location:</strong> when you use the signed-in workspace, we record the country code supplied by our hosting provider. We use it to understand aggregate country-level usage for product and marketing planning. We do not store your IP address or precise location for this feature.</li>
           <li><strong>Operational data:</strong> sync errors and basic request logs used to keep the service working.</li>
         </ul>
 
@@ -39,7 +40,8 @@ export default function PrivacyPage() {
         <p>
           Records are written to your device first (IndexedDB) and synchronised to your private Supabase workspace.
           Row-level security policies restrict every row to its owning user. Billing tables are writable only by
-          server-side webhook processing, never by the browser.
+          server-side webhook processing, never by the browser. Country activity is held separately for aggregate
+          reporting and is removed when your account is deleted.
         </p>
 
         <h2>4. Processors</h2>
