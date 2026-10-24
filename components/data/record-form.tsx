@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/overlay";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export type FormFieldType =
   | "text"
@@ -77,6 +78,7 @@ export function RecordForm({
   submitLabel = "Save",
   footer,
 }: RecordFormProps) {
+  const { t } = useI18n();
   const [values, setValues] = React.useState<FormValues>(() => initialValues(fields, initial));
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [saving, setSaving] = React.useState(false);
@@ -110,20 +112,20 @@ export function RecordForm({
       const raw = values[f.key];
       const empty = raw === "" || raw === null || raw === undefined;
       if (f.required && empty) {
-        next[f.key] = `${f.label} is required`;
+        next[f.key] = `${t(f.label)} ${t("is required")}`;
         continue;
       }
       if (!empty && (f.type === "number" || f.type === "currency")) {
         const n = Number(raw);
-        if (!Number.isFinite(n)) next[f.key] = "Enter a valid number";
-        else if (f.min !== undefined && n < f.min) next[f.key] = `Must be at least ${f.min}`;
-        else if (f.max !== undefined && n > f.max) next[f.key] = `Must be at most ${f.max}`;
+        if (!Number.isFinite(n)) next[f.key] = t("Enter a valid number");
+        else if (f.min !== undefined && n < f.min) next[f.key] = t("Must be at least {min}", { min: f.min });
+        else if (f.max !== undefined && n > f.max) next[f.key] = t("Must be at most {max}", { max: f.max });
       }
       if (!empty && f.type === "date" && Number.isNaN(new Date(String(raw)).getTime())) {
-        next[f.key] = "Enter a valid date";
+        next[f.key] = t("Enter a valid date");
       }
       if (!empty && f.type === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(raw))) {
-        next[f.key] = "Enter a valid email";
+        next[f.key] = t("Enter a valid email");
       }
     }
     setErrors(next);

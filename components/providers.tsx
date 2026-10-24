@@ -13,6 +13,7 @@ const DEFAULT_PREFS: UserPreferences = {
   id: "prefs",
   currency: "USD",
   locale: "en-US",
+  uiLanguage: "en",
   dateFormat: "MM/DD/YYYY",
   // Deterministic for SSR: the server and the first client render must agree, and the server has
   // no idea what zone the browser is in. The real default is adopted from the device in the effect
@@ -108,6 +109,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (typeof document === "undefined") return;
     document.documentElement.classList.toggle("reduce-motion", prefs.reducedMotion);
   }, [prefs.reducedMotion]);
+
+  React.useEffect(() => {
+    const language = prefs.uiLanguage ?? "en";
+    document.documentElement.lang = language;
+    document.documentElement.dataset.uiLanguage = language;
+  }, [prefs.uiLanguage]);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

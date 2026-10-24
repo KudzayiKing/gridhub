@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { ThemeToggle } from "@/components/shell/sync-indicator";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/field";
+import { usePrefs } from "@/components/providers";
+import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
 
 const NAV = [
   { href: "/tools", label: "Tools" },
@@ -26,6 +29,8 @@ const NAV = [
 ];
 
 export function SiteHeader() {
+  const { prefs, setPrefs } = usePrefs();
+  const { t } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
 
@@ -60,12 +65,20 @@ export function SiteHeader() {
                 "wideOnly" in item && item.wideOnly ? "hidden lg:block" : undefined,
               )}
             >
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
+          <Select
+            aria-label="Interface language"
+            value={prefs.uiLanguage ?? "en"}
+            onChange={(event) => void setPrefs({ uiLanguage: event.target.value as typeof prefs.uiLanguage })}
+            className="h-8 w-auto min-w-0 rounded-full px-2 text-[11px]"
+          >
+            {UI_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.nativeName}</option>)}
+          </Select>
           <ThemeToggle />
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link href="/login">Sign in</Link>
@@ -95,11 +108,11 @@ export function SiteHeader() {
               onClick={() => setOpen(false)}
               className="press block rounded-lg px-2 py-2.5 text-[13.5px] text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg"
             >
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
           <Link href="/login" onClick={() => setOpen(false)} className="press block rounded-lg px-2 py-2.5 text-[13.5px] font-medium">
-            Sign in
+            {t("Sign in")}
           </Link>
         </div>
       ) : null}
@@ -108,53 +121,54 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
+  const { t } = useI18n();
   return (
     <footer className="mt-16 border-t border-line">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Logo size="md" />
           <p className="mt-2 max-w-[220px] text-[12.5px] leading-relaxed text-fg-muted">
-            Beautifully simple tools to organize your money, manage your business, and take control of everyday life.
+            {t("Beautifully simple tools to organize your money, manage your business, and take control of everyday life.")}
           </p>
         </div>
 
         <div>
-          <p className="eyebrow mb-2">Product</p>
+          <p className="eyebrow mb-2">{t("Product")}</p>
           <ul className="flex flex-col gap-1.5 text-[12.5px] text-fg-muted">
-            <li><Link className="hover:text-fg" href="/tools">All 16 tools</Link></li>
-            <li><Link className="hover:text-fg" href="/free-tools">Free Tools</Link></li>
-            <li><Link className="hover:text-fg" href="/journal">GridHub Journal</Link></li>
-            <li><Link className="hover:text-fg" href="/collections">Collections</Link></li>
+            <li><Link className="hover:text-fg" href="/tools">{t("All 16 tools")}</Link></li>
+            <li><Link className="hover:text-fg" href="/free-tools">{t("Free Tools")}</Link></li>
+            <li><Link className="hover:text-fg" href="/journal">{t("GridHub Journal")}</Link></li>
+            <li><Link className="hover:text-fg" href="/collections">{t("Collections")}</Link></li>
             <li><Link className="hover:text-fg" href="/gridhub-ai">GridHub AI</Link></li>
-            <li><Link className="hover:text-fg" href="/pricing">Pricing</Link></li>
-            <li><Link className="hover:text-fg" href="/offline">Offline &amp; PWA</Link></li>
+            <li><Link className="hover:text-fg" href="/pricing">{t("Pricing")}</Link></li>
+            <li><Link className="hover:text-fg" href="/offline">{t("Offline & PWA")}</Link></li>
           </ul>
         </div>
 
         <div>
-          <p className="eyebrow mb-2">Company</p>
+          <p className="eyebrow mb-2">{t("Company")}</p>
           <ul className="flex flex-col gap-1.5 text-[12.5px] text-fg-muted">
-            <li><Link className="hover:text-fg" href="/about">About</Link></li>
-            <li><Link className="hover:text-fg" href="/how-it-works">How it works</Link></li>
+            <li><Link className="hover:text-fg" href="/about">{t("About")}</Link></li>
+            <li><Link className="hover:text-fg" href="/how-it-works">{t("How it works")}</Link></li>
             <li><Link className="hover:text-fg" href="/faq">FAQ</Link></li>
-            <li><Link className="hover:text-fg" href="/contact">Contact</Link></li>
+            <li><Link className="hover:text-fg" href="/contact">{t("Contact")}</Link></li>
           </ul>
         </div>
 
         <div>
-          <p className="eyebrow mb-2">Legal</p>
+          <p className="eyebrow mb-2">{t("Legal")}</p>
           <ul className="flex flex-col gap-1.5 text-[12.5px] text-fg-muted">
-            <li><Link className="hover:text-fg" href="/privacy">Privacy</Link></li>
-            <li><Link className="hover:text-fg" href="/terms">Terms</Link></li>
-            <li><Link className="hover:text-fg" href="/refund-policy">Refund policy</Link></li>
+            <li><Link className="hover:text-fg" href="/privacy">{t("Privacy")}</Link></li>
+            <li><Link className="hover:text-fg" href="/terms">{t("Terms")}</Link></li>
+            <li><Link className="hover:text-fg" href="/refund-policy">{t("Refund policy")}</Link></li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-[11.5px] text-fg-subtle">
-          <p>© {new Date().getFullYear()} Gridhub. One hub. Everything organized.</p>
-          <p>Built as an installable PWA. Your data stays yours.</p>
+          <p>© {new Date().getFullYear()} Gridhub. {t("One hub. Everything organized.")}</p>
+          <p>{t("Built as an installable PWA. Your data stays yours.")}</p>
         </div>
       </div>
     </footer>

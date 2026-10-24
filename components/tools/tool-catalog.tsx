@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Badge, Card, EmptyState, SectionHeading } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
+  const { t } = useI18n();
   const { active, toggle, isActive, loading } = useActiveTools();
   const [filter, setFilter] = React.useState<CollectionId | "all">("all");
   const [query, setQuery] = React.useState("");
@@ -87,8 +89,8 @@ export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
                 </div>
 
                 <div className="min-w-0">
-                  <h3 className="text-[14px] font-semibold leading-tight">{tool.name}</h3>
-                  <p className="mt-0.5 text-[12px] leading-snug text-fg-muted">{tool.description}</p>
+                  <h3 className="text-[14px] font-semibold leading-tight">{t(tool.name)}</h3>
+                  <p className="mt-0.5 text-[12px] leading-snug text-fg-muted">{t(tool.description)}</p>
                 </div>
 
                 <ul className="flex flex-wrap gap-1">
@@ -97,7 +99,7 @@ export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
                       key={b}
                       className="rounded-full border border-line bg-[var(--bg-subtle)]/60 px-2 py-0.5 text-[10.5px] text-fg-muted"
                     >
-                      {b}
+                      {t(b)}
                     </li>
                   ))}
                 </ul>

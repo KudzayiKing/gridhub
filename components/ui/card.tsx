@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
+import { useI18n } from "@/lib/i18n";
 
 /* -------------------------------- Card --------------------------------- */
 
@@ -32,6 +33,7 @@ export function CardHeader({
   action?: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <div className="flex min-w-0 items-start gap-3">
@@ -41,9 +43,9 @@ export function CardHeader({
           </span>
         ) : null}
         <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-semibold text-fg">{title}</h3>
+          <h3 className="truncate text-[15px] font-semibold text-fg">{typeof title === "string" ? t(title) : title}</h3>
           {description ? (
-            <p className="mt-0.5 text-[13px] leading-snug text-fg-muted">{description}</p>
+            <p className="mt-0.5 text-[13px] leading-snug text-fg-muted">{typeof description === "string" ? t(description) : description}</p>
           ) : null}
         </div>
       </div>
@@ -71,6 +73,7 @@ export function Badge({
   tone?: keyof typeof badgeTones;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <span
       className={cn(
@@ -79,7 +82,7 @@ export function Badge({
         className,
       )}
     >
-      {children}
+      {typeof children === "string" ? t(children) : children}
     </span>
   );
 }
@@ -105,6 +108,7 @@ export function MetricCard({
   className?: string;
   onClick?: () => void;
 }) {
+  const { t } = useI18n();
   const toneColor =
     tone === "positive"
       ? "var(--positive)"
@@ -136,7 +140,7 @@ export function MetricCard({
       }
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-fg-subtle">{label}</p>
+        <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-fg-subtle">{t(label)}</p>
         {icon ? <AnimatedIcon name={icon} size={16} className="text-fg-subtle" trigger="hover" /> : null}
       </div>
       <div>
@@ -163,7 +167,7 @@ export function MetricCard({
               {trend.label}
             </span>
           ) : null}
-          {hint ? <span className="text-[11px] text-fg-subtle">{hint}</span> : null}
+          {hint ? <span className="text-[11px] text-fg-subtle">{typeof hint === "string" ? t(hint) : hint}</span> : null}
         </div>
       </div>
     </div>
@@ -187,6 +191,7 @@ export function EmptyState({
   className?: string;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -199,8 +204,8 @@ export function EmptyState({
         <AnimatedIcon name={icon} size={20} trigger="hover" />
       </span>
       <div className="max-w-sm">
-        <p className="text-sm font-medium text-fg">{title}</p>
-        {description ? <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">{description}</p> : null}
+        <p className="text-sm font-medium text-fg">{t(title)}</p>
+        {description ? <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">{t(description)}</p> : null}
       </div>
       {action ? <div className="mt-1">{action}</div> : null}
     </div>
@@ -238,13 +243,14 @@ export function SectionHeading({
   action?: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className={cn("flex flex-wrap items-end justify-between gap-3", className)}>
       <div className="min-w-0">
-        {eyebrow ? <p className="eyebrow mb-1.5">{eyebrow}</p> : null}
-        <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{title}</h2>
+        {eyebrow ? <p className="eyebrow mb-1.5">{t(eyebrow)}</p> : null}
+        <h2 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">{typeof title === "string" ? t(title) : title}</h2>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-muted">{description}</p>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-fg-muted">{typeof description === "string" ? t(description) : description}</p>
         ) : null}
       </div>
       {action}
@@ -265,9 +271,10 @@ export function Stat({
   tone?: "neutral" | "positive" | "negative" | "warning";
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className={cn("min-w-0", className)}>
-      <p className="text-[11px] uppercase tracking-[0.08em] text-fg-subtle">{label}</p>
+      <p className="text-[11px] uppercase tracking-[0.08em] text-fg-subtle">{t(label)}</p>
       <p
         className="tnum mt-0.5 truncate text-sm font-semibold"
         style={{
@@ -299,6 +306,7 @@ export function InlineAlert({
   children: React.ReactNode;
   icon?: string;
 }) {
+  const { t } = useI18n();
   const color =
     tone === "negative"
       ? "var(--negative)"
@@ -324,8 +332,8 @@ export function InlineAlert({
         trigger="hover"
       />
       <div className="min-w-0">
-        {title ? <p className="font-medium">{title}</p> : null}
-        <div className="text-fg-muted">{children}</div>
+        {title ? <p className="font-medium">{t(title)}</p> : null}
+        <div className="text-fg-muted">{typeof children === "string" ? t(children) : children}</div>
       </div>
     </div>
   );

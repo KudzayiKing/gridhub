@@ -10,7 +10,6 @@ import { CURRENCIES } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, InlineAlert, SectionHeading } from "@/components/ui/card";
 import { Field, Input, Select, Switch } from "@/components/ui/field";
-import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { ConfirmDialog } from "@/components/ui/overlay";
 import { getDB, dbAvailable } from "@/lib/db";
 import { runSync } from "@/lib/sync";
@@ -19,9 +18,11 @@ import { toast } from "sonner";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
 
 export default function SettingsPage() {
   const { prefs, setPrefs } = usePrefs();
+  const { t } = useI18n();
   const { theme, setTheme } = useTheme();
   const { active } = useActiveTools();
   const sync = useSyncState();
@@ -37,14 +38,14 @@ export default function SettingsPage() {
       JSON.stringify({ exportedAt: new Date().toISOString(), records: rows.map((r) => r.data) }, null, 2),
       "application/json",
     );
-    toast.success("Export downloaded");
+    toast.success(t("Export downloaded"));
   };
 
   const clearLocal = async () => {
     if (!dbAvailable()) return;
     await getDB().records.clear();
     await getDB().outbox.clear();
-    toast.success("Local cache cleared");
+    toast.success(t("Local cache cleared"));
     setConfirmClear(false);
     router.refresh();
   };
@@ -54,7 +55,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/account/delete", { method: "POST" });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        toast.error(body.error ?? "Account deletion is not configured.");
+        toast.error(body.error ?? t("Account deletion is not configured."));
         return;
       }
       if (dbAvailable()) {
@@ -73,12 +74,12 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeading eyebrow="Workspace" title="Settings" description="Preferences apply to this workspace and stay available offline." />
+      <SectionHeading eyebrow="Workspace" title="Settings" description={t("Preferences apply to this workspace and stay available offline.")} />
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card className="p-4">
-          <h2 className="text-[14px] font-semibold">Appearance</h2>
-          <p className="mt-0.5 text-[12px] text-fg-muted">Theme and motion.</p>
+          <h2 className="text-[14px] font-semibold">{t("Appearance")}</h2>
+          <p className="mt-0.5 text-[12px] text-fg-muted">{t("Theme and motion.")}</p>
           <div className="mt-3 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="text-[13px]">Theme</span>
@@ -101,8 +102,8 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[13px]">Reduce motion</p>
-                <p className="text-[11.5px] text-fg-subtle">Icon animations and transitions are disabled.</p>
+                <p className="text-[13px]">{t("Reduce motion")}</p>
+                <p className="text-[11.5px] text-fg-subtle">{t("Icon animations and transitions are disabled.")}</p>
               </div>
               <Switch checked={prefs.reducedMotion} onCheckedChange={(v) => void setPrefs({ reducedMotion: v })} aria-label="Reduce motion" />
             </div>
@@ -110,8 +111,8 @@ export default function SettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <h2 className="text-[14px] font-semibold">Preferences</h2>
-          <p className="mt-0.5 text-[12px] text-fg-muted">Used for formatting across every tool.</p>
+          <h2 className="text-[14px] font-semibold">{t("Preferences")}</h2>
+          <p className="mt-0.5 text-[12px] text-fg-muted">{t("Used for formatting across every tool.")}</p>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <Field label="Currency" htmlFor="currency">
               <Select id="currency" value={prefs.currency} onChange={(e) => void setPrefs({ currency: e.target.value })}>
@@ -131,27 +132,33 @@ export default function SettingsPage() {
                 <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               </Select>
             </Field>
-            <Field label="Locale" htmlFor="locale">
+            <Field label="Number and date locale" htmlFor="locale">
               <Input id="locale" value={prefs.locale} onChange={(e) => void setPrefs({ locale: e.target.value })} placeholder="en-US" />
             </Field>
             <Field label="Time zone" htmlFor="tz">
               <Input id="tz" value={prefs.timeZone} onChange={(e) => void setPrefs({ timeZone: e.target.value })} placeholder="Africa/Lagos" />
             </Field>
+            <Field label="Interface language" htmlFor="uiLanguage">
+              <Select id="uiLanguage" value={prefs.uiLanguage ?? "en"} onChange={(e) => void setPrefs({ uiLanguage: e.target.value as typeof prefs.uiLanguage })}>
+                {UI_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.nativeName}</option>)}
+              </Select>
+              <p className="text-[11.5px] text-fg-subtle">{t("AI responses remain in English for now.")}</p>
+            </Field>
           </div>
         </Card>
 
         <Card className="p-4">
-          <h2 className="text-[14px] font-semibold">My tools</h2>
-          <p className="mt-0.5 text-[12px] text-fg-muted">{active.length} tools activated.</p>
+          <h2 className="text-[14px] font-semibold">{t("My tools")}</h2>
+          <p className="mt-0.5 text-[12px] text-fg-muted">{active.length} {t("tools activated.")}</p>
           <Button variant="secondary" size="sm" className="mt-3" icon="tools" asChild>
             <Link href="/app/tools">Manage tools</Link>
           </Button>
         </Card>
 
         <Card className="p-4">
-          <h2 className="text-[14px] font-semibold">Gridhub AI</h2>
+          <h2 className="text-[14px] font-semibold">{t("Gridhub AI")}</h2>
           <p className="mt-0.5 text-[12px] text-fg-muted">
-            Voice and natural-language commands, running on this device.
+            {t("Voice and natural-language commands, running on this device.")}
           </p>
           <Button variant="secondary" size="sm" className="mt-3" icon="settings" asChild>
             <Link href="/app/settings/ai">Manage Gridhub AI</Link>
@@ -159,9 +166,9 @@ export default function SettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <h2 className="text-[14px] font-semibold">Data &amp; privacy</h2>
+          <h2 className="text-[14px] font-semibold">{t("Data & privacy")}</h2>
           <p className="mt-0.5 text-[12px] text-fg-muted">
-            Your records live on this device first. Export any time — including after cancelling.
+            {t("Your records live on this device first. Export any time — including after cancelling.")}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" icon="download" onClick={() => void exportAll()}>
@@ -182,11 +189,11 @@ export default function SettingsPage() {
       </div>
 
       <Card className="p-4">
-        <h2 className="text-[14px] font-semibold">Account</h2>
+          <h2 className="text-[14px] font-semibold">{t("Account")}</h2>
         <p className="mt-0.5 text-[12px] text-fg-muted">
           {isSupabaseConfigured()
-            ? "Signed in with Google through Supabase Auth."
-            : "Supabase is not configured in this environment, so you are working in local-only mode."}
+            ? t("Signed in with Google through Supabase Auth.")
+            : t("Supabase is not configured in this environment, so you are working in local-only mode.")}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
@@ -204,9 +211,8 @@ export default function SettingsPage() {
             Delete account
           </Button>
         </div>
-        <InlineAlert tone="info" title="What deletion does" >
-          Your workspace records and local cache are removed. Billing records required for tax and accounting are
-          retained by Stripe according to their policy.
+      <InlineAlert tone="info" title="What deletion does" >
+          {t("Your workspace records and local cache are removed. Billing records required for tax and accounting are retained by Stripe according to their policy.")}
         </InlineAlert>
       </Card>
 

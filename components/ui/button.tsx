@@ -5,6 +5,7 @@ import { Slot, Slottable } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { AnimatedIcon, type AnimatedIconTrigger } from "@/components/icons/animated-icon";
+import { useI18n } from "@/lib/i18n";
 
 const buttonVariants = cva(
   "press inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium disabled:pointer-events-none disabled:opacity-45 [&_svg]:shrink-0",
@@ -43,10 +44,20 @@ export interface ButtonProps
   iconRight?: string;
 }
 
+function translateButtonChildren(node: React.ReactNode, t: (source: string) => string): React.ReactNode {
+  if (typeof node === "string") return t(node);
+  if (Array.isArray(node)) return node.map((child) => translateButtonChildren(child, t));
+  if (React.isValidElement<{ children?: React.ReactNode }>(node) && node.props.children !== undefined) {
+    return React.cloneElement(node, {}, translateButtonChildren(node.props.children, t));
+  }
+  return node;
+}
+
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { className, variant, size, asChild, icon, iconSize = 16, iconTrigger = "click", iconRight, children, disabled, ...props },
   ref,
 ) {
+  const { t } = useI18n();
   const Comp = asChild ? Slot : "button";
   return (
     <Comp
@@ -54,6 +65,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       className={cn(buttonVariants({ variant, size }), className)}
       disabled={disabled}
       {...props}
+      aria-label={props["aria-label"] ? t(props["aria-label"]!) : undefined}
+      title={props.title ? t(props.title) : undefined}
     >
       {/*
         `Slottable` is required, not decorative. With `asChild`, Radix's Slot must merge
@@ -63,7 +76,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
         Without `asChild` this is an inert wrapper.
       */}
       {icon ? <AnimatedIcon name={icon} size={iconSize} trigger={iconTrigger} disabled={disabled} /> : null}
-      <Slottable>{children}</Slottable>
+      <Slottable>{translateButtonChildren(children, t)}</Slottable>
       {iconRight ? <AnimatedIcon name={iconRight} size={iconSize} trigger={iconTrigger} disabled={disabled} /> : null}
     </Comp>
   );

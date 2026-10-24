@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Wordmark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -41,6 +42,7 @@ function isIOSDevice() {
 }
 
 export function AppPrompts({ buildVersion }: { buildVersion: string }) {
+  const { t } = useI18n();
   const [update, setUpdate] = React.useState<UpdatePrompt | null>(null);
   const [showInstall, setShowInstall] = React.useState(false);
   const [isIOS, setIsIOS] = React.useState(false);
@@ -244,7 +246,7 @@ export function AppPrompts({ buildVersion }: { buildVersion: string }) {
           <button
             type="button"
             onClick={showUpdate ? dismissUpdate : dismissInstall}
-            aria-label="Dismiss prompt"
+            aria-label={t("Dismiss prompt")}
             className="-mr-2 -mt-2 grid size-9 shrink-0 place-items-center rounded-full text-fg-subtle hover:bg-[var(--bg-subtle)] hover:text-fg"
           >
             <span aria-hidden="true">×</span>
@@ -253,9 +255,9 @@ export function AppPrompts({ buildVersion }: { buildVersion: string }) {
 
         {showUpdate ? (
           <>
-            <h2 className="mt-3 text-[14px] font-semibold">A new Gridhub update is ready</h2>
+            <h2 className="mt-3 text-[14px] font-semibold">{t("A new Gridhub update is ready")}</h2>
             <p className="mt-1 text-[12.5px] leading-relaxed text-fg-muted">
-              Reload to get the latest improvements. Your workspace is saved before the app refreshes.
+              {t("Reload to get the latest improvements. Your workspace is saved before the app refreshes.")}
             </p>
             <div className="mt-3 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={dismissUpdate}>Later</Button>
@@ -264,15 +266,15 @@ export function AppPrompts({ buildVersion }: { buildVersion: string }) {
           </>
         ) : (
           <>
-            <h2 className="mt-3 text-[14px] font-semibold">Add Gridhub to your Home Screen</h2>
+            <h2 className="mt-3 text-[14px] font-semibold">{t("Add Gridhub to your Home Screen")}</h2>
             <p className="mt-1 text-[12.5px] leading-relaxed text-fg-muted">
-              Keep your workspace one tap away as an app on your phone.
+              {t("Keep your workspace one tap away as an app on your phone.")}
             </p>
             {!installEvent ? (
               <p className="mt-2 rounded-xl bg-[var(--bg-subtle)] px-3 py-2 text-[11.5px] leading-relaxed text-fg-muted">
                 {isIOS
-                  ? "Tap Share in your browser, then choose Add to Home Screen."
-                  : "Open your browser menu and choose Install app or Add to Home Screen."}
+                  ? t("Tap Share in your browser, then choose Add to Home Screen.")
+                  : t("Open your browser menu and choose Install app or Add to Home Screen.")}
               </p>
             ) : null}
             <div className="mt-3 flex justify-end gap-2">

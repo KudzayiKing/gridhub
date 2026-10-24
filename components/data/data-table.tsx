@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn, toCSV, downloadFile } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Checkbox } from "@/components/ui/field";
@@ -75,6 +76,7 @@ export function DataTable<T extends { id: string }>({
   emptyIcon = "inbox",
   dense,
 }: DataTableProps<T>) {
+  const { t } = useI18n();
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const [filterState, setFilterState] = React.useState<Record<string, string>>({});
@@ -181,7 +183,7 @@ export function DataTable<T extends { id: string }>({
             <option value="all">{f.label}: All</option>
             {f.options.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label)}
               </option>
             ))}
           </Select>
@@ -196,7 +198,7 @@ export function DataTable<T extends { id: string }>({
               </Button>
             </DropdownTrigger>
             <DropdownContent>
-              <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-fg-subtle">Columns</p>
+              <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-fg-subtle">{t("Columns")}</p>
               {columns.map((c) => (
                 <label
                   key={c.key}
@@ -207,9 +209,9 @@ export function DataTable<T extends { id: string }>({
                     onCheckedChange={(v) =>
                       setHidden((h) => (v ? h.filter((k) => k !== c.key) : [...h, c.key]))
                     }
-                    aria-label={c.header}
+                    aria-label={t(c.header)}
                   />
-                  {c.header}
+                  {t(c.header)}
                 </label>
               ))}
             </DropdownContent>
@@ -224,9 +226,9 @@ export function DataTable<T extends { id: string }>({
 
       {(activeFilters > 0 || query) && (
         <p className="text-xs text-fg-subtle">
-          {filtered.length} of {rows.length} records
-          {query ? ` matching “${query}”` : ""}
-          {activeFilters > 0 ? ` · ${activeFilters} filter${activeFilters > 1 ? "s" : ""}` : ""}
+          {filtered.length} / {rows.length} {t("records")}
+          {query ? ` · ${t("matching")} “${query}”` : ""}
+          {activeFilters > 0 ? ` · ${activeFilters} ${t("filters")}` : ""}
         </p>
       )}
 
@@ -255,7 +257,7 @@ export function DataTable<T extends { id: string }>({
                       }
                       className="inline-flex items-center gap-1 hover:text-fg"
                     >
-                      {c.header}
+                      {t(c.header)}
                       <AnimatedIcon
                         name={sort?.key === c.key ? (sort.dir === "asc" ? "arrowUp" : "arrowDown") : "chevronDown"}
                         size={11}
@@ -264,7 +266,7 @@ export function DataTable<T extends { id: string }>({
                       />
                     </button>
                   ) : (
-                    c.header
+                    t(c.header)
                   )}
                 </th>
               ))}
@@ -355,7 +357,7 @@ export function DataTable<T extends { id: string }>({
               <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
                 {rest.map((c) => (
                   <div key={c.key} className="min-w-0">
-                    <dt className="text-[10px] uppercase tracking-wide text-fg-subtle">{c.header}</dt>
+                    <dt className="text-[10px] uppercase tracking-wide text-fg-subtle">{t(c.header)}</dt>
                     <dd className="truncate text-[12.5px] text-fg">{c.render(row)}</dd>
                   </div>
                 ))}
@@ -369,7 +371,7 @@ export function DataTable<T extends { id: string }>({
       {filtered.length > pageSize && (
         <div className="flex items-center justify-between gap-2 pt-1">
           <p className="text-xs text-fg-subtle">
-            Page {safePage + 1} of {pageCount}
+            {t("Page {current} of {total}", { current: safePage + 1, total: pageCount })}
           </p>
           <div className="flex items-center gap-1">
             <Button

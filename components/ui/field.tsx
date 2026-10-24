@@ -6,6 +6,7 @@ import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cn } from "@/lib/utils";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
+import { useI18n } from "@/lib/i18n";
 
 /* -------------------------------- Label -------------------------------- */
 
@@ -41,21 +42,22 @@ export function Field({
   className?: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {label ? (
         <Label htmlFor={htmlFor} className="flex items-center gap-1">
-          {label}
+          {typeof label === "string" ? t(label) : label}
           {required ? <span className="text-[var(--negative)]">*</span> : null}
         </Label>
       ) : null}
       {children}
       {error ? (
         <p className="text-xs text-[var(--negative)]" role="alert">
-          {error}
+          {t(error)}
         </p>
       ) : hint ? (
-        <p className="text-xs text-fg-subtle">{hint}</p>
+        <p className="text-xs text-fg-subtle">{typeof hint === "string" ? t(hint) : hint}</p>
       ) : null}
     </div>
   );
@@ -66,7 +68,11 @@ const controlBase =
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {
-    return <input ref={ref} className={cn(controlBase, "h-10", className)} {...props} />;
+    const { t } = useI18n();
+    return <input ref={ref} className={cn(controlBase, "h-10", className)} {...props}
+      placeholder={props.placeholder ? t(props.placeholder) : undefined}
+      aria-label={props["aria-label"] ? t(props["aria-label"]) : undefined}
+      title={props.title ? t(props.title) : undefined} />;
   },
 );
 
@@ -74,21 +80,30 @@ export const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.TextareaHTMLAttributes<HTMLTextAreaElement>
 >(function Textarea({ className, ...props }, ref) {
-  return <textarea ref={ref} className={cn(controlBase, "min-h-20 py-2 leading-relaxed", className)} {...props} />;
+  const { t } = useI18n();
+  return <textarea ref={ref} className={cn(controlBase, "min-h-20 py-2 leading-relaxed", className)} {...props}
+    placeholder={props.placeholder ? t(props.placeholder) : undefined}
+    aria-label={props["aria-label"] ? t(props["aria-label"]) : undefined}
+    title={props.title ? t(props.title) : undefined} />;
 });
 
 export const Select = React.forwardRef<
   HTMLSelectElement,
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(function Select({ className, children, ...props }, ref) {
+  const { t } = useI18n();
   return (
     <div className="relative">
       <select
         ref={ref}
         className={cn(controlBase, "h-10 appearance-none pr-9", className)}
         {...props}
+        aria-label={props["aria-label"] ? t(props["aria-label"]!) : undefined}
+        title={props.title ? t(props.title) : undefined}
       >
-        {children}
+        {React.Children.map(children, (child) => React.isValidElement<{ children?: React.ReactNode }>(child) && typeof child.props.children === "string"
+          ? React.cloneElement(child, {}, t(child.props.children))
+          : child)}
       </select>
       <AnimatedIcon
         name="chevronDown"
@@ -157,6 +172,7 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div
       role="tablist"
@@ -179,7 +195,7 @@ export function Segmented<T extends string>({
               : "text-fg-muted hover:text-fg",
           )}
         >
-          {opt.label}
+          {typeof opt.label === "string" ? t(opt.label) : opt.label}
         </button>
       ))}
     </div>

@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, InlineAlert } from "@/components/ui/card";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { usePrefs } from "@/components/providers";
+import { Select } from "@/components/ui/field";
+import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
 
 /**
  * `useSearchParams()` forces client-side rendering, so during a static build it must sit
@@ -38,6 +41,8 @@ function LoginSkeleton() {
 }
 
 function LoginForm() {
+  const { prefs, setPrefs } = usePrefs();
+  const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/app";
@@ -69,14 +74,19 @@ function LoginForm() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-5 px-4 py-10">
-      <Link href="/" className="press self-center">
-        <Logo size="lg" />
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/" className="press self-center"><Logo size="lg" /></Link>
+        <Select aria-label="Interface language" value={prefs.uiLanguage ?? "en"}
+          onChange={(event) => void setPrefs({ uiLanguage: event.target.value as typeof prefs.uiLanguage })}
+          className="h-8 w-auto min-w-0 rounded-full px-2 text-[11px]">
+          {UI_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.nativeName}</option>)}
+        </Select>
+      </div>
 
       <Card className="p-6">
-        <h1 className="text-xl font-semibold tracking-tight">Welcome to Gridhub.</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("Welcome to Gridhub.")}</h1>
         <p className="mt-1 text-[13px] leading-relaxed text-fg-muted">
-          Sign in to reach your workspace, your tools and your records — on every device.
+          {t("Sign in to reach your workspace, your tools and your records — on every device.")}
         </p>
 
         <Button
@@ -94,7 +104,7 @@ function LoginForm() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.05l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z" />
             </svg>
           </span>
-          {loading ? "Opening Google…" : "Continue with Google"}
+          {loading ? t("Opening Google…") : t("Continue with Google")}
         </Button>
 
         {!configured ? (
@@ -111,13 +121,13 @@ function LoginForm() {
         ) : null}
 
         <p className="mt-4 text-center text-[11.5px] leading-relaxed text-fg-subtle">
-          By continuing you agree to the{" "}
+          {t("By continuing you agree to the")}{" "}
           <Link href="/terms" className="underline decoration-line-strong underline-offset-2">
-            Terms
+            {t("Terms")}
           </Link>{" "}
           and{" "}
           <Link href="/privacy" className="underline decoration-line-strong underline-offset-2">
-            Privacy Policy
+            {t("Privacy Policy")}
           </Link>
           .
         </p>
@@ -125,7 +135,7 @@ function LoginForm() {
 
       <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-fg-subtle">
         <AnimatedIcon name="lock" size={12} trigger="none" />
-        Your records stay yours. Export them any time.
+        {t("Your records stay yours. Export them any time.")}
       </p>
     </div>
   );

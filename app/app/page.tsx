@@ -14,6 +14,7 @@ import { PinnedCharts, AddChartMenu } from "@/lib/chart-widgets";
 import { formatMoney, formatPercent } from "@/lib/money";
 import { TOOL_MAP } from "@/lib/catalog";
 import { formatDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 /*
  * One list, two presentations. On phones these are a scrollable strip under the header — the
@@ -30,6 +31,7 @@ const QUICK_ACTIONS = [
 ] as const;
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const { prefs } = usePrefs();
   const { active } = useActiveTools();
   const data = useDashboardData();
@@ -85,10 +87,10 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1">{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
-          <h1 className="display-xl text-[26px] sm:text-[32px]">{greeting}.</h1>
+            <p className="eyebrow mb-1">{new Date().toLocaleDateString(prefs.uiLanguage === "zh-CN" ? "zh-CN" : prefs.uiLanguage === "pt-BR" ? "pt-BR" : prefs.uiLanguage === "es" ? "es" : prefs.uiLanguage === "fr" ? "fr" : "en-US", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <h1 className="display-xl text-[26px] sm:text-[32px]">{t(greeting)}.</h1>
           <p className="mt-1 text-[13px] text-fg-muted">
-            {activeTools.length} tool{activeTools.length === 1 ? "" : "s"} in your workspace · everything organized.
+            {activeTools.length} {t("tools in your workspace · everything organized.")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -104,7 +106,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Net this month"
             value={formatMoney(data.budget.netCashFlow, { currency, signed: true })}
-            hint={`${formatPercent(data.budget.savingsRate)} savings rate`}
+            hint={t("{value} savings rate", { value: formatPercent(data.budget.savingsRate) })}
             icon="wallet"
             tone={data.budget.netCashFlow >= 0 ? "positive" : "negative"}
           />
@@ -113,7 +115,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Saved"
             value={formatMoney(data.savings.balance, { currency })}
-            hint={`${formatPercent(data.savings.progressPct)} of goals`}
+            hint={t("{value} of goals", { value: formatPercent(data.savings.progressPct) })}
             icon="piggy-bank"
           />
         ) : null}
@@ -121,7 +123,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Tasks open"
             value={String(data.taskStats.remaining)}
-            hint={data.taskStats.overdue ? `${data.taskStats.overdue} overdue` : "Nothing overdue"}
+            hint={data.taskStats.overdue ? t("{count} overdue", { count: data.taskStats.overdue }) : t("Nothing overdue")}
             icon="kanban"
             tone={data.taskStats.overdue ? "warning" : "neutral"}
           />
@@ -130,7 +132,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Outstanding"
             value={formatMoney(data.invoicing.outstanding, { currency })}
-            hint={data.invoicing.overdue.length ? `${data.invoicing.overdue.length} overdue` : "All on time"}
+            hint={data.invoicing.overdue.length ? t("{count} overdue", { count: data.invoicing.overdue.length }) : t("All on time")}
             icon="file-text"
             tone={data.invoicing.overdueAmount > 0 ? "warning" : "neutral"}
           />
@@ -139,7 +141,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Habits today"
             value={`${data.habitStats.doneToday}/${data.habitStats.scheduledToday}`}
-            hint={data.habitStats.bestStreak ? `${data.habitStats.bestStreak} day best streak` : "Start a streak"}
+            hint={data.habitStats.bestStreak ? t("{count} day best streak", { count: data.habitStats.bestStreak }) : t("Start a streak")}
             icon="circle-check"
           />
         ) : null}
@@ -147,7 +149,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Calories today"
             value={String(Math.round(data.todayNutrition.kcal))}
-            hint={`${data.todayNutrition.protein} g protein`}
+            hint={t("{count} g protein", { count: data.todayNutrition.protein })}
             icon="utensils"
           />
         ) : null}
@@ -155,7 +157,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Content scheduled"
             value={String(data.content.scheduled)}
-            hint={`${data.content.published} published`}
+            hint={t("{count} published", { count: data.content.published })}
             icon="calendar-range"
           />
         ) : null}
@@ -167,7 +169,7 @@ export default function DashboardPage() {
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AnimatedIcon name="alert" size={16} className="text-fg-muted" trigger="hover" />
-              <h2 className="text-[14px] font-semibold">Needs your attention</h2>
+              <h2 className="text-[14px] font-semibold">{t("Needs your attention")}</h2>
             </div>
             {data.attention.length ? <Badge tone="warning">{data.attention.length}</Badge> : null}
           </div>
@@ -184,8 +186,8 @@ export default function DashboardPage() {
                       <AnimatedIcon name={item.icon} size={14} trigger="hover" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium">{item.title}</span>
-                      <span className="block truncate text-[11.5px] text-fg-subtle">{item.detail}</span>
+                      <span className="block truncate text-[13px] font-medium">{t(item.title)}</span>
+                      <span className="block truncate text-[11.5px] text-fg-subtle">{t(item.detail)}</span>
                     </span>
                     <AnimatedIcon name="chevronRight" size={14} className="text-fg-subtle" trigger="none" />
                   </Link>
@@ -195,15 +197,15 @@ export default function DashboardPage() {
           ) : (
             <div className="flex flex-col items-center gap-1 py-8 text-center">
               <AnimatedIcon name="check" size={22} className="text-[var(--positive)]" trigger="hover" />
-              <p className="text-[13px] font-medium">Nothing needs you right now.</p>
-              <p className="text-[11.5px] text-fg-subtle">Bills, invoices, deadlines and sync issues appear here.</p>
+              <p className="text-[13px] font-medium">{t("Nothing needs you right now.")}</p>
+              <p className="text-[11.5px] text-fg-subtle">{t("Bills, invoices, deadlines and sync issues appear here.")}</p>
             </div>
           )}
         </Card>
 
         {/* Quick actions — desktop card. The phone equivalent is the strip at the top. */}
         <Card className="hidden p-4 lg:block">
-          <h2 className="mb-3 text-[14px] font-semibold">Quick actions</h2>
+          <h2 className="mb-3 text-[14px] font-semibold">{t("Quick actions")}</h2>
           <div className="flex flex-wrap gap-2">
             {quickActions.map((action) => (
               <Button key={action.href} variant="secondary" size="sm" icon={action.icon} iconTrigger="hover" asChild>

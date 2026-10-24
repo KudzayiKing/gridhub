@@ -28,6 +28,7 @@ import { COLLECTIONS, TOOL_MAP, toolsByCollection, type ToolId } from "@/lib/cat
 import { useActiveTools } from "@/lib/use-tools";
 import { cn } from "@/lib/utils";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n";
 
 const PRIMARY_NAV = [
   { href: "/app", label: "Overview", icon: "dashboard" },
@@ -68,6 +69,7 @@ function NavLink({
   onNavigate?: () => void;
   indent?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <Link
       href={href}
@@ -87,7 +89,7 @@ function NavLink({
         trigger="hover"
         className={cn(active ? "text-[var(--accent)]" : "text-fg-subtle group-hover:text-fg")}
       />
-      <span className="truncate">{label}</span>
+      <span className="truncate">{t(label)}</span>
       {active ? (
         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
       ) : null}
@@ -104,6 +106,7 @@ export interface AppShellProps {
 }
 
 export function AppShell({ children, user, isAdmin = false, buildVersion = "local" }: AppShellProps) {
+  const { t } = useI18n();
   const pathname = usePathname() || "/app";
   const router = useRouter();
   const { active } = useActiveTools();
@@ -175,7 +178,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
         className="press flex items-center gap-2 rounded-xl border border-line bg-[var(--surface-strong)] px-2.5 py-2 text-left text-[12.5px] text-fg-subtle hover:text-fg-muted"
       >
         <AnimatedIcon name="search" size={14} trigger="hover" />
-        <span className="flex-1">Search…</span>
+        <span className="flex-1">{t("Search…")}</span>
         <kbd className="rounded border border-line px-1 text-[10px] text-fg-subtle">⌘K</kbd>
       </button>
 
@@ -196,13 +199,13 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
           if (!tools.length) return null;
           return (
             <div key={collection.id} className="mb-3">
-              <p className="eyebrow mb-1 px-2.5 text-[10px]">{collection.name}</p>
+              <p className="eyebrow mb-1 px-2.5 text-[10px]">{t(collection.name)}</p>
               <div className="flex flex-col gap-0.5">
                 {tools.map((tool) => (
                   <NavLink
                     key={tool.id}
                     href={tool.route}
-                    label={tool.shortName}
+                    label={t(tool.shortName)}
                     icon={toolIconName(tool.id)}
                     active={isCurrent(pathname, tool.route)}
                     onNavigate={onNavigate}

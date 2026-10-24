@@ -7,13 +7,14 @@ import { COLLECTIONS, TOOLS, toolsByCollection, type CollectionId, type ToolId }
 import { useActiveTools } from "@/lib/use-tools";
 import { usePrefs } from "@/components/providers";
 import { Button } from "@/components/ui/button";
-import { Badge, Card } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
 import { ToolIcon } from "@/components/icons/tool-icons";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { CURRENCIES, formatMoney } from "@/lib/money";
 import { plansCovering, recommendPlan, annualSavings } from "@/lib/plans";
 import { cn } from "@/lib/utils";
+import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
 
 const STEPS = ["Welcome", "Interests", "Tools", "Plan", "Preferences"] as const;
 
@@ -21,6 +22,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { setActive } = useActiveTools();
   const { prefs, setPrefs } = usePrefs();
+  const { t } = useI18n();
   const [step, setStep] = React.useState(0);
   const [collections, setCollections] = React.useState<CollectionId[]>([]);
   const [selected, setSelected] = React.useState<ToolId[]>([]);
@@ -62,17 +64,16 @@ export default function OnboardingPage() {
 
       {step === 0 ? (
         <Card className="p-6 sm:p-8">
-          <p className="eyebrow mb-2">Welcome</p>
-          <h1 className="display-xl text-3xl sm:text-4xl">Welcome to Gridhub.</h1>
+          <p className="eyebrow mb-2">{t("Welcome")}</p>
+          <h1 className="display-xl text-3xl sm:text-4xl">{t("Welcome to Gridhub.")}</h1>
           <p className="mt-3 max-w-lg text-[14px] leading-relaxed text-fg-muted">
-            Let&apos;s create a workspace built around what matters to you. Pick a few collections, choose your tools,
-            and we&apos;ll suggest the least expensive plan that covers them.
+            {t("Let's create a workspace built around what matters to you. Pick a few collections, choose your tools, and we'll suggest the least expensive plan that covers them.")}
           </p>
           <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {COLLECTIONS.map((c) => (
               <div key={c.id} className="rounded-xl border border-line bg-[var(--bg-subtle)]/50 p-3">
-                <p className="text-[12.5px] font-medium">{c.name}</p>
-                <p className="text-[11px] text-fg-subtle">{toolsByCollection(c.id).length} tools</p>
+                <p className="text-[12.5px] font-medium">{t(c.name)}</p>
+                <p className="text-[11px] text-fg-subtle">{toolsByCollection(c.id).length} {t("tools")}</p>
               </div>
             ))}
           </div>
@@ -84,8 +85,8 @@ export default function OnboardingPage() {
 
       {step === 1 ? (
         <Card className="p-6">
-          <h1 className="text-xl font-semibold">What are you organizing?</h1>
-          <p className="mt-1 text-[13px] text-fg-muted">Choose any that apply. This only filters the next step.</p>
+          <h1 className="text-xl font-semibold">{t("What are you organizing?")}</h1>
+          <p className="mt-1 text-[13px] text-fg-muted">{t("Choose any that apply. This only filters the next step.")}</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {COLLECTIONS.map((c) => {
               const on = collections.includes(c.id);
@@ -100,10 +101,10 @@ export default function OnboardingPage() {
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-[13.5px] font-medium">{c.label}</p>
+                    <p className="text-[13.5px] font-medium">{t(c.label)}</p>
                     {on ? <AnimatedIcon name="check" size={14} trigger="none" /> : null}
                   </div>
-                  <p className="mt-0.5 text-[11.5px] leading-snug text-fg-muted">{c.blurb}</p>
+                <p className="mt-0.5 text-[11.5px] leading-snug text-fg-muted">{t(c.blurb)}</p>
                 </button>
               );
             })}
@@ -121,9 +122,9 @@ export default function OnboardingPage() {
 
       {step === 2 ? (
         <Card className="p-6">
-          <h1 className="text-xl font-semibold">Select your tools</h1>
+          <h1 className="text-xl font-semibold">{t("Select your tools")}</h1>
           <p className="mt-1 text-[13px] text-fg-muted">
-            {selected.length} selected. You can change this any time — your records are never deleted.
+            {selected.length} {t("selected. You can change this any time — your records are never deleted.")}
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {visibleTools.map((tool) => {
@@ -140,8 +141,8 @@ export default function OnboardingPage() {
                 >
                   <ToolIcon toolId={tool.id} size={15} tinted={false} trigger="none" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-medium">{tool.name}</span>
-                    <span className="block truncate text-[11px] text-fg-subtle">{tool.tagline}</span>
+                    <span className="block truncate text-[12.5px] font-medium">{t(tool.name)}</span>
+                    <span className="block truncate text-[11px] text-fg-subtle">{t(tool.tagline)}</span>
                   </span>
                   {on ? <AnimatedIcon name="check" size={13} trigger="none" /> : null}
                 </button>
@@ -161,17 +162,16 @@ export default function OnboardingPage() {
 
       {step === 3 ? (
         <Card className="p-6">
-          <h1 className="text-xl font-semibold">Recommended plan</h1>
+          <h1 className="text-xl font-semibold">{t("Recommended plan")}</h1>
           <p className="mt-1 text-[13px] text-fg-muted">
-            Based on {selected.length} tool{selected.length === 1 ? "" : "s"}. Nothing is purchased until you confirm
-            at checkout.
+            {t("Based on {count} tools. Nothing is purchased until you confirm at checkout.", { count: selected.length })}
           </p>
 
           <div className="mt-4 rounded-xl border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[15px] font-semibold">{recommended.name}</p>
-                <p className="text-[12px] text-fg-muted">{recommended.blurb}</p>
+                <p className="text-[15px] font-semibold">{t(recommended.name)}</p>
+                <p className="text-[12px] text-fg-muted">{t(recommended.blurb)}</p>
               </div>
               <div className="text-right">
                 <p className="tnum text-xl font-semibold">${recommended.monthly}<span className="text-[12px] font-normal text-fg-muted">/mo</span></p>
@@ -186,7 +186,7 @@ export default function OnboardingPage() {
             <div className="mt-3 flex flex-col gap-1.5">
               {alternatives.slice(1).map((p) => (
                 <div key={p.id} className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-[12px]">
-                  <span>{p.name} · up to {p.toolLimit} tools</span>
+                  <span>{t(p.name)} · {t("up to {count} tools", { count: p.toolLimit })}</span>
                   <span className="tnum text-fg-muted">{formatMoney(p.monthly, { currency: "USD" })}/mo</span>
                 </div>
               ))}
@@ -206,8 +206,8 @@ export default function OnboardingPage() {
 
       {step === 4 ? (
         <Card className="p-6">
-          <h1 className="text-xl font-semibold">A few details</h1>
-          <p className="mt-1 text-[13px] text-fg-muted">Only what changes how numbers are displayed.</p>
+          <h1 className="text-xl font-semibold">{t("A few details")}</h1>
+          <p className="mt-1 text-[13px] text-fg-muted">{t("Only what changes how numbers are displayed.")}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Currency" htmlFor="ob-currency">
               <Select id="ob-currency" value={prefs.currency} onChange={(e) => void setPrefs({ currency: e.target.value })}>
@@ -233,6 +233,11 @@ export default function OnboardingPage() {
                 <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               </Select>
             </Field>
+            <Field label="Interface language" htmlFor="ob-language">
+              <Select id="ob-language" value={prefs.uiLanguage ?? "en"} onChange={(e) => void setPrefs({ uiLanguage: e.target.value as typeof prefs.uiLanguage })}>
+                {UI_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.nativeName}</option>)}
+              </Select>
+            </Field>
           </div>
 
           <div className="mt-5 flex justify-between">
@@ -247,7 +252,7 @@ export default function OnboardingPage() {
       ) : null}
 
       <p className="text-center text-[11.5px] text-fg-subtle">
-        Step {step + 1} of {STEPS.length} · {STEPS[step]}
+        {t("Step {current} of {total}", { current: step + 1, total: STEPS.length })} · {t(STEPS[step])}
       </p>
     </div>
   );

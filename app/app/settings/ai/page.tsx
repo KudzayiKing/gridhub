@@ -173,7 +173,7 @@ export default function GridhubAISettingsPage() {
             <Field
               label="Language"
               htmlFor="ai-locale"
-              hint="English only for now. Other languages need translated action descriptions and are not supported yet."
+              hint="Gridhub AI responds in English. Changing your interface language does not change AI responses."
             >
               {/* Uncontrolled + disabled: the value is fixed, so a controlled `value` would only
                   trigger React's "value without onChange" warning. */}

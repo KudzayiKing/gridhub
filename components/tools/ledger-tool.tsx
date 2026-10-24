@@ -13,6 +13,7 @@ import { Badge, Card } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { RecordForm, type FormField, type FormValues } from "@/components/data/record-form";
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from "@/components/ui/overlay";
+import { useI18n } from "@/lib/i18n";
 
 export interface LedgerTab {
   id: string;
@@ -58,6 +59,7 @@ function TabPanel({
   tab: LedgerTab;
   onClearFilter?: () => void;
 }) {
+  const { t } = useI18n();
   const { rows, loading, add, update, remove, reload } = useCollection<BaseRecord>(
     toolId,
     tab.collection,
@@ -76,6 +78,7 @@ function TabPanel({
   };
 
   const singular = tab.label.replace(/ies$/, "y").replace(/s$/, "").toLowerCase();
+  const singularLabel = `${singular.charAt(0).toUpperCase()}${singular.slice(1)}`;
   const visible = tab.filter ? rows.filter(tab.filter) : rows;
 
   return (
@@ -85,14 +88,14 @@ function TabPanel({
         <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-[var(--bg-subtle)]/60 px-3 py-2">
           <span className="flex items-center gap-1.5 text-[12px] text-fg-muted">
             <AnimatedIcon name="filter" size={13} trigger="none" />
-            Filtered to <span className="font-medium text-fg">{tab.filterLabel}</span>
+            {t("Filtered to")} <span className="font-medium text-fg">{t(tab.filterLabel)}</span>
           </span>
           <button
             type="button"
             onClick={onClearFilter}
             className="press inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] text-fg-muted hover:bg-[var(--surface-strong)] hover:text-fg"
           >
-            Clear <AnimatedIcon name="close" size={12} trigger="click" />
+            {t("Clear")} <AnimatedIcon name="close" size={12} trigger="click" />
           </button>
         </div>
       ) : null}
@@ -128,7 +131,7 @@ function TabPanel({
           setFormOpen(v);
           if (!v) setEditing(null);
         }}
-        title={editing ? `Edit ${singular}` : (tab.addLabel ?? `New ${singular}`)}
+        title={editing ? t("Edit {item}", { item: t(singularLabel) }) : tab.addLabel ? t(tab.addLabel) : t("New {item}", { item: t(singularLabel) })}
         fields={tab.fields}
         initial={(editing as FormValues | null) ?? tab.defaults}
         onSubmit={handleSubmit}
@@ -170,6 +173,7 @@ export function LedgerTool({
   defaultTab,
   onClearFilter,
 }: LedgerToolProps) {
+  const { t: translateText } = useI18n();
   const tool = TOOL_MAP[toolId];
   const [active, setActive] = React.useState(defaultTab ?? tabs[0]?.id ?? "");
   const activeTab = tabs.find((t) => t.id === active) ?? tabs[0];
@@ -186,11 +190,11 @@ export function LedgerTool({
           <ToolIcon toolId={toolId} size={22} trigger="mount" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{tool.name}</h1>
-              <Badge tone="neutral">{tool.collection}</Badge>
+              <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{translateText(tool.name)}</h1>
+              <Badge tone="neutral">{translateText(`${tool.collection[0].toUpperCase()}${tool.collection.slice(1)}`)}</Badge>
             </div>
             <p className="mt-0.5 max-w-2xl text-[13px] leading-relaxed text-fg-muted">
-              {description ?? tool.description}
+              {translateText(description ?? tool.description)}
             </p>
           </div>
         </div>
@@ -251,7 +255,7 @@ export function LedgerTool({
               )}
             >
               {t.icon ? <AnimatedIcon name={t.icon} size={14} trigger="hover" /> : null}
-              {t.label}
+              {translateText(t.label)}
             </button>
           ))}
         </div>
@@ -282,6 +286,7 @@ export function Panel({
   children: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <Card className={cn("p-4", className)}>
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -292,8 +297,8 @@ export function Panel({
             </span>
           ) : null}
           <div>
-            <h3 className="text-[13.5px] font-semibold text-fg">{title}</h3>
-            {description ? <p className="text-[12px] text-fg-muted">{description}</p> : null}
+            <h3 className="text-[13.5px] font-semibold text-fg">{t(title)}</h3>
+            {description ? <p className="text-[12px] text-fg-muted">{t(description)}</p> : null}
           </div>
         </div>
         {action}
