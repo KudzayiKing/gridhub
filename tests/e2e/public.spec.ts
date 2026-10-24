@@ -88,7 +88,7 @@ test("pricing lists all five tiers", async ({ page }) => {
   await page.goto("/pricing");
 
   for (const tier of ["Free", "Single", "Plus", "Pro", "Unlimited"]) {
-    await expect(page.getByText(tier, { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(tier, { exact: true }).first()).toBeVisible();
   }
 });
 

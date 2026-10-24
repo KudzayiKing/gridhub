@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSiteUrl } from "@/lib/site-url";
 import Stripe from "stripe";
 import { PLANS, isPlanId, type BillingInterval } from "@/lib/plans";
 import { getSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
   const tools = (body.tools ?? []).filter((t) => typeof t === "string").slice(0, plan.toolLimit);
 
   const stripe = new Stripe(secret);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getSiteUrl();
 
   // Reuse the Stripe customer for this user when we already have one.
   const { data: existing } = await supabase!

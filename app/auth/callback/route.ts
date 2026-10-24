@@ -3,10 +3,20 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+function safeNextPath(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/app";
+  try {
+    const parsed = new URL(value, "https://gridhub.invalid");
+    return parsed.origin === "https://gridhub.invalid" ? `${parsed.pathname}${parsed.search}${parsed.hash}` : "/app";
+  } catch {
+    return "/app";
+  }
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") || "/app";
+  const next = safeNextPath(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", url.origin));

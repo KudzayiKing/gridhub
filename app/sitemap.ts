@@ -2,11 +2,12 @@ import type { MetadataRoute } from "next";
 import { COLLECTIONS, TOOLS } from "@/lib/catalog";
 import { FREE_TOOLS } from "@/lib/free-tool-catalog";
 import { getJournalCategories, getPublishedArticles } from "@/lib/journal/data";
+import { getSiteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://gridhub.online";
+  const base = getSiteUrl();
   const now = new Date();
   const [journalCategories, journalArticles] = await Promise.all([getJournalCategories(), getPublishedArticles({ limit: 5000 })]);
 

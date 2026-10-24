@@ -76,35 +76,31 @@ export async function POST(request: Request) {
 
   for (const mutation of mutations) {
     const version = Number((mutation.payload as { version?: number })?.version ?? 1);
-
-    const { data: existing } = await supabase
-      .from("sync_records")
-      .select("version, updated_at")
-      .eq("user_id", user.id)
-      .eq("record_id", mutation.recordId)
-      .maybeSingle();
-
-    if (existing && Number(existing.version) > version) {
-      conflicts.push({ recordId: mutation.recordId, reason: "server-version-newer" });
+    if (!mutation.id || !mutation.recordId || !mutation.toolId || !mutation.collection ||
+        !Number.isInteger(version) || version < 1 || !["upsert", "delete"].includes(mutation.op)) {
+      conflicts.push({ recordId: mutation.recordId ?? "", reason: "invalid-mutation" });
       continue;
     }
 
-    const { error } = await supabase.from("sync_records").upsert(
-      {
-        user_id: user.id,
-        record_id: mutation.recordId,
-        tool_id: mutation.toolId,
-        collection: mutation.collection,
-        data: mutation.payload,
-        deleted: mutation.op === "delete",
-        version,
-        updated_at: new Date().toISOString(),
-        client_mutation_id: mutation.id,
-      },
-      { onConflict: "user_id,record_id" },
-    );
+    const { data: applied, error } = await supabase.rpc("upsert_sync_record_if_newer", {
+      p_user_id: user.id,
+      p_record_id: mutation.recordId,
+      p_tool_id: mutation.toolId,
+      p_collection: mutation.collection,
+      p_data: mutation.payload,
+      p_deleted: mutation.op === "delete",
+      p_version: version,
+      p_client_mutation_id: mutation.id,
+    });
 
-    if (!error) acked.push(mutation.id);
+    if (error) {
+      console.error("Sync mutation could not be applied:", error.message);
+      conflicts.push({ recordId: mutation.recordId, reason: "sync-write-failed" });
+    } else if (applied) {
+      acked.push(mutation.id);
+    } else {
+      conflicts.push({ recordId: mutation.recordId, reason: "server-version-newer" });
+    }
   }
 
   return NextResponse.json({ acked, conflicts, serverTime: new Date().toISOString() });

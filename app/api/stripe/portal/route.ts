@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function POST() {
   }
 
   const stripe = new Stripe(secret);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getSiteUrl();
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,

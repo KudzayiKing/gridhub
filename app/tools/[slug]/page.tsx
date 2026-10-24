@@ -99,9 +99,9 @@ export default async function ToolDetailPage({ params }: { params: Promise<{ slu
           </div>
 
           <div className="mt-5 rounded-xl border border-line p-3">
-            <p className="flex items-center gap-1.5 text-[12px] font-medium">
+            <div className="flex items-center gap-1.5 text-[12px] font-medium">
               <AnimatedIcon name="offline" size={13} trigger="none" /> Works offline
-            </p>
+            </div>
             <p className="mt-1 text-[11.5px] leading-relaxed text-fg-muted">
               Records are stored on your device first. Install Gridhub as an app and keep working without a
               connection; changes sync when you return online.

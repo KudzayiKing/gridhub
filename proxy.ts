@@ -7,7 +7,7 @@ const PROTECTED = ["/app", "/admin", "/onboarding"];
  * Refreshes the Supabase session cookie on every request and gates private routes.
  * When Supabase is not configured the app runs in documented local-only mode.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 

@@ -83,7 +83,7 @@ export function SiteHeader() {
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link href="/login">Sign in</Link>
           </Button>
-          <Button variant="primary" size="sm" iconRight="arrowRight" asChild>
+          <Button variant="primary" size="sm" iconRight="arrowRight" className="hidden sm:inline-flex" asChild>
             <Link href="/login">Get started</Link>
           </Button>
           <Button
@@ -113,6 +113,9 @@ export function SiteHeader() {
           ))}
           <Link href="/login" onClick={() => setOpen(false)} className="press block rounded-lg px-2 py-2.5 text-[13.5px] font-medium">
             {t("Sign in")}
+          </Link>
+          <Link href="/login" onClick={() => setOpen(false)} className="press block rounded-lg px-2 py-2.5 text-[13.5px] font-medium">
+            {t("Get started")}
           </Link>
         </div>
       ) : null}
