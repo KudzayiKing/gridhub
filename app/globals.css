@@ -212,6 +212,37 @@
   }
 }
 
+/* The app shell keeps its navigation drawer on the reading edge in Arabic. */
+html[dir="rtl"] .app-desktop-sidebar {
+  right: 0;
+  left: auto;
+  border-right: 0;
+  border-left: 1px solid var(--border);
+}
+
+html[dir="rtl"] .app-mobile-sidebar {
+  right: 0;
+  left: auto;
+}
+
+@media (min-width: 1024px) {
+  html[dir="rtl"] .app-shell-content {
+    padding-left: 0;
+    padding-right: 248px;
+  }
+}
+
+/* Keep machine-readable values and Latin identifiers left-to-right inside Arabic UI. */
+html[dir="rtl"] input[type="email"],
+html[dir="rtl"] input[type="number"],
+html[dir="rtl"] input[type="date"],
+html[dir="rtl"] input[type="datetime-local"],
+html[dir="rtl"] input[inputmode="decimal"],
+html[dir="rtl"] input[inputmode="numeric"] {
+  direction: ltr;
+  text-align: right;
+}
+
 @layer components {
   /* ---------- Glass surfaces ---------- */
   .glass {

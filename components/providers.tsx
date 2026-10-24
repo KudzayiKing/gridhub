@@ -113,6 +113,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const language = prefs.uiLanguage ?? "en";
     document.documentElement.lang = language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.documentElement.dataset.uiLanguage = language;
   }, [prefs.uiLanguage]);
 
