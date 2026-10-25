@@ -14,18 +14,14 @@ import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
 const NAV = [
   { href: "/tools", label: "Tools" },
   { href: "/collections", label: "Collections" },
-  { href: "/free-tools", label: "Free Tools", wideOnly: true },
-  { href: "/journal", label: "Journal", wideOnly: true },
-  /*
-   * Shown from `lg` only. Measured: at 768–1023px the header has no room for a sixth item (the
-   * row needs 862px at 768), and dropping it in would either wrap or push the page into a
-   * horizontal scroll. The five-item layout below `lg` is therefore untouched; this link is still
-   * in the mobile menu and the footer.
-   */
-  { href: "/gridhub-ai", label: "GridHub AI", wideOnly: true },
+  { href: "/free-tools", label: "Free Tools", wideOnly: "2xl" },
+  { href: "/journal", label: "Journal", wideOnly: "2xl" },
+  // Secondary links are progressively revealed at wider breakpoints so translated labels retain
+  // their width and do not collide with the brand or account controls.
+  { href: "/gridhub-ai", label: "GridHub AI", wideOnly: "2xl" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/how-it-works", label: "How it works" },
-  { href: "/offline", label: "Offline" },
+  { href: "/how-it-works", label: "How it works", wideOnly: "xl" },
+  { href: "/offline", label: "Offline", wideOnly: "xl" },
 ];
 
 export function SiteHeader() {
@@ -48,21 +44,20 @@ export function SiteHeader() {
         scrolled ? "border-line bg-header backdrop-blur-xl" : "border-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-16 max-w-[1680px] items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="press shrink-0" aria-label="Gridhub home">
           <Logo size="md" />
         </Link>
 
-        <nav className="ml-6 hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex xl:gap-2 2xl:gap-3" aria-label="Main">
+        <nav className="ml-8 hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex xl:gap-2 2xl:gap-3" aria-label="Main">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                // px-2.5 rather than px-3: at exactly 768px the five-item row was overflowing its
-                // container by 14px, which produced a page-wide horizontal scrollbar.
-                "press rounded-full px-2.5 py-1.5 text-[13px] font-medium text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg xl:shrink-0 xl:whitespace-nowrap xl:px-3 2xl:px-3.5",
-                "wideOnly" in item && item.wideOnly ? "hidden lg:block" : undefined,
+                "press shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-medium text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg xl:px-4 2xl:px-4.5",
+                item.wideOnly === "xl" ? "hidden xl:block" : undefined,
+                item.wideOnly === "2xl" ? "hidden 2xl:block" : undefined,
               )}
             >
               {t(item.label)}
@@ -80,10 +75,10 @@ export function SiteHeader() {
             {UI_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.nativeName}</option>)}
           </Select>
           <ThemeToggle />
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+          <Button variant="ghost" size="sm" asChild className="hidden xl:inline-flex">
             <Link href="/login">Sign in</Link>
           </Button>
-          <Button variant="primary" size="sm" iconRight="arrowRight" className="hidden sm:inline-flex" asChild>
+          <Button variant="primary" size="sm" iconRight="arrowRight" className="hidden lg:inline-flex" asChild>
             <Link href="/login">Get started</Link>
           </Button>
           <Button
