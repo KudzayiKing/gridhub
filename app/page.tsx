@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { MarketingShell } from "@/components/marketing/shell";
 import { PricingTable } from "@/components/marketing/pricing-table";
@@ -9,46 +11,48 @@ import { ToolIcon } from "@/components/icons/tool-icons";
 import { COLLECTIONS, TOOLS, toolsByCollection } from "@/lib/catalog";
 import { AI_FAQ } from "@/lib/marketing/ai-faq";
 import { formatMoney } from "@/lib/money";
+import { useI18n } from "@/lib/i18n";
 
 const FEATURED = ["budget", "invoicing", "projects", "nutrition", "wedding", "debt"] as const;
 
 export default function HomePage() {
+  const { t } = useI18n();
   return (
     <MarketingShell>
       <section className="relative mx-auto max-w-6xl px-4 pb-10 pt-10 sm:pt-16">
         <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_1fr]">
           <div>
-            <p className="eyebrow">16 tools. One beautiful workspace.</p>
+            <p className="eyebrow">{t("16 tools. One beautiful workspace.")}</p>
             <h1 className="display-xl mt-3 text-[44px] leading-[0.95] sm:text-[64px]">
-              One hub.
+              {t("One hub.")}
               <br />
-              Everything organized<span className="text-[var(--accent)]">.</span>
+              {t("Everything organized")}<span className="text-[var(--accent)]">.</span>
             </h1>
             <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-fg-muted">
-              Your money. Your business. Your life. Your work. One intelligent workspace.
+              {t("Your money. Your business. Your life. Your work. One intelligent workspace.")}
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-2">
               <Button variant="primary" size="lg" iconRight="arrowRight" asChild>
-                <Link href="/tools">Explore tools</Link>
+                <Link href="/tools">{t("Explore tools")}</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
-                <Link href="/login">Get started</Link>
+                <Link href="/login">{t("Get started")}</Link>
               </Button>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-fg-subtle">
               <span className="inline-flex items-center gap-1.5">
-                <AnimatedIcon name="offline" size={13} trigger="none" /> Works offline
+                <AnimatedIcon name="offline" size={13} trigger="none" /> {t("Works offline")}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <AnimatedIcon name="download" size={13} trigger="none" /> Export any time
+                <AnimatedIcon name="download" size={13} trigger="none" /> {t("Export any time")}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <AnimatedIcon name="lock" size={13} trigger="none" /> Private by default
+                <AnimatedIcon name="lock" size={13} trigger="none" /> {t("Private by default")}
               </span>
               {/* Additive only: a fourth chip in the existing wrap row. No layout or copy change
                   above it, and it states the honest status rather than implying the AI is live. */}
               <span className="inline-flex items-center gap-1.5">
-                <AnimatedIcon name="blocks" size={13} trigger="none" /> GridHub AI · in development
+                <AnimatedIcon name="blocks" size={13} trigger="none" /> {t("GridHub AI · in development")}
               </span>
             </div>
           </div>
@@ -62,11 +66,11 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="eyebrow">Four collections</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Organized the way life actually is.</h2>
+            <p className="eyebrow">{t("Four collections")}</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t("Organized the way life actually is.")}</h2>
           </div>
           <Link href="/collections" className="text-[12.5px] font-medium text-fg-muted underline decoration-line-strong underline-offset-4 hover:text-fg">
-            Browse collections
+            {t("Browse collections")}
           </Link>
         </div>
 
@@ -79,10 +83,10 @@ export default function HomePage() {
               style={{ borderTop: `2px solid ${c.accent}` }}
             >
               <div className="flex items-center justify-between">
-                <p className="text-[13.5px] font-semibold">{c.name}</p>
+                <p className="text-[13.5px] font-semibold">{t(c.name)}</p>
                 <Badge tone="neutral">{toolsByCollection(c.id).length}</Badge>
               </div>
-              <p className="text-[11.5px] leading-relaxed text-fg-muted">{c.blurb}</p>
+              <p className="text-[11.5px] leading-relaxed text-fg-muted">{t(c.blurb)}</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {toolsByCollection(c.id).slice(0, 3).map((t) => (
                   <span key={t.id} className="rounded-full border border-line px-1.5 py-0.5 text-[10px] text-fg-subtle">
@@ -98,11 +102,11 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="eyebrow">Featured applications</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Purpose-built, not a spreadsheet.</h2>
+            <p className="eyebrow">{t("Featured applications")}</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t("Purpose-built, not a spreadsheet.")}</h2>
           </div>
           <Link href="/tools" className="text-[12.5px] font-medium text-fg-muted underline decoration-line-strong underline-offset-4 hover:text-fg">
-            All 16 tools
+            {t("All 16 tools")}
           </Link>
         </div>
 
@@ -113,17 +117,19 @@ export default function HomePage() {
               <Link key={id} href={`/tools/${tool.slug}`} className="gp-card lift glass-sheen flex flex-col gap-3 p-4">
                 <div className="flex items-start justify-between">
                   <ToolIcon toolId={tool.id} size={19} trigger="hover" />
-                  <Badge tone="neutral">{tool.collection}</Badge>
+                  <Badge tone="neutral">
+                    {t(COLLECTIONS.find((collection) => collection.id === tool.collection)?.name ?? tool.collection)}
+                  </Badge>
                 </div>
                 <div>
-                  <h3 className="text-[14px] font-semibold leading-tight">{tool.name}</h3>
-                  <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">{tool.description}</p>
+                  <h3 className="text-[14px] font-semibold leading-tight">{t(tool.name)}</h3>
+                  <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">{t(tool.description)}</p>
                 </div>
                 <ul className="mt-auto flex flex-col gap-1">
                   {tool.features.slice(0, 2).map((f) => (
                     <li key={f} className="flex items-start gap-1.5 text-[11.5px] text-fg-muted">
                       <AnimatedIcon name="check" size={11} className="mt-0.5 text-[var(--accent)]" trigger="none" />
-                      {f}
+                      {t(f)}
                     </li>
                   ))}
                 </ul>
@@ -135,9 +141,9 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="gp-card glass-sheen overflow-hidden p-6 sm:p-8">
-          <p className="eyebrow">How Gridhub works</p>
+          <p className="eyebrow">{t("How Gridhub works")}</p>
           <h2 className="mt-1 max-w-xl text-2xl font-semibold tracking-tight sm:text-3xl">
-            Three steps. No formulas. No setup marathon.
+            {t("Three steps. No formulas. No setup marathon.")}
           </h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-3">
             {[
@@ -152,8 +158,8 @@ export default function HomePage() {
                   </span>
                   <span className="tnum text-[11px] text-fg-subtle">0{i + 1}</span>
                 </div>
-                <h3 className="mt-2.5 text-[13.5px] font-semibold">{step.title}</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">{step.body}</p>
+                <h3 className="mt-2.5 text-[13.5px] font-semibold">{t(step.title)}</h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">{t(step.body)}</p>
               </div>
             ))}
           </div>
@@ -163,13 +169,12 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="grid items-center gap-8 lg:grid-cols-2">
           <div>
-            <p className="eyebrow">The unified dashboard</p>
+            <p className="eyebrow">{t("The unified dashboard")}</p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-              Not a grid of product cards. A command center.
+              {t("Not a grid of product cards. A command center.")}
             </h2>
             <p className="mt-3 max-w-lg text-[14px] leading-relaxed text-fg-muted">
-              Gridhub assembles your home screen from the tools you own. Enter a bill once and it appears in your
-              budget, your cash-flow forecast and your dashboard. No duplicate entry, no double counting.
+              {t("Gridhub assembles your home screen from the tools you own. Enter a bill once and it appears in your budget, your cash-flow forecast and your dashboard. No duplicate entry, no double counting.")}
             </p>
             <ul className="mt-4 flex flex-col gap-2">
               {[
@@ -180,7 +185,7 @@ export default function HomePage() {
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-[12.5px] text-fg-muted">
                   <AnimatedIcon name="check" size={13} className="mt-0.5 text-[var(--accent)]" trigger="none" />
-                  {item}
+                  {t(item)}
                 </li>
               ))}
             </ul>
@@ -192,14 +197,13 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="gp-card glass-sheen grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_1.1fr]">
           <div>
-            <p className="eyebrow">Offline-first PWA</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Install once. Work anywhere.</h2>
+            <p className="eyebrow">{t("Offline-first PWA")}</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t("Install once. Work anywhere.")}</h2>
             <p className="mt-3 text-[13.5px] leading-relaxed text-fg-muted">
-              Gridhub saves every change to this device first, then syncs. Flights, bad signal, a dead router — your
-              work continues. Sync status is always visible and never claims something uploaded when it did not.
+              {t("Gridhub saves every change to this device first, then syncs. Flights, bad signal, a dead router — your work continues. Sync status is always visible and never claims something uploaded when it did not.")}
             </p>
             <Button variant="secondary" size="md" className="mt-4" iconRight="arrowRight" asChild>
-              <Link href="/offline">How offline works</Link>
+              <Link href="/offline">{t("How offline works")}</Link>
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
@@ -211,8 +215,8 @@ export default function HomePage() {
             ].map((f) => (
               <div key={f.title} className="rounded-xl border border-line bg-[var(--bg-subtle)]/50 p-3">
                 <AnimatedIcon name={f.icon} size={16} className="text-fg-muted" trigger="hover" />
-                <p className="mt-1.5 text-[12.5px] font-medium">{f.title}</p>
-                <p className="mt-0.5 text-[11px] leading-snug text-fg-subtle">{f.body}</p>
+                <p className="mt-1.5 text-[12.5px] font-medium">{t(f.title)}</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-fg-subtle">{t(f.body)}</p>
               </div>
             ))}
           </div>
@@ -221,10 +225,10 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-12" id="pricing">
         <div className="text-center">
-          <p className="eyebrow">Pricing</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Pay for the tools you use.</h2>
+          <p className="eyebrow">{t("Pricing")}</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t("Pay for the tools you use.")}</h2>
           <p className="mx-auto mt-2 max-w-xl text-[13.5px] leading-relaxed text-fg-muted">
-            One free tool forever. Paid plans start at $3/month. Annual billing saves up to 19%.
+            {t("One free tool forever. Paid plans start at $3/month. Annual billing saves up to 19%.")}
           </p>
         </div>
         <div className="mt-6">
@@ -233,8 +237,8 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-3xl px-4 py-12">
-        <p className="eyebrow text-center">Questions</p>
-        <h2 className="mt-1 text-center text-2xl font-semibold tracking-tight sm:text-3xl">Good to know</h2>
+        <p className="eyebrow text-center">{t("Questions")}</p>
+        <h2 className="mt-1 text-center text-2xl font-semibold tracking-tight sm:text-3xl">{t("Good to know")}</h2>
         <div className="mt-5 flex flex-col divide-y divide-[var(--border)]">
           {[
             {
@@ -262,10 +266,10 @@ export default function HomePage() {
           ].map((item) => (
             <details key={item.q} className="group py-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13.5px] font-medium">
-                {item.q}
+                {t(item.q)}
                 <AnimatedIcon name="chevronDown" size={14} className="text-fg-subtle transition-transform group-open:rotate-180" trigger="none" />
               </summary>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-fg-muted">{item.a}</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-fg-muted">{t(item.a)}</p>
             </details>
           ))}
         </div>
@@ -273,17 +277,17 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 pb-16">
         <div className="gp-card glass-sheen flex flex-col items-center gap-3 px-6 py-12 text-center">
-          <p className="eyebrow">Start today</p>
-          <h2 className="display-xl text-3xl sm:text-4xl">One hub. Everything organized.</h2>
+          <p className="eyebrow">{t("Start today")}</p>
+          <h2 className="display-xl text-3xl sm:text-4xl">{t("One hub. Everything organized.")}</h2>
           <p className="max-w-md text-[13.5px] leading-relaxed text-fg-muted">
-            Start with the free budget planner. Add tools as you need them. Export everything whenever you like.
+            {t("Start with the free budget planner. Add tools as you need them. Export everything whenever you like.")}
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-2">
             <Button variant="primary" size="lg" iconRight="arrowRight" asChild>
-              <Link href="/login">Create your workspace</Link>
+              <Link href="/login">{t("Create your workspace")}</Link>
             </Button>
             <Button variant="secondary" size="lg" asChild>
-              <Link href="/tools">Browse the tools</Link>
+              <Link href="/tools">{t("Browse the tools")}</Link>
             </Button>
           </div>
         </div>
@@ -293,6 +297,7 @@ export default function HomePage() {
 }
 
 function HeroPreview() {
+  const { t } = useI18n();
   return (
     <div className="relative">
       <div className="gp-card glass-sheen overflow-hidden p-3">
@@ -301,7 +306,7 @@ function HeroPreview() {
           <span className="h-2 w-2 rounded-full bg-[var(--border-strong)]" />
           <span className="h-2 w-2 rounded-full bg-[var(--border-strong)]" />
           <span className="ml-2 text-[10px] text-fg-subtle">gridhub.online / app</span>
-          <span className="ml-auto rounded-full border border-line px-1.5 py-0.5 text-[9px] text-fg-subtle">Example</span>
+          <span className="ml-auto rounded-full border border-line px-1.5 py-0.5 text-[9px] text-fg-subtle">{t("Example")}</span>
         </div>
 
         <div className="grid grid-cols-[76px_1fr] gap-2">
@@ -313,7 +318,7 @@ function HeroPreview() {
                 style={{ background: i === 0 ? "var(--accent-soft)" : "transparent" }}
               >
                 <AnimatedIcon name={icon} size={9} trigger="none" />
-                <span className="truncate text-fg-subtle">{["Home", "Budget", "Tasks", "Savings", "Food"][i]}</span>
+                <span className="truncate text-fg-subtle">{t(["Home", "Budget", "Tasks", "Savings", "Food"][i])}</span>
               </span>
             ))}
           </div>
@@ -326,7 +331,7 @@ function HeroPreview() {
                 { l: "Open", v: "4" },
               ].map((m) => (
                 <div key={m.l} className="rounded-lg border border-line bg-[var(--surface-strong)] p-1.5">
-                  <p className="text-[7.5px] uppercase tracking-wide text-fg-subtle">{m.l}</p>
+                  <p className="text-[7.5px] uppercase tracking-wide text-fg-subtle">{t(m.l)}</p>
                   <p className="tnum text-[11px] font-semibold">{m.v}</p>
                 </div>
               ))}
@@ -334,8 +339,8 @@ function HeroPreview() {
 
             <div className="rounded-lg border border-line bg-[var(--surface-strong)] p-2">
               <div className="flex items-center justify-between">
-                <p className="text-[8.5px] font-medium">Spending trend</p>
-                <span className="text-[7px] text-fg-subtle">Sample</span>
+                <p className="text-[8.5px] font-medium">{t("Spending trend")}</p>
+                <span className="text-[7px] text-fg-subtle">{t("Sample")}</span>
               </div>
               <svg viewBox="0 0 200 46" className="mt-1 w-full" aria-hidden="true">
                 <defs>
@@ -350,7 +355,7 @@ function HeroPreview() {
             </div>
 
             <div className="rounded-lg border border-line bg-[var(--surface-strong)] p-2">
-              <p className="text-[8.5px] font-medium">Needs attention</p>
+              <p className="text-[8.5px] font-medium">{t("Needs attention")}</p>
               <div className="mt-1 flex flex-col gap-1">
                 {[
                   { t: "Rent due in 3 days", c: "var(--warning)" },
@@ -358,7 +363,7 @@ function HeroPreview() {
                 ].map((row) => (
                   <div key={row.t} className="flex items-center gap-1">
                     <span className="h-1 w-1 rounded-full" style={{ background: row.c }} />
-                    <span className="text-[7.5px] text-fg-muted">{row.t}</span>
+                    <span className="text-[7.5px] text-fg-muted">{t(row.t)}</span>
                   </div>
                 ))}
               </div>
@@ -367,18 +372,19 @@ function HeroPreview() {
         </div>
       </div>
       <p className="mt-2 text-center text-[10px] text-fg-subtle">
-        Illustrative interface with sample data — not your records.
+        {t("Illustrative interface with sample data — not your records.")}
       </p>
     </div>
   );
 }
 
 function DashboardPreview() {
+  const { t } = useI18n();
   return (
     <div className="gp-card glass-sheen p-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium">Example dashboard</p>
-        <span className="rounded-full border border-line px-1.5 py-0.5 text-[9px] text-fg-subtle">Sample data</span>
+        <p className="text-[11px] font-medium">{t("Example dashboard")}</p>
+        <span className="rounded-full border border-line px-1.5 py-0.5 text-[9px] text-fg-subtle">{t("Sample data")}</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {[
@@ -388,17 +394,17 @@ function DashboardPreview() {
           { label: "Habits today", value: "3/4", tone: "var(--positive)" },
         ].map((m) => (
           <div key={m.label} className="rounded-xl border border-line bg-[var(--bg-subtle)]/50 p-2.5">
-            <p className="text-[9px] uppercase tracking-wide text-fg-subtle">{m.label}</p>
+            <p className="text-[9px] uppercase tracking-wide text-fg-subtle">{t(m.label)}</p>
             <p className="tnum mt-0.5 text-[15px] font-semibold" style={{ color: m.tone }}>{m.value}</p>
           </div>
         ))}
       </div>
       <div className="mt-2 rounded-xl border border-line p-2.5">
-        <p className="text-[9px] uppercase tracking-wide text-fg-subtle">Quick actions</p>
+        <p className="text-[9px] uppercase tracking-wide text-fg-subtle">{t("Quick actions")}</p>
         <div className="mt-1.5 flex flex-wrap gap-1">
           {["Add expense", "Add task", "Log meal"].map((a) => (
             <span key={a} className="rounded-full border border-line bg-[var(--surface-strong)] px-2 py-0.5 text-[9px] text-fg-muted">
-              {a}
+              {t(a)}
             </span>
           ))}
         </div>

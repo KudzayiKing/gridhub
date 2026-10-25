@@ -14,6 +14,7 @@ const DEFAULT_PREFS: UserPreferences = {
   currency: "USD",
   locale: "en-US",
   uiLanguage: "en",
+  uiLanguageManuallySet: false,
   dateFormat: "MM/DD/YYYY",
   // Deterministic for SSR: the server and the first client render must agree, and the server has
   // no idea what zone the browser is in. The real default is adopted from the device in the effect
@@ -51,28 +52,52 @@ export function useSyncState() {
   return React.useContext(SyncContext);
 }
 
+function detectBrowserLanguage(): NonNullable<UserPreferences["uiLanguage"]> {
+  const languages = typeof navigator === "undefined" ? [] : navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const tag of languages) {
+    const language = tag.toLowerCase().split("-")[0];
+    if (language === "es") return "es";
+    if (language === "zh") return "zh-CN";
+    if (language === "pt") return "pt-BR";
+    if (language === "fr") return "fr";
+    if (language === "ar") return "ar";
+    if (language === "ru") return "ru";
+    if (language === "en") return "en";
+  }
+  return "en";
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
   const setPrefs = React.useCallback(
     async (patch: Partial<UserPreferences>) => {
-      await setStoredPrefs({ ...prefs, ...patch, updatedAt: new Date().toISOString() });
+      await setStoredPrefs({
+        ...prefs,
+        ...patch,
+        ...(Object.hasOwn(patch, "uiLanguage") ? { uiLanguageManuallySet: true } : {}),
+        updatedAt: new Date().toISOString(),
+      });
     },
     [prefs, setStoredPrefs],
   );
 
-  // Adopt the device time zone until the user has saved preferences of their own.
-  //
-  // `updatedAt` is the "has anything ever been saved" marker: it is empty on a freshly seeded
-  // record and set by every `setPrefs` call. Gating on it means a zone the user picked — including
-  // a deliberate "UTC" — is never overwritten on the next load.
+  // Adopt the browser language until the user explicitly chooses one. The language menu calls
+  // setPrefs and records that choice, while device time zone remains a one-time default.
   React.useEffect(() => {
     if (prefsLoading) return;
-    if (prefs.updatedAt) return;
-    const zone = deviceTimeZone();
-    if (!zone || zone === prefs.timeZone) return;
-    void setStoredPrefs({ ...prefs, timeZone: zone, updatedAt: new Date().toISOString() });
+    const zone = prefs.updatedAt ? prefs.timeZone : deviceTimeZone() ?? prefs.timeZone;
+    const language = prefs.uiLanguageManuallySet || Boolean(prefs.uiLanguage && prefs.uiLanguage !== "en")
+      ? prefs.uiLanguage ?? "en"
+      : detectBrowserLanguage();
+    if (zone === prefs.timeZone && language === prefs.uiLanguage) return;
+    void setStoredPrefs({
+      ...prefs,
+      timeZone: zone,
+      uiLanguage: language,
+      updatedAt: prefs.updatedAt || new Date().toISOString(),
+    });
   }, [prefsLoading, prefs, setStoredPrefs]);
 
   // Service worker + sync triggers

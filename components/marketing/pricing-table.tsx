@@ -9,8 +9,10 @@ import { Badge, Card } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/field";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function PricingTable({ compact = false }: { compact?: boolean }) {
+  const { t } = useI18n();
   const [interval, setInterval] = React.useState<BillingInterval>("monthly");
 
   return (
@@ -20,8 +22,8 @@ export function PricingTable({ compact = false }: { compact?: boolean }) {
           value={interval}
           onChange={setInterval}
           options={[
-            { value: "monthly", label: "Monthly" },
-            { value: "annual", label: "Annual" },
+            { value: "monthly", label: t("Monthly") },
+            { value: "annual", label: t("Annual") },
           ]}
         />
       </div>
@@ -39,8 +41,8 @@ export function PricingTable({ compact = false }: { compact?: boolean }) {
               )}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-[14px] font-semibold">{plan.name}</h3>
-                {plan.id === "plus" ? <Badge tone="accent">Popular</Badge> : null}
+                <h3 className="text-[14px] font-semibold">{t(plan.name)}</h3>
+                {plan.id === "plus" ? <Badge tone="accent">{t("Popular")}</Badge> : null}
               </div>
 
               <div>
@@ -51,9 +53,9 @@ export function PricingTable({ compact = false }: { compact?: boolean }) {
                   </span>
                 </p>
                 {interval === "annual" && saving > 0 ? (
-                  <p className="text-[11px] text-[var(--positive)]">Save ${annualSavingsAmount(plan)} · {saving}%</p>
+                  <p className="text-[11px] text-[var(--positive)]">{t("Save ${amount} · {percent}%", { amount: annualSavingsAmount(plan), percent: saving })}</p>
                 ) : (
-                  <p className="text-[11px] text-fg-subtle">{plan.blurb}</p>
+                  <p className="text-[11px] text-fg-subtle">{t(plan.blurb)}</p>
                 )}
               </div>
 
@@ -65,16 +67,16 @@ export function PricingTable({ compact = false }: { compact?: boolean }) {
               <div className="flex flex-col gap-0.5 rounded-lg border border-line bg-[var(--bg-subtle)]/60 px-2 py-1.5">
                 <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-fg">
                   <AnimatedIcon name="blocks" size={12} className="shrink-0 text-[var(--accent)]" trigger="none" />
-                  GridHub AI included
+                  {t("GridHub AI included")}
                 </span>
-                <span className="pl-[18px] text-[10px] leading-snug text-fg-subtle">{AI_PUBLIC_LABEL}</span>
+                <span className="pl-[18px] text-[10px] leading-snug text-fg-subtle">{t(AI_PUBLIC_LABEL)}</span>
               </div>
 
               <ul className="flex flex-col gap-1 text-[11.5px] text-fg-muted">
                 {plan.highlights.map((h) => (
                   <li key={h} className="flex items-start gap-1.5">
                     <AnimatedIcon name="check" size={12} className="mt-0.5 text-[var(--accent)]" trigger="none" />
-                    {h}
+                    {t(h)}
                   </li>
                 ))}
               </ul>
@@ -86,7 +88,7 @@ export function PricingTable({ compact = false }: { compact?: boolean }) {
                   className="w-full"
                   asChild
                 >
-                  <Link href="/login">{plan.id === "free" ? "Start free" : "Choose plan"}</Link>
+                  <Link href="/login">{t(plan.id === "free" ? "Start free" : "Choose plan")}</Link>
                 </Button>
               </div>
             </Card>
@@ -95,8 +97,7 @@ export function PricingTable({ compact = false }: { compact?: boolean }) {
       </div>
 
       <p className="text-center text-[11px] text-fg-subtle">
-        Prices in USD. Annual plans are billed upfront. Cancel any time; your records stay exportable.
-        GridHub AI is included on every plan and is still in development.
+        {t("Prices in USD. Annual plans are billed upfront. Cancel any time; your records stay exportable. GridHub AI is included on every plan and is still in development.")}
       </p>
     </div>
   );
