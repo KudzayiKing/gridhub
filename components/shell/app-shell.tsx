@@ -114,6 +114,9 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const [openCollections, setOpenCollections] = React.useState<Record<string, boolean>>(
+    () => Object.fromEntries(COLLECTIONS.map((collection) => [collection.id, true])),
+  );
 
   /*
    * ⌘K / Ctrl+K opens the tool switcher; ⌘J / Ctrl+J opens Gridhub AI.
@@ -197,10 +200,29 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
         {COLLECTIONS.map((collection) => {
           const tools = toolsByCollection(collection.id).filter((t) => active.includes(t.id));
           if (!tools.length) return null;
+          const isOpen = openCollections[collection.id] ?? true;
+          const listId = `sidebar-collection-${collection.id}`;
           return (
             <div key={collection.id} className="mb-3">
-              <p className="eyebrow mb-1 px-2.5 text-[10px]">{t(collection.name)}</p>
-              <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={listId}
+                onClick={() => setOpenCollections((current) => ({
+                  ...current,
+                  [collection.id]: !(current[collection.id] ?? true),
+                }))}
+                className="group mb-1 flex w-full items-center justify-between rounded-lg px-2.5 py-1 text-left hover:bg-[var(--bg-subtle)]"
+              >
+                <span className="eyebrow text-[10px]">{t(collection.name)}</span>
+                <AnimatedIcon
+                  name="chevronDown"
+                  size={13}
+                  trigger="none"
+                  className={cn("text-fg-subtle transition-transform", isOpen && "rotate-180")}
+                />
+              </button>
+              <div id={listId} className={cn("flex flex-col gap-0.5", !isOpen && "hidden")}>
                 {tools.map((tool) => (
                   <NavLink
                     key={tool.id}
@@ -247,6 +269,12 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
           </div>
         </div>
       </div>
+      <a
+        href="mailto:support@gridhub.online"
+        className="px-1 text-[11px] text-fg-subtle underline-offset-4 hover:text-fg hover:underline"
+      >
+        support@gridhub.online
+      </a>
 
       {/*
         Phone-only. These three controls used to crowd the header, which left the wordmark

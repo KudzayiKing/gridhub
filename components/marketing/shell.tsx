@@ -155,6 +155,7 @@ export function SiteFooter() {
             <li><Link className="hover:text-fg" href="/how-it-works">{t("How it works")}</Link></li>
             <li><Link className="hover:text-fg" href="/faq">FAQ</Link></li>
             <li><Link className="hover:text-fg" href="/contact">{t("Contact")}</Link></li>
+            <li><a className="hover:text-fg" href="mailto:support@gridhub.online">support@gridhub.online</a></li>
           </ul>
         </div>
 
