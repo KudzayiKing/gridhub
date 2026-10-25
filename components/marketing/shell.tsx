@@ -48,12 +48,12 @@ export function SiteHeader() {
         scrolled ? "border-line bg-header backdrop-blur-xl" : "border-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
-        <Link href="/" className="press" aria-label="Gridhub home">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4">
+        <Link href="/" className="press shrink-0" aria-label="Gridhub home">
           <Logo size="md" />
         </Link>
 
-        <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Main">
+        <nav className="ml-6 hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex xl:gap-2 2xl:gap-3" aria-label="Main">
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -61,7 +61,7 @@ export function SiteHeader() {
               className={cn(
                 // px-2.5 rather than px-3: at exactly 768px the five-item row was overflowing its
                 // container by 14px, which produced a page-wide horizontal scrollbar.
-                "press rounded-full px-2.5 py-1.5 text-[13px] font-medium text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg",
+                "press rounded-full px-2.5 py-1.5 text-[13px] font-medium text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg xl:shrink-0 xl:whitespace-nowrap xl:px-3 2xl:px-3.5",
                 "wideOnly" in item && item.wideOnly ? "hidden lg:block" : undefined,
               )}
             >
@@ -70,7 +70,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 xl:gap-2">
           <Select
             aria-label="Interface language"
             value={prefs.uiLanguage ?? "en"}
