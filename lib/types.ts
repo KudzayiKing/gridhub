@@ -547,7 +547,7 @@ export interface UserPreferences extends BaseRecord {
   currency: string;
   locale: string;
   /** UI language, separate from locale formatting and the English-only AI language. */
-  uiLanguage?: "en" | "es" | "zh-CN" | "pt-BR" | "fr" | "ar";
+  uiLanguage?: "en" | "es" | "zh-CN" | "pt-BR" | "fr" | "ar" | "ru";
   dateFormat: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
   timeZone: string;
   businessName?: string;

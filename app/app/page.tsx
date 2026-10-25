@@ -87,7 +87,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <p className="eyebrow mb-1">{new Date().toLocaleDateString(prefs.uiLanguage === "zh-CN" ? "zh-CN" : prefs.uiLanguage === "pt-BR" ? "pt-BR" : prefs.uiLanguage === "es" ? "es" : prefs.uiLanguage === "fr" ? "fr" : prefs.uiLanguage === "ar" ? "ar" : "en-US", { weekday: "long", day: "numeric", month: "long" })}</p>
+            <p className="eyebrow mb-1">{new Date().toLocaleDateString(prefs.uiLanguage === "zh-CN" ? "zh-CN" : prefs.uiLanguage === "pt-BR" ? "pt-BR" : prefs.uiLanguage === "es" ? "es" : prefs.uiLanguage === "fr" ? "fr" : prefs.uiLanguage === "ar" ? "ar" : prefs.uiLanguage === "ru" ? "ru" : "en-US", { weekday: "long", day: "numeric", month: "long" })}</p>
           <h1 className="display-xl text-[26px] sm:text-[32px]">{t(greeting)}.</h1>
           <p className="mt-1 text-[13px] text-fg-muted">
             {activeTools.length} {t("tools in your workspace · everything organized.")}
