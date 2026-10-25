@@ -71,6 +71,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
+  // Keep the browser/PWA system bar (including the gesture area) in sync with the app theme
+  // and the surface used by the fixed mobile navigation.
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const syncThemeColor = () => {
+      const color = getComputedStyle(root).getPropertyValue("--bottom-nav-bg").trim();
+      if (!color) return;
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+        meta.content = color;
+      });
+    };
+
+    syncThemeColor();
+    const observer = new MutationObserver(syncThemeColor);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   const setPrefs = React.useCallback(
     async (patch: Partial<UserPreferences>) => {
       await setStoredPrefs({

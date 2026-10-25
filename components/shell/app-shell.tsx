@@ -399,7 +399,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
 
       {/* Mobile bottom navigation */}
       <nav
-        className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[var(--surface-strong)]/95 backdrop-blur-xl lg:hidden"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[var(--bottom-nav-bg)] lg:hidden"
         aria-label="Primary"
       >
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-1">

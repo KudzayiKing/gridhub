@@ -51,6 +51,7 @@
   /* semantic (light) */
   --bg: #f7f7f2;
   --bg-elevated: #fdfdfa;
+  --bottom-nav-bg: #fdfdfa;
   --bg-subtle: #eef0e9;
   --surface: rgba(255, 255, 255, 0.74);
   --surface-strong: rgba(255, 255, 255, 0.92);
@@ -103,6 +104,7 @@
 .dark {
   --bg: #121214;
   --bg-elevated: #17171a;
+  --bottom-nav-bg: #1d1d22;
   --bg-subtle: #1d1d21;
   --surface: rgba(24, 24, 28, 0.76);
   --surface-strong: rgba(29, 29, 34, 0.94);
