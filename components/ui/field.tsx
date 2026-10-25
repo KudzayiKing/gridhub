@@ -4,6 +4,7 @@ import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
+import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { useI18n } from "@/lib/i18n";
@@ -88,30 +89,84 @@ export const Textarea = React.forwardRef<
 });
 
 export const Select = React.forwardRef<
-  HTMLSelectElement,
+  HTMLButtonElement,
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(function Select({ className, children, ...props }, ref) {
   const { t } = useI18n();
+  const options = React.Children.toArray(children).filter(
+    (child): child is React.ReactElement<React.OptionHTMLAttributes<HTMLOptionElement>> =>
+      React.isValidElement(child) && child.type === "option",
+  );
+  const selected = props.value === undefined ? undefined : String(props.value);
+  const defaultSelected = props.defaultValue === undefined ? undefined : String(props.defaultValue);
+  const triggerId = props.id;
+
   return (
-    <div className="relative">
-      <select
+    <SelectPrimitive.Root
+      value={selected}
+      defaultValue={defaultSelected}
+      onValueChange={(selectedValue) => {
+        const value = selectedValue === "__gridhub_empty__" ? "" : selectedValue;
+        props.onChange?.({
+          target: { value, name: props.name },
+          currentTarget: { value, name: props.name },
+        } as React.ChangeEvent<HTMLSelectElement>);
+      }}
+      name={props.name}
+      required={props.required}
+      disabled={props.disabled}
+    >
+      <SelectPrimitive.Trigger
+        id={triggerId}
         ref={ref}
-        className={cn(controlBase, "h-10 appearance-none pr-9", className)}
-        {...props}
+        className={cn(controlBase, "flex h-10 items-center justify-between gap-2 text-left", className)}
         aria-label={props["aria-label"] ? t(props["aria-label"]!) : undefined}
+        aria-invalid={props["aria-invalid"]}
+        aria-describedby={props["aria-describedby"]}
         title={props.title ? t(props.title) : undefined}
+        onBlur={props.onBlur as unknown as React.FocusEventHandler<HTMLButtonElement>}
+        onFocus={props.onFocus as unknown as React.FocusEventHandler<HTMLButtonElement>}
       >
-        {React.Children.map(children, (child) => React.isValidElement<{ children?: React.ReactNode }>(child) && typeof child.props.children === "string"
-          ? React.cloneElement(child, {}, t(child.props.children))
-          : child)}
-      </select>
-      <AnimatedIcon
-        name="chevronDown"
-        size={14}
-        trigger="none"
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-subtle"
-      />
-    </div>
+        <SelectPrimitive.Value placeholder={t(options.find((option) => option.props.value === "")?.props.children?.toString() ?? "Select…")} />
+        <SelectPrimitive.Icon asChild>
+          <AnimatedIcon name="chevronDown" size={14} trigger="none" className="shrink-0 text-fg-subtle" />
+        </SelectPrimitive.Icon>
+      </SelectPrimitive.Trigger>
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          position="popper"
+          side="bottom"
+          sideOffset={4}
+          align="start"
+          collisionPadding={8}
+          className="glass-strong z-[100] max-h-[min(18rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-xl p-1.5 text-sm shadow-xl"
+        >
+          <SelectPrimitive.Viewport>
+            {options.map((option, index) => {
+              const rawValue = String(option.props.value ?? index);
+              const value = rawValue === "" ? "__gridhub_empty__" : rawValue;
+              const label = option.props.children;
+              return (
+                <SelectPrimitive.Item
+                  key={option.key === null ? value : String(option.key)}
+                  value={value}
+                  disabled={option.props.disabled}
+                  textValue={typeof label === "string" ? t(label) : undefined}
+                  className="relative flex min-h-9 cursor-pointer select-none items-center rounded-lg py-2 pl-3 pr-9 text-fg outline-none data-[highlighted]:bg-[var(--bg-subtle)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40"
+                >
+                  <SelectPrimitive.ItemText>
+                    {typeof label === "string" ? t(label) : label}
+                  </SelectPrimitive.ItemText>
+                  <SelectPrimitive.ItemIndicator className="absolute right-3 text-[var(--accent)]">
+                    <AnimatedIcon name="check" size={14} trigger="none" />
+                  </SelectPrimitive.ItemIndicator>
+                </SelectPrimitive.Item>
+              );
+            })}
+          </SelectPrimitive.Viewport>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    </SelectPrimitive.Root>
   );
 });
 
@@ -152,7 +207,7 @@ export const Switch = React.forwardRef<
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb className="block h-[18px] w-[18px] translate-x-[3px] rounded-full bg-[var(--surface-strong)] shadow-sm transition-transform data-[state=checked]:translate-x-[23px] data-[state=checked]:bg-[var(--accent-fg)]" />
+      <SwitchPrimitive.Thumb className="block h-[18px] w-[18px] translate-x-[3px] rounded-full bg-[var(--fg-muted)] shadow-sm transition-transform data-[state=checked]:translate-x-[23px] data-[state=checked]:bg-[var(--accent-fg)]" />
     </SwitchPrimitive.Root>
   );
 });
