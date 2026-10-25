@@ -59,7 +59,17 @@ export async function POST(request: Request) {
     .insert({ stripe_event_id: event.id, type: event.type, payload: event as unknown as Record<string, unknown> });
 
   if (insertError && insertError.code === "23505") {
-    return NextResponse.json({ received: true, duplicate: true });
+    // A prior attempt may have inserted the event before a later billing write
+    // failed. Retry unprocessed events so Stripe's delivery retry can recover.
+    const { data, error } = await db
+      .from("billing_events")
+      .select("processed_at")
+      .eq("stripe_event_id", event.id)
+      .maybeSingle();
+    if (error) return NextResponse.json({ error: "Could not check webhook event status" }, { status: 500 });
+    if (data?.processed_at) return NextResponse.json({ received: true, duplicate: true });
+  } else if (insertError) {
+    return NextResponse.json({ error: "Could not record webhook event" }, { status: 500 });
   }
 
   try {
@@ -83,7 +93,7 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = (subscription.metadata?.user_id as string | undefined) ?? null;
         if (userId) {
-          await db
+          const entitlementWrite = await db
             .from("billing_entitlements")
             .upsert(
               {
@@ -96,7 +106,8 @@ export async function POST(request: Request) {
               },
               { onConflict: "user_id" },
             );
-          await db
+          assertDbWrite(entitlementWrite.error, "Could not cancel billing entitlement");
+          const subscriptionWrite = await db
             .from("billing_subscriptions")
             .upsert(
               {
@@ -107,6 +118,7 @@ export async function POST(request: Request) {
               },
               { onConflict: "stripe_subscription_id" },
             );
+          assertDbWrite(subscriptionWrite.error, "Could not cancel billing subscription");
         }
         break;
       }
@@ -118,20 +130,23 @@ export async function POST(request: Request) {
             ? ((invoice as unknown as { subscription?: string }).subscription as string)
             : null;
         if (subscriptionId) {
-          await db
+          const subscriptionWrite = await db
             .from("billing_subscriptions")
             .update({ status: "past_due", updated_at: new Date().toISOString() })
             .eq("stripe_subscription_id", subscriptionId);
-          const { data: row } = await db
+          assertDbWrite(subscriptionWrite.error, "Could not mark subscription past due");
+          const { data: row, error: readError } = await db
             .from("billing_subscriptions")
             .select("user_id")
             .eq("stripe_subscription_id", subscriptionId)
             .maybeSingle();
+          assertDbWrite(readError, "Could not find subscription owner");
           if (row?.user_id) {
-            await db
+            const entitlementWrite = await db
               .from("billing_entitlements")
               .update({ status: "past_due", updated_at: new Date().toISOString() })
               .eq("user_id", row.user_id);
+            assertDbWrite(entitlementWrite.error, "Could not mark entitlement past due");
           }
         }
         break;
@@ -149,10 +164,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 
-  await db
+  const processedWrite = await db
     .from("billing_events")
     .update({ processed_at: new Date().toISOString() })
     .eq("stripe_event_id", event.id);
+  if (processedWrite.error) return NextResponse.json({ error: "Could not mark webhook event processed" }, { status: 500 });
 
   return NextResponse.json({ received: true });
 }
@@ -184,7 +200,7 @@ async function applySubscription(
         ).toISOString()
       : null;
 
-  await db.from("billing_subscriptions").upsert(
+  const subscriptionWrite = await db.from("billing_subscriptions").upsert(
     {
       user_id: userId,
       stripe_subscription_id: subscription.id,
@@ -198,8 +214,9 @@ async function applySubscription(
     },
     { onConflict: "stripe_subscription_id" },
   );
+  assertDbWrite(subscriptionWrite.error, "Could not save billing subscription");
 
-  await db.from("billing_entitlements").upsert(
+  const entitlementWrite = await db.from("billing_entitlements").upsert(
     {
       user_id: userId,
       plan: status === "active" ? plan : "free",
@@ -210,9 +227,15 @@ async function applySubscription(
     },
     { onConflict: "user_id" },
   );
+  assertDbWrite(entitlementWrite.error, "Could not save billing entitlement");
 
-  await db.from("subscription_tool_selections").upsert(
+  const selectionsWrite = await db.from("subscription_tool_selections").upsert(
     tools.map((toolId) => ({ user_id: userId, tool_id: toolId, active: true })),
     { onConflict: "user_id,tool_id" },
   );
+  assertDbWrite(selectionsWrite.error, "Could not save subscription tool selections");
+}
+
+function assertDbWrite(error: { message: string } | null, fallback: string): void {
+  if (error) throw new Error(`${fallback}: ${error.message}`);
 }
