@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
 import { FREE_TOOLS, type FreeToolId, getFreeTool } from "@/lib/free-tool-catalog";
+import { faqFor } from "@/lib/free-tool-faq";
 import { calculateBudget, calculateDebt, calculateInvoice, calculateProfit, calculateRental, calculateSavings, type FreeDebt, type InvoiceLine, type RentalExpense } from "@/lib/free-tools";
 import { CURRENCIES, formatMoney, formatPercent } from "@/lib/money";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -132,15 +133,6 @@ export function FreeCalculator({ id }: { id: FreeToolId }) {
 }
 
 function Chart({ title, description, children }: { title: string; description: string; children: React.ReactNode }) { const { t } = useI18n(); return <section className="mt-4 rounded-xl border border-line p-3"><h3 className="text-xs font-semibold">{t(title)}</h3><p className="text-[10px] text-fg-subtle">{t(description)}</p><div className="mt-2">{children}</div></section>; }
-function faqFor(id: FreeToolId): [string, string][] {
-  if (id === "debt-payoff-calculator") return [["What is the difference between snowball and avalanche?", "Snowball targets the smallest balance first. Avalanche targets the highest APR first. Both keep minimum payments current and apply the extra payment to the current target."], ["Why might payoff be unavailable?", "A plan may not reduce principal when payments are too small relative to monthly interest, or it may exceed the 60-year projection horizon."], ["Is this lender-exact?", "No. It uses monthly APR/12 interest accrual and cent rounding. Lenders may use daily balances, fees, and different payment timing."]];
-  if (id === "monthly-budget-calculator") return [["Is this a record of actual spending?", "No. This calculator totals amounts you plan to spend. GridHub's budget tool can help organize transactions separately."], ["What does 50/30/20 mean?", "It is an illustrative guideline that divides take-home income among needs, wants, and savings or debt repayment. It is optional and not a rule for every household."], ["What if my expenses exceed income?", "The result shows a negative remaining balance so you can see the estimated monthly shortfall."]];
-  if (id === "rental-property-calculator") return [["What counts toward NOI?", "Rental income after vacancy, less operating costs such as taxes, insurance, and maintenance. Mortgage principal and interest are excluded from NOI."], ["Does it include property appreciation or tax savings?", "No. It does not model appreciation, tax benefits, capital gains, or changes in rent and expenses."], ["How is the mortgage estimated?", "As a standard fixed-rate amortizing payment using the entered loan amount, nominal annual rate divided by 12, and loan term."]];
-  if (id === "savings-goal-calculator") return [["What if I have already reached the goal?", "The remaining amount and required contribution are zero, and progress is capped at 100%."], ["How is interest estimated?", "The optional rate is treated as a nominal annual rate with monthly compounding and end-of-month deposits."], ["Are returns guaranteed?", "No. Interest rates and actual account terms can change; this is a planning estimate."]];
-  if (id === "profit-margin-calculator") return [["How is margin different from markup?", "Margin divides profit by selling price. Markup divides profit by cost. The percentages differ even when based on the same sale."], ["Is gross margin net profit?", "No. Gross profit may not subtract overhead, payroll, tax, payment processing, or other business expenses."], ["Can I calculate a target price?", "Yes. Enter the desired margin. For a positive cost, targets must remain below 100%."]];
-  return [["How are invoice discounts applied?", "Line discounts reduce their own line first. Then the invoice-level discount reduces the subtotal and the remainder forms the taxable base."], ["Is this tax-compliant everywhere?", "No. Tax rules vary by jurisdiction, product, customer, and invoice. This calculator uses one illustrative convention only."], ["Can I send this invoice?", "No. This public calculator does not store or send invoices. Use the authenticated GridHub invoicing tool to create and manage invoice records."]];
-}
-
 export function FreeToolsDirectory() {
   const { t } = useI18n();
   const [active, setActive] = React.useState("All");

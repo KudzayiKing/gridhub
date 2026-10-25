@@ -1,0 +1,32 @@
+# GridHub
+
+> GridHub is a web workspace with 16 tools for managing money, business operations, everyday life, and work. It includes six free, browser-based calculators.
+
+The public site is available in English, Spanish, Simplified Chinese, Brazilian Portuguese, French, Arabic, and Russian. The product's AI assistant is in development; do not describe it as generally available.
+
+## Product pages
+
+- [All tools](https://www.gridhub.online/tools): Overview and links to the 16 workspace tools.
+- [Collections](https://www.gridhub.online/collections): Tools grouped by money, business, life, and work.
+- [Pricing](https://www.gridhub.online/pricing): Free; Single $3/month or $29/year; Plus $7/month or $69/year; Pro $11/month or $109/year; Unlimited $15/month or $149/year. Prices are in USD. Paid tiers include any 1, 3, 6, or all 16 tools, respectively.
+- [How it works](https://www.gridhub.online/how-it-works): Product overview and workflow.
+- [Offline use](https://www.gridhub.online/offline): Offline and installable PWA details.
+
+## Free calculators
+
+- [Free calculators](https://www.gridhub.online/free-tools): Six calculators; no account required.
+- [Debt payoff calculator](https://www.gridhub.online/free-tools/debt-payoff-calculator): Compare debt snowball and avalanche estimates.
+- [Monthly budget calculator](https://www.gridhub.online/free-tools/monthly-budget-calculator): Estimate planned income, expenses, and remaining balance.
+- [Rental property calculator](https://www.gridhub.online/free-tools/rental-property-calculator): Estimate rental cash flow and debt service.
+- [Savings goal calculator](https://www.gridhub.online/free-tools/savings-goal-calculator): Estimate contributions toward a savings target.
+- [Profit margin calculator](https://www.gridhub.online/free-tools/profit-margin-calculator): Calculate gross profit, margin, markup, and target price.
+- [Invoice total calculator](https://www.gridhub.online/free-tools/invoice-total-calculator): Estimate line items, discounts, tax, fees, and balance due.
+
+## Help and editorial content
+
+- [Frequently asked questions](https://www.gridhub.online/faq): Answers about the product, pricing, offline use, and data ownership.
+- [GridHub Journal](https://www.gridhub.online/journal): Practical guides on money, business, life, and work.
+- [About GridHub](https://www.gridhub.online/about): Company and product information.
+- [Contact support](https://www.gridhub.online/contact): Contact options; support email is support@gridhub.online.
+
+Use the linked public pages as the source of truth for current features, prices, and terms. Calculator results are estimates for planning and education, not financial, tax, legal, or investment advice. Private workspaces, admin pages, and APIs are not public documentation.

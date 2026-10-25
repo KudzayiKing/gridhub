@@ -3,6 +3,7 @@ import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { getSiteUrl } from "@/lib/site-url";
+import { SiteJsonLd } from "@/components/seo/site-json-ld";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${manrope.variable}`}>
       <body>
+        <SiteJsonLd />
         <div className="gp-ambient" aria-hidden="true" />
         <Providers>{children}</Providers>
       </body>

@@ -4,6 +4,7 @@ import { MarketingShell } from "@/components/marketing/shell";
 import { FreeCalculator } from "@/components/free-tools/calculator";
 import { FREE_TOOLS, getFreeTool, type FreeToolId } from "@/lib/free-tool-catalog";
 import { getSiteUrl } from "@/lib/site-url";
+import { faqFor } from "@/lib/free-tool-faq";
 
 const seoTitles: Record<FreeToolId, string> = {
   "debt-payoff-calculator": "Free Debt Payoff Calculator — Snowball vs Avalanche",
@@ -37,5 +38,26 @@ export default async function FreeCalculatorPage({ params }: { params: Promise<{
   const { slug } = await params;
   const tool = getFreeTool(slug);
   if (!tool) notFound();
-  return <MarketingShell><FreeCalculator id={tool.id} /></MarketingShell>;
+  const siteUrl = getSiteUrl();
+  const canonical = `${siteUrl}/free-tools/${tool.id}`;
+  const questions = faqFor(tool.id).map(([question, answer]) => ({
+    "@type": "Question",
+    name: question,
+    acceptedAnswer: { "@type": "Answer", text: answer },
+  }));
+  const calculatorJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: tool.title,
+    url: canonical,
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Any",
+    description: tool.intro,
+    isAccessibleForFree: true,
+    featureList: [tool.description, tool.method],
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    provider: { "@id": `${siteUrl}/#organization` },
+  };
+  const faqJsonLd = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: questions };
+  return <MarketingShell><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(calculatorJsonLd).replace(/</g, "\\u003c") }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c") }} /><FreeCalculator id={tool.id} /></MarketingShell>;
 }

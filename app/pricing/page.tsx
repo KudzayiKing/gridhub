@@ -8,13 +8,42 @@ import { AnimatedIcon } from "@/components/icons/animated-icon";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Gridhub pricing: a free starter budget tool, then $3, $7, $11 or $15 per month for one, three, six or all sixteen tools. Annual billing saves up to 19%.",
+    "GridHub pricing in USD: Free; Single $3/month or $29/year; Plus $7/$69; Pro $11/$109; Unlimited $15/$149. Paid plans include 1, 3, 6, or all 16 tools.",
   alternates: { canonical: "/pricing" },
 };
 
+const BILLING_FAQ = [
+  {
+    q: "How does the free plan work?",
+    a: "The Annual Budget Planner is available with basic current-month budgeting, manual transactions and essential summary metrics. Data export is included.",
+  },
+  {
+    q: "What if I need to change tools mid-cycle?",
+    a: "Single, Plus and Pro allow one tool swap per billing cycle. Upgrades take effect immediately and are prorated by Stripe. Unlimited has no restrictions.",
+  },
+  {
+    q: "Can I cancel?",
+    a: "Yes, at any time from the customer portal. Access continues to the end of the paid period, and your records remain available for export.",
+  },
+  {
+    q: "Do you offer refunds?",
+    a: "See the refund policy for the exact terms. We aim to be reasonable: if something did not work, contact us and we will make it right.",
+  },
+];
+
 export default function PricingPage() {
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: BILLING_FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
   return (
     <MarketingShell>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c") }} />
       <PageHeader
         eyebrow="Pricing"
         title="Pay for the tools you actually use."
@@ -46,24 +75,7 @@ export default function PricingPage() {
       <div className="mx-auto max-w-3xl px-4 pb-12">
         <h2 className="text-xl font-semibold tracking-tight">Questions about billing</h2>
         <div className="mt-3 flex flex-col divide-y divide-[var(--border)]">
-          {[
-            {
-              q: "How does the free plan work?",
-              a: "The Annual Budget Planner is available with basic current-month budgeting, manual transactions and essential summary metrics. Data export is included.",
-            },
-            {
-              q: "What if I need to change tools mid-cycle?",
-              a: "Single, Plus and Pro allow one tool swap per billing cycle. Upgrades take effect immediately and are prorated by Stripe. Unlimited has no restrictions.",
-            },
-            {
-              q: "Can I cancel?",
-              a: "Yes, at any time from the customer portal. Access continues to the end of the paid period, and your records remain available for export.",
-            },
-            {
-              q: "Do you offer refunds?",
-              a: "See the refund policy for the exact terms. We aim to be reasonable: if something did not work, contact us and we will make it right.",
-            },
-          ].map((item) => (
+          {BILLING_FAQ.map((item) => (
             <details key={item.q} className="group py-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13.5px] font-medium">
                 {item.q}

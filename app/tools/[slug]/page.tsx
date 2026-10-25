@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ToolIcon } from "@/components/icons/tool-icons";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { COLLECTION_MAP, TOOLS, TOOL_MAP, toolBySlug, toolsByCollection } from "@/lib/catalog";
+import { PLANS } from "@/lib/plans";
+import { getSiteUrl } from "@/lib/site-url";
 
 export function generateStaticParams() {
   return TOOLS.map((tool) => ({ slug: tool.slug }));
@@ -37,19 +39,25 @@ export default async function ToolDetailPage({ params }: { params: Promise<{ slu
 
   const collection = COLLECTION_MAP[tool.collection];
   const related = toolsByCollection(tool.collection).filter((t) => t.id !== tool.id).slice(0, 3);
+  const siteUrl = getSiteUrl();
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
+    "@id": `${siteUrl}/tools/${tool.slug}#software`,
     name: tool.name,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web, iOS, Android, macOS, Windows",
     description: tool.description,
-    offers: {
-      "@type": "Offer",
-      price: tool.freeTier ? "0" : "3",
-      priceCurrency: "USD",
-    },
+    url: `${siteUrl}/tools/${tool.slug}`,
+    provider: { "@id": `${siteUrl}/#organization` },
+    offers: [
+      ...(tool.freeTier ? [{ "@type": "Offer", name: "Free starter plan", price: "0", priceCurrency: "USD", url: `${siteUrl}/pricing` }] : []),
+      ...PLANS.filter((plan) => plan.id !== "free").flatMap((plan) => [
+        { "@type": "Offer", name: `${plan.name} monthly plan`, description: `Access to ${plan.toolLimit === 16 ? "all 16 tools" : `any ${plan.toolLimit} paid ${plan.toolLimit === 1 ? "tool" : "tools"}`}.`, price: String(plan.monthly), priceCurrency: "USD", priceSpecification: { "@type": "UnitPriceSpecification", price: String(plan.monthly), priceCurrency: "USD", unitText: "month" }, url: `${siteUrl}/pricing` },
+        { "@type": "Offer", name: `${plan.name} annual plan`, description: `Access to ${plan.toolLimit === 16 ? "all 16 tools" : `any ${plan.toolLimit} paid ${plan.toolLimit === 1 ? "tool" : "tools"}`}; billed annually.`, price: String(plan.annual), priceCurrency: "USD", priceSpecification: { "@type": "UnitPriceSpecification", price: String(plan.annual), priceCurrency: "USD", unitText: "year" }, url: `${siteUrl}/pricing` },
+      ]),
+    ],
   };
 
   return (

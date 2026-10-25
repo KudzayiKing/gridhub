@@ -44,8 +44,15 @@ const GROUPS = [
 ];
 
 export default function FaqPage() {
+  const questions = GROUPS.flatMap((group) => group.items).map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  }));
+  const jsonLd = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: questions };
   return (
     <MarketingShell>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <PageHeader
         eyebrow="FAQ"
         title="Questions, answered plainly."
