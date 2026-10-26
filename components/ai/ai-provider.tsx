@@ -42,7 +42,9 @@ const GridhubAIContext = React.createContext<GridhubAIContextValue | null>(null)
 export function GridhubAIProvider({ children }: { children: React.ReactNode }) {
   const model = useAIModel();
   const speech = useAISpeech();
-  const ai = useGridhubAIController({ modelReady: model.status === "ready" });
+  const ai = useGridhubAIController({
+    modelReady: model.status === "ready" && model.capabilities?.webgpu === true,
+  });
   const { prefs } = usePrefs();
   // Settings are device-scoped and change on another route, so they come from an external store.
   const { settings } = useAISettings();

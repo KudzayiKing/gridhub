@@ -10,7 +10,7 @@ import type { ActionId } from "./action-schemas";
 import { normalizeName } from "./entity-resolver";
 
 export interface DeterministicMatch {
-  intent: "navigation" | "query";
+  intent: "navigation" | "query" | "action";
   path?: string;
   actionId?: ActionId;
   parameters?: Record<string, unknown>;
@@ -81,6 +81,24 @@ export function deterministicParse(input: string): DeterministicMatch | null {
   const text = input.trim();
   if (!text) return null;
   const lower = text.toLowerCase();
+
+  // Conservative, typed fallback for a common expense entry. This intentionally accepts only a
+  // small, explicit grammar; the normal permission checks and confirmation card still apply.
+  const expense = text.match(
+    /^(?:(?:please\s+)?(?:add|log|record|spent|spend)\s+)?(?:\$\s*)?([\d,]+(?:\.\d{1,2})?)\s*(?:dollars?\s*)?(?:for|on|at|to)\s+(.+?)(?:\s+(?:today|yesterday))?[.!?]?$/i,
+  );
+  if (expense && /\b(add|log|record|spent|spend|expense|groceries|coffee|fuel|gas|lunch|dinner|parking|rent|electricity|internet|shopping)\b/i.test(text)) {
+    const amount = Number(expense[1].replaceAll(",", ""));
+    const description = expense[2].trim().replace(/[.!?]+$/, "");
+    if (Number.isFinite(amount) && amount > 0 && description && description.length <= 140) {
+      const date = /\byesterday\b/i.test(text) ? "yesterday" : undefined;
+      return {
+        intent: "action",
+        actionId: "budget.create_expense",
+        parameters: { amount, description, date },
+      };
+    }
+  }
 
   for (const shortcut of QUERY_SHORTCUTS) {
     if (shortcut.pattern.test(lower)) {

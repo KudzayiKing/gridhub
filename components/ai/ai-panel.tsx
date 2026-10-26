@@ -276,6 +276,10 @@ export function GridhubAIPanel() {
                 <p className="text-[12.5px] leading-relaxed text-fg">
                   {ai.error ?? recorder.error}
                 </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-fg-muted">
+                  You can still type a simple command such as “Add $40 for groceries” or enter it
+                  in the tool directly. Any AI change still waits for your confirmation.
+                </p>
                 <div className="mt-1.5 flex gap-2">
                   <Button
                     variant="ghost"

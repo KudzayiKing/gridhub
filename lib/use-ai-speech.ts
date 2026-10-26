@@ -16,6 +16,7 @@ import {
   type SpeechModelMeta,
   type SpeechProgress,
 } from "@/lib/ai/stt-manager";
+import { disposeSpeechProvider } from "@/lib/ai/speech-provider";
 
 export type SpeechStatus = "checking" | "not-installed" | "downloading" | "ready" | "error";
 
@@ -83,6 +84,7 @@ export function useAISpeech(): UseAISpeech {
   const cancel = React.useCallback(() => controller.current?.abort(), []);
 
   const remove = React.useCallback(async () => {
+    await disposeSpeechProvider();
     await removeSpeechModel();
     setMeta(null);
     setStatus("not-installed");

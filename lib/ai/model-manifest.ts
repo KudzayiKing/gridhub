@@ -59,7 +59,7 @@ export const AI_MODEL: AIModelManifest = {
    */
   sizeBytes: 2_008_432_640,
   sha256: "3a08e8d94e23b814ae5414469c370c503813949acb8ceaa17e4ebf8a35af35b5",
-  minimumRequirements: { webgpu: false },
+  minimumRequirements: { webgpu: true },
 };
 
 /**
@@ -132,10 +132,10 @@ export async function detectCapabilities(): Promise<AICapabilities> {
   if (!wasm) reasons.push("WebAssembly is unavailable, so the local model cannot run.");
   if (!microphone) reasons.push("Microphone capture is unavailable in this browser.");
   if (!mediaRecorder) reasons.push("MediaRecorder is unavailable, so voice input is disabled.");
-  if (!webgpu) reasons.push("WebGPU is unavailable; the model will use the CPU backend if supported.");
+  if (!webgpu) reasons.push("WebGPU is unavailable; this web model cannot run in this browser. Simple typed commands and manual tools remain available.");
 
   let level: AICompatibilityLevel;
-  if (!wasm) level = "basic";
+  if (!wasm || !webgpu) level = "basic";
   else if (microphone && mediaRecorder) level = "full";
   else level = "text";
 

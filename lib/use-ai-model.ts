@@ -65,12 +65,12 @@ export function useAIModel(): UseAIModel {
       if (!alive) return;
       setCapabilities(caps);
 
-      if (caps.level === "unavailable") {
+      if (caps.level === "unavailable" || !caps.wasm || !caps.webgpu) {
         setStatus("unavailable");
         return;
       }
 
-      const installed = isModelInstalled(AI_MODEL);
+      const installed = await isModelInstalled(AI_MODEL);
       setMeta(installed ? readModelMeta() : null);
       setStatus(installed ? "ready" : "not-installed");
     })();

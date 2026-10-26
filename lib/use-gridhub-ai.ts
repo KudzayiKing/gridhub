@@ -28,6 +28,7 @@ import { actionsForTools } from "@/lib/ai/action-registry";
 import { allowedToolIds, type EntitlementState } from "@/lib/ai/permission-checker";
 import { appendAIHistory, clearAIHistory, readAIHistory, type AIHistoryEntry } from "@/lib/ai/ai-privacy";
 import type { PlanId } from "@/lib/plans";
+import { elapsedMs, logAIDiagnostic } from "@/lib/ai/diagnostics";
 
 export type AIPhase = "idle" | "thinking" | "review" | "done" | "error";
 
@@ -227,12 +228,19 @@ export function useGridhubAIController({ modelReady }: UseGridhubAIOptions): Gri
       setResult(null);
 
       try {
+        const commandStarted = performance.now();
         const routed = await routeCommand(text, {
           entitlement,
           today: execContext.today,
           timeZone: execContext.timeZone,
           locale: prefs.locale || undefined,
           signal: ac.signal,
+          deterministicOnly,
+        });
+        logAIDiagnostic("command-routed", {
+          durationMs: elapsedMs(commandStarted),
+          routeKind: routed.kind,
+          routeSource: routed.kind === "proposal" ? routed.source : undefined,
           deterministicOnly,
         });
 
@@ -296,11 +304,17 @@ export function useGridhubAIController({ modelReady }: UseGridhubAIOptions): Gri
         }
 
         if (proposalData.intent === "action" && proposalData.actionId) {
+          const prepareStarted = performance.now();
           const prepared = await prepareAction(
             proposalData.actionId,
             proposalData.parameters ?? {},
             execContext,
           );
+          logAIDiagnostic("action-prepared", {
+            durationMs: elapsedMs(prepareStarted),
+            kind: prepared.kind,
+            actionId: proposalData.actionId,
+          });
           if (ac.signal.aborted) return;
           if (prepared.kind === "clarification") {
             setClarification({ question: prepared.question, options: prepared.options });
@@ -329,14 +343,24 @@ export function useGridhubAIController({ modelReady }: UseGridhubAIOptions): Gri
   const confirm = React.useCallback(async () => {
     if (!proposal) return;
     setBusy(true);
+    const commitStarted = performance.now();
     try {
       const outcome = await proposal.commit();
+      logAIDiagnostic("action-commit-complete", {
+        durationMs: elapsedMs(commitStarted),
+        ok: outcome.ok,
+        toolId: outcome.toolId,
+      });
       setResult(outcome);
       setPhase(outcome.ok ? "done" : "error");
       if (!outcome.ok) setError(outcome.message);
       record(lastCommand, outcome.message, outcome.toolId, "text");
       setProposal(null);
     } catch (err) {
+      logAIDiagnostic("action-commit-failed", {
+        durationMs: elapsedMs(commitStarted),
+        errorName: err instanceof Error ? err.name : "unknown",
+      });
       setError(err instanceof Error ? err.message : "The change could not be saved.");
       setPhase("error");
     } finally {

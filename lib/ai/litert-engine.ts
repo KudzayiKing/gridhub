@@ -9,6 +9,7 @@ import type { Conversation, Engine } from "@litert-lm/core";
 import type { AIModelManifest } from "./model-manifest";
 import { LITERT_WASM_PATH } from "./model-manifest";
 import { getModelBlob } from "./model-manager";
+import { elapsedMs, logAIDiagnostic } from "./diagnostics";
 
 /**
  * One sentence of framing. The real contract (allowed actions, exact JSON shape) is in the user
@@ -30,6 +31,7 @@ export interface CreateEngineOptions {
  * and the model does not contain the CPU prefill section needed for a CPU fallback.
  */
 export async function createEngine(options: CreateEngineOptions): Promise<Engine> {
+  const initStarted = performance.now();
   const litert = await import("@litert-lm/core");
   options.onStatus?.("loading-runtime");
 
@@ -49,12 +51,22 @@ export async function createEngine(options: CreateEngineOptions): Promise<Engine
     locateFile: (file) => new URL(file, wasmBaseUrl).href,
   };
 
+  const runtimeStarted = performance.now();
   await litert.getOrLoadGlobalLiteRtLm(LITERT_WASM_PATH);
+  const runtimeMs = elapsedMs(runtimeStarted);
 
   options.onStatus?.("loading-model");
-  // Prefer the cached artifact; fall back to the URL only when nothing is installed.
+  // A valid installation must have the verified artifact in Cache API; never hide a 2 GB refetch
+  // inside engine initialization when browser storage has evicted it.
+  const cacheStarted = performance.now();
   const cached = await getModelBlob(options.manifest);
-  const model = cached ?? options.manifest.sourceUrl;
+  const cacheLookupMs = elapsedMs(cacheStarted);
+
+  if (!cached) {
+    throw new Error(
+      "The verified local model file is missing from this browser's cache. Reinstall the model before using on-device AI.",
+    );
+  }
 
   if (typeof navigator === "undefined" || !("gpu" in navigator)) {
     throw new Error("This on-device AI model requires a browser with WebGPU support.");
@@ -62,7 +74,40 @@ export async function createEngine(options: CreateEngineOptions): Promise<Engine
 
   options.onStatus?.("creating-engine-gpu");
   // Omitting `backend` selects LiteRT-LM's GPU_ARTISAN backend, which supports this web model.
-  return litert.Engine.create({ model });
+  const engineStarted = performance.now();
+  try {
+    const engine = await litert.Engine.create({ model: cached });
+    const nav = typeof navigator === "undefined" ? null : navigator;
+    logAIDiagnostic("engine-ready", {
+      runtimeVersion: "@litert-lm/core 0.18.0",
+      modelId: options.manifest.id,
+      modelBytes: cached.size,
+      cachedModel: true,
+      backendRequested: "GPU_ARTISAN (LiteRT-LM default)",
+      backendConfigured: engine.settings.backend,
+      webgpuAvailable: Boolean(nav && "gpu" in nav),
+      runtimeLoadMs: runtimeMs,
+      modelCacheLookupMs: cacheLookupMs,
+      engineCreateMs: elapsedMs(engineStarted),
+      engineInitTotalMs: elapsedMs(initStarted),
+      browser: nav?.userAgent ?? "unknown",
+      platform: nav?.platform ?? "unknown",
+      hardwareConcurrency: nav?.hardwareConcurrency ?? null,
+      deviceMemoryGiB: (nav as Navigator & { deviceMemory?: number } | null)?.deviceMemory ?? null,
+    });
+    return engine;
+  } catch (error) {
+    logAIDiagnostic("engine-init-failed", {
+      modelId: options.manifest.id,
+      cachedModel: true,
+      backendRequested: "GPU_ARTISAN (LiteRT-LM default)",
+      runtimeLoadMs: runtimeMs,
+      modelCacheLookupMs: cacheLookupMs,
+      engineCreateMs: elapsedMs(engineStarted),
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    throw error;
+  }
 }
 
 export interface GenerateOptions {
@@ -76,6 +121,7 @@ export async function generate(
   prompt: string,
   options: GenerateOptions = {},
 ): Promise<string> {
+  const inferenceStarted = performance.now();
   const conversation: Conversation = await engine.createConversation({
     preface: { messages: [{ role: "system", content: SYSTEM_PREFACE }] },
   });
@@ -93,17 +139,46 @@ export async function generate(
   options.signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
-    const message = await conversation.sendMessage(prompt);
-    const content = message.content;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-      return content
-        .map((part) =>
-          part && typeof part === "object" && "text" in part ? String(part.text) : "",
-        )
-        .join("");
+    const streamStarted = performance.now();
+    const stream = conversation.sendMessageStreaming(prompt);
+    const reader = stream.getReader();
+    let firstContentMs: number | null = null;
+    let output = "";
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const content = value?.content;
+        const chunk = typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? content.map((part) => part && typeof part === "object" && "text" in part ? String(part.text) : "").join("")
+            : "";
+        if (chunk) {
+          firstContentMs ??= elapsedMs(streamStarted);
+          output += chunk;
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
-    return "";
+    let benchmarkInfo: Awaited<ReturnType<Conversation["getBenchmarkInfo"]>> | null = null;
+    try {
+      benchmarkInfo = await conversation.getBenchmarkInfo();
+    } catch {
+      // Older runtime builds may not expose benchmark counters.
+    }
+    logAIDiagnostic("text-inference-complete", {
+      firstContentMs,
+      inferenceTotalMs: elapsedMs(inferenceStarted),
+      prefillTokensPerSecond: benchmarkInfo?.lastPrefillTokensPerSecond ?? null,
+      prefillTokenCount: benchmarkInfo?.lastPrefillTokenCount ?? null,
+      decodeTokensPerSecond: benchmarkInfo?.lastDecodeTokensPerSecond ?? null,
+      decodeTokenCount: benchmarkInfo?.lastDecodeTokenCount ?? null,
+      runtimeTimeToFirstTokenSeconds: benchmarkInfo?.timeToFirstTokenInSecond ?? null,
+      outputCharacters: output.length,
+    });
+    return output;
   } finally {
     options.signal?.removeEventListener("abort", onAbort);
     try {

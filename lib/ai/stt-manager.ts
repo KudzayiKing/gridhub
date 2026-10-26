@@ -119,11 +119,13 @@ export async function installSpeechModel(options: {
     });
   };
 
-  // Instantiating the pipeline is what performs the download; the instance is then released.
-  await mod.pipeline("automatic-speech-recognition", STT_MODEL, {
+  // Instantiating the pipeline downloads and prepares the model. Dispose the temporary ONNX
+  // session after caching so installation does not leave a second in-memory Whisper instance.
+  const pipeline = await mod.pipeline("automatic-speech-recognition", STT_MODEL, {
     dtype: "q8",
     progress_callback: progressCallback,
   });
+  await pipeline.dispose?.();
 
   if (options.signal?.aborted) throw new Error("Cancelled.");
 

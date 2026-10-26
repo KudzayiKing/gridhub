@@ -48,7 +48,7 @@ export async function routeCommand(text: string, options: RouteOptions): Promise
   if (options.deterministicOnly) {
     return {
       kind: "unsupported",
-      reason: "That request needs the local model, which isn't installed yet.",
+      reason: "I couldn't match that to a simple command. Try “Add $40 for groceries,” open a tool, or enter it there directly.",
     };
   }
 

@@ -8,6 +8,7 @@
 
 import { STT_MODEL } from "./model-manifest";
 import { loadTransformers, type AsrPipeline } from "./transformers-loader";
+import { elapsedMs, logAIDiagnostic } from "./diagnostics";
 
 export interface SpeechProvider {
   isSupported(): boolean;
@@ -114,6 +115,13 @@ export class LocalWhisperProvider implements SpeechProvider {
     this.releaseStream();
   }
 
+  async dispose(): Promise<void> {
+    this.cancel();
+    const transcriber = this.transcriber;
+    this.transcriber = null;
+    await transcriber?.dispose?.();
+  }
+
   private releaseStream() {
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
@@ -123,9 +131,18 @@ export class LocalWhisperProvider implements SpeechProvider {
     if (this.transcriber) return this.transcriber;
     if (signal?.aborted) throw new Error("Cancelled.");
 
+    const initStarted = performance.now();
     const mod = await loadTransformers();
     this.transcriber = await mod.pipeline("automatic-speech-recognition", STT_MODEL, {
       dtype: "q8",
+    });
+    logAIDiagnostic("speech-engine-ready", {
+      engine: "Transformers.js Whisper Tiny",
+      model: STT_MODEL,
+      dtype: "q8",
+      initializationMs: elapsedMs(initStarted),
+      browser: navigator.userAgent,
+      platform: navigator.platform,
     });
     return this.transcriber;
   }
@@ -137,19 +154,42 @@ export class LocalWhisperProvider implements SpeechProvider {
     if (!blob.size) return "";
     if (options.signal?.aborted) throw new Error("Cancelled.");
 
+    const totalStarted = performance.now();
+    const decodeStarted = performance.now();
     const audio = await decodeToMono16k(blob);
+    const decodeMs = elapsedMs(decodeStarted);
     if (options.signal?.aborted) throw new Error("Cancelled.");
 
     const transcriber = await this.getTranscriber(options.signal);
-    const result = await transcriber(audio, {
-      sampling_rate: 16000,
-      chunk_length_s: 30,
-      language: options.language,
-      task: "transcribe",
-    });
+    const inferenceStarted = performance.now();
+    try {
+      const result = await transcriber(audio, {
+        sampling_rate: 16000,
+        chunk_length_s: 30,
+        language: options.language,
+        task: "transcribe",
+      });
 
-    if (Array.isArray(result)) return result.map((r) => r.text ?? "").join(" ").trim();
-    return (result.text ?? "").trim();
+      const text = Array.isArray(result)
+        ? result.map((r) => r.text ?? "").join(" ").trim()
+        : (result.text ?? "").trim();
+      logAIDiagnostic("speech-transcription-complete", {
+        decodeMs,
+        transcriptionMs: elapsedMs(inferenceStarted),
+        totalMs: elapsedMs(totalStarted),
+        audioDurationSeconds: Math.round((audio.length / 16000) * 10) / 10,
+        transcriptCharacters: text.length,
+      });
+      return text;
+    } catch (error) {
+      logAIDiagnostic("speech-transcription-failed", {
+        decodeMs,
+        transcriptionMs: elapsedMs(inferenceStarted),
+        totalMs: elapsedMs(totalStarted),
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+      throw error;
+    }
   }
 }
 
@@ -185,4 +225,11 @@ let sharedSpeech: LocalWhisperProvider | null = null;
 export function getSpeechProvider(): LocalWhisperProvider {
   if (!sharedSpeech) sharedSpeech = new LocalWhisperProvider();
   return sharedSpeech;
+}
+
+export async function disposeSpeechProvider(): Promise<void> {
+  const provider = sharedSpeech;
+  if (!provider) return;
+  await provider.dispose();
+  sharedSpeech = null;
 }

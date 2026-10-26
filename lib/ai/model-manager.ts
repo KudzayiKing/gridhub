@@ -8,6 +8,7 @@
 
 import { Sha256 } from "./sha256";
 import type { AIModelManifest } from "./model-manifest";
+import { elapsedMs, logAIDiagnostic } from "./diagnostics";
 
 const CACHE_NAME = "gridhub-ai-models-v1";
 const META_KEY = "gridhub.ai.model.meta";
@@ -50,9 +51,26 @@ function writeModelMeta(meta: InstalledModelMeta | null) {
   else localStorage.removeItem(META_KEY);
 }
 
-export function isModelInstalled(manifest: AIModelManifest): boolean {
+export async function isModelInstalled(manifest: AIModelManifest): Promise<boolean> {
   const meta = readModelMeta();
-  return Boolean(meta && meta.id === manifest.id && meta.version === manifest.version);
+  if (
+    !meta ||
+    meta.id !== manifest.id ||
+    meta.version !== manifest.version ||
+    meta.sourceUrl !== manifest.sourceUrl ||
+    (manifest.sha256 && meta.sha256.toLowerCase() !== manifest.sha256.toLowerCase()) ||
+    !cacheSupported()
+  ) return false;
+
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const response = await cache.match(manifest.sourceUrl);
+    if (!response) return false;
+    const cachedBytes = Number(response.headers.get("content-length")) || meta.bytes;
+    return cachedBytes === meta.bytes && meta.bytes > 0;
+  } catch {
+    return false;
+  }
 }
 
 /** Ask the browser not to evict the cached model. Best-effort and safe to call repeatedly. */
@@ -98,6 +116,7 @@ export async function downloadModel(
     onProgress?: (p: DownloadProgress) => void;
   } = {},
 ): Promise<InstalledModelMeta> {
+  const downloadStarted = performance.now();
   if (!cacheSupported()) {
     throw new Error("This browser cannot cache the model offline (Cache API unavailable).");
   }
@@ -190,5 +209,12 @@ export async function downloadModel(
     integrity: manifest.sha256 ? "verified" : "computed",
   };
   writeModelMeta(meta);
+  logAIDiagnostic("model-download-complete", {
+    modelId: manifest.id,
+    bytes: received,
+    integrity: meta.integrity,
+    durationMs: elapsedMs(downloadStarted),
+    sourceHost: new URL(manifest.sourceUrl).host,
+  });
   return meta;
 }

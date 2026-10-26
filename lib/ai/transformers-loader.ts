@@ -29,6 +29,7 @@ export type AsrOutput = { text?: string } | Array<{ text?: string }>;
 
 export interface AsrPipeline {
   (audio: Float32Array, options?: Record<string, unknown>): Promise<AsrOutput>;
+  dispose?: () => Promise<void>;
 }
 
 export interface TransformersModule {

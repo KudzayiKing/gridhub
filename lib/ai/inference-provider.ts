@@ -5,13 +5,11 @@
  * for the length of every command, freezing input and animation; the worker keeps the UI responsive
  * and lets a command be cancelled without tearing down the page.
  *
- * If a worker cannot be created (older browser, blocked module worker, bundler limitation) the same
- * engine code runs inline. Both paths share `litert-engine.ts`, so behaviour cannot drift.
+ * The model is never initialized on the main thread: a failed or blocked worker returns a clear
+ * error and leaves typed deterministic commands available instead of freezing the app.
  */
 
-import type { Engine } from "@litert-lm/core";
 import type { AIModelManifest } from "./model-manifest";
-import { createEngine, disposeEngine, generate } from "./litert-engine";
 
 export type InferenceStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
 
@@ -44,10 +42,8 @@ interface Pending {
 }
 
 export class LocalLiteRTLMProvider implements InferenceProvider {
-  /** Inline engine — only used when the worker path is unavailable. */
-  private engine: Engine | null = null;
   private worker: Worker | null = null;
-  private mode: "worker" | "inline" | null = null;
+  private mode: "worker" | null = null;
 
   private status: InferenceStatus = "idle";
   private lastError: string | null = null;
@@ -56,6 +52,7 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
   private nextId = 1;
   private pending = new Map<number, Pending>();
   private bootResolve: (() => void) | null = null;
+  private bootFail: (() => void) | null = null;
   private readyResolve: (() => void) | null = null;
   private readyReject: ((error: Error) => void) | null = null;
 
@@ -74,7 +71,7 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
   }
 
   /** Which path actually ran — surfaced in Settings so a fallback is visible, not hidden. */
-  getMode(): "worker" | "inline" | null {
+  getMode(): "worker" | null {
     return this.mode;
   }
 
@@ -88,15 +85,13 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
     this.status = "loading";
     this.lastError = null;
 
-    if (await this.startWorker()) {
-      this.mode = "worker";
-      this.status = "ready";
-      return;
-    }
-
     try {
-      this.mode = "inline";
-      this.engine = await createEngine({ manifest: this.manifest });
+      if (!(await this.startWorker())) {
+        throw new Error(
+          "The on-device AI background worker could not start. Your app is still responsive; use a simple typed command or open the tool directly.",
+        );
+      }
+      this.mode = "worker";
       this.status = "ready";
     } catch (error) {
       this.status = "error";
@@ -129,6 +124,10 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
         clearTimeout(timer);
         resolve(true);
       };
+      this.bootFail = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
     });
 
     worker.onmessage = (event: MessageEvent<WorkerMessage>) => this.handleWorkerMessage(event.data);
@@ -147,7 +146,12 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
       this.readyReject = (error) => reject(error);
     });
 
-    worker.postMessage({ type: "init", manifest: this.manifest });
+    try {
+      worker.postMessage({ type: "init", manifest: this.manifest });
+    } catch (error) {
+      this.failWorker(error instanceof Error ? error : new Error("The inference worker could not be initialized."));
+      throw error;
+    }
     try {
       return await ready;
     } catch (error) {
@@ -161,7 +165,8 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
   }
 
   private failWorker(error: Error) {
-    this.bootResolve?.();
+    this.bootFail?.();
+    this.bootFail = null;
     this.bootResolve = null;
     this.readyReject?.(error);
     this.readyReject = null;
@@ -183,6 +188,7 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
       case "boot":
         this.bootResolve?.();
         this.bootResolve = null;
+        this.bootFail = null;
         break;
       case "ready":
         this.readyResolve?.();
@@ -240,9 +246,6 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
     if (this.mode === "worker" && this.worker) {
       return this.generateInWorker(prompt, options.signal);
     }
-    if (this.engine) {
-      return generate(this.engine, prompt, { signal: options.signal });
-    }
     throw new Error("The local model is not available.");
   }
 
@@ -283,9 +286,6 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
       }
     }
     this.worker = null;
-
-    await disposeEngine(this.engine);
-    this.engine = null;
 
     for (const [, pending] of this.pending) pending.reject(new Error("The model was unloaded."));
     this.pending.clear();
