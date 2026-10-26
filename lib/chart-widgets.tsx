@@ -39,6 +39,7 @@ import { monthlyComparisonData, categorySlices, budgetActualRows, cashFlowTrend 
 import { paycheckAllocationBreakdown, monthlyBillOccurrences, nextPaydayDate } from "@/lib/reporting/paycheck";
 import { BudgetVsActualChart } from "@/components/charts/budget-vs-actual-chart";
 import { debtDueOccurrences, estimatedDebtProgress, localISODate } from "@/lib/reporting/debt-tracker";
+import { savingsBalanceTrend, savingsGoalRows } from "@/lib/reporting/savings-dashboard";
 
 function dateAfterDays(date: string, days: number) {
   const next = new Date(date + "T00:00:00");
@@ -130,7 +131,8 @@ function BudgetCategoriesWidget({ currency }: { currency: string }) {
 function SavingsGoalsWidget({ currency }: { currency: string }) {
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
-  const totals = savingsTotals(goals.rows, movements.rows);
+  const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
+  const totals = savingsTotals(eligibleGoals, movements.rows.filter((movement) => eligibleGoals.some((goal) => goal.id === movement.goalId)));
   if (!totals.goals.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">No goals yet</p>;
   return (
     <ProgressChart
@@ -144,6 +146,43 @@ function SavingsGoalsWidget({ currency }: { currency: string }) {
       }))}
     />
   );
+}
+
+function SavingsBalanceWidget({ currency }: { currency: string }) {
+  const goals = useCollection<SavingsGoal>("savings", "goals");
+  const movements = useCollection<GoalMovement>("savings", "movements");
+  const today = localISODate(new Date());
+  const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
+  const history = savingsBalanceTrend(eligibleGoals, movements.rows, 12, today);
+  return history.length ? <TrendChart data={history} xKey="month" series={[{ key: "balance", name: "Savings balance" }]} formatValue={fmtFactory(currency)} type="area" height={190} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">No dated savings activity</p>;
+}
+
+function SavingsEmergencyWidget({ currency }: { currency: string }) {
+  const goals = useCollection<SavingsGoal>("savings", "goals");
+  const movements = useCollection<GoalMovement>("savings", "movements");
+  const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
+  const emergency = savingsGoalRows(eligibleGoals, movements.rows, localISODate(new Date())).find((row) => row.goal.kind === "emergency");
+  const coverage = emergency?.goal.monthlyEssentials ? emergency.balance / emergency.goal.monthlyEssentials : null;
+  return <p className="py-5 text-center text-xl font-semibold">{coverage == null ? "Set essential expenses" : `${coverage.toFixed(1)} months`}{coverage != null ? <span className="block text-[10px] font-normal text-fg-subtle">{formatMoney(emergency!.balance, { currency })} emergency savings</span> : null}</p>;
+}
+
+function SavingsMilestoneWidget({ currency }: { currency: string }) {
+  const goals = useCollection<SavingsGoal>("savings", "goals");
+  const movements = useCollection<GoalMovement>("savings", "movements");
+  const today = localISODate(new Date());
+  const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
+  const next = savingsGoalRows(eligibleGoals, movements.rows, today).filter((row) => row.goal.targetDate && row.remaining > 0 && row.goal.targetDate >= today).sort((a, b) => (a.goal.targetDate ?? "").localeCompare(b.goal.targetDate ?? ""))[0];
+  return next ? <div className="py-4 text-center"><p className="text-sm font-semibold">{next.goal.name}</p><p className="text-[11px] text-fg-subtle">{next.goal.targetDate} · {formatMoney(next.remaining, { currency })} remaining</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">No upcoming target</p>;
+}
+
+function SavingsMonthlyNeedWidget({ currency }: { currency: string }) {
+  const goals = useCollection<SavingsGoal>("savings", "goals");
+  const movements = useCollection<GoalMovement>("savings", "movements");
+  const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
+  const summaries = savingsGoalRows(eligibleGoals, movements.rows, localISODate(new Date()));
+  const requirements = summaries.filter((row) => row.requiredMonthly != null && row.remaining > 0);
+  const total = requirements.reduce((sum, row) => sum + (row.requiredMonthly ?? 0), 0);
+  return <p className="py-5 text-center text-xl font-semibold">{requirements.length ? formatMoney(total, { currency }) : "Set target dates"}<span className="block text-[10px] font-normal text-fg-subtle">Combined monthly requirement</span></p>;
 }
 
 function NutritionWeeklyWidget({ currency }: { currency: string }) {
@@ -397,6 +436,10 @@ export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "budget.monthly", tool: "budget", title: "Monthly income vs expenses", description: "Annual Budget · all 12 months", Component: BudgetMonthlyWidget },
   { id: "budget.categories", tool: "budget", title: "Spending by category", description: "Annual Budget · expense breakdown", Component: BudgetCategoriesWidget },
   { id: "savings.goals", tool: "savings", title: "Savings goal progress", description: "Savings · contributions vs targets", Component: SavingsGoalsWidget },
+  { id: "savings.balance-trend", tool: "savings", title: "Savings Balance Trend", description: "Savings · last 12 months of dated activity", Component: SavingsBalanceWidget },
+  { id: "savings.emergency-coverage", tool: "savings", title: "Emergency Fund Coverage", description: "Savings · verified essential expense baseline", Component: SavingsEmergencyWidget },
+  { id: "savings.next-milestone", tool: "savings", title: "Next Savings Milestone", description: "Savings · upcoming goal target", Component: SavingsMilestoneWidget },
+  { id: "savings.monthly-needed", tool: "savings", title: "Monthly Contribution Requirement", description: "Savings · combined current monthly target", Component: SavingsMonthlyNeedWidget },
   { id: "nutrition.weekly", tool: "nutrition", title: "Weekly calories", description: "Nutrition · last 7 days", Component: NutritionWeeklyWidget },
   { id: "projects.completion", tool: "projects", title: "Task completion", description: "Projects · overall progress", Component: ProjectsCompletionWidget },
   { id: "inventory.lowstock", tool: "inventory", title: "Low-stock products", description: "Inventory · items needing reorder", Component: InventoryLowStockWidget },

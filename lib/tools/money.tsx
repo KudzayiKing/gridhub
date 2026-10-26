@@ -328,6 +328,11 @@ export function savingsTabs(data: DataMap): LedgerTab[] {
         { key: "openingBalance", label: "Starting balance", type: "currency", defaultValue: 0 },
         { key: "kind", label: "Type", type: "select", options: [{ value: "goal", label: "Goal" }, { value: "emergency", label: "Emergency fund" }], defaultValue: "goal" },
         { key: "monthlyEssentials", label: "Monthly essentials", type: "currency", help: "Used to show months of cover for an emergency fund." },
+        { key: "coverageTargetMonths", label: "Coverage target (months)", type: "select", options: [{ value: "3", label: "3 months" }, { value: "6", label: "6 months" }, { value: "12", label: "12 months" }], defaultValue: "6", help: "A personal planning target for the emergency fund gauge." },
+        { key: "startDate", label: "Plan start date", type: "date", help: "Needed to compare actual progress with a planned trajectory." },
+        { key: "monthlyContribution", label: "Planned monthly contribution", type: "currency", min: 0, help: "Optional plan value; this does not create a scheduled or completed movement." },
+        { key: "contributionFrequency", label: "Contribution frequency", type: "select", options: [{ value: "monthly", label: "Monthly" }, { value: "biweekly", label: "Biweekly" }, { value: "weekly", label: "Weekly" }], defaultValue: "monthly" },
+        { key: "annualInterestRate", label: "Optional annual interest assumption (%)", type: "number", min: 0, max: 100, step: "0.01", help: "Projection only; default is no interest. Not an investment return promise." },
         { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
       ],
       columns: [

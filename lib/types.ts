@@ -138,6 +138,12 @@ export interface SavingsGoal extends BaseRecord {
   kind: "goal" | "emergency";
   /** Monthly essential expenses, used for emergency-fund cover. */
   monthlyEssentials?: number;
+  /** Optional plan inputs; absent values are never inferred. */
+  monthlyContribution?: number;
+  startDate?: string;
+  contributionFrequency?: "monthly" | "biweekly" | "weekly";
+  coverageTargetMonths?: 3 | 6 | 12;
+  annualInterestRate?: number;
 }
 
 export interface GoalMovement extends BaseRecord {

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { LedgerTool, Panel } from "./ledger-tool";
 import { CompactMetric, MetricCard, Badge, EmptyState, InlineAlert } from "@/components/ui/card";
-import { BarList, ProgressRing } from "@/components/charts/trend";
+import { BarList } from "@/components/charts/trend";
 import {
   ChartContainer,
   ChartEmptyState,
@@ -30,7 +30,6 @@ import {
   debtTotals,
   savingsTotals,
   netWorthSummary,
-  goalSummary,
   paycheckSummary,
   nextPayDate,
 } from "@/lib/calc/money";
@@ -50,6 +49,7 @@ import { useToolPeriod, yearOptions } from "@/lib/use-tool-period";
 import { PinChartButton } from "@/lib/chart-widgets";
 import { PaycheckDashboard } from "./paycheck-dashboard";
 import { DebtDashboard } from "./debt-dashboard";
+import { SavingsDashboard } from "./savings-dashboard";
 import type { ToolId } from "@/lib/catalog";
 import type { DataMap } from "@/lib/tools/shared";
 import type { BaseRecord } from "@/lib/types";
@@ -214,7 +214,7 @@ function Overview({
     case "debt":
       return <DebtDashboard currency={currency} />;
     case "savings":
-      return <SavingsOverview data={data} currency={currency} />;
+      return <SavingsDashboard data={data} currency={currency} onOpenTab={onOpenTab} />;
     case "projects":
       return <ProjectsBoard data={data} />;
     case "habits":
@@ -761,58 +761,6 @@ function BudgetCalendar({
       </div>
       <p className="mt-1 text-[9.5px] text-fg-subtle">Dots mark activity · select a day to filter the ledger</p>
     </section>
-  );
-}
-
-function SavingsOverview({ data, currency }: { data: DataMap; currency: string }) {
-  const goals = rows<SavingsGoal>(data, "goals");
-  const movements = rows<GoalMovement>(data, "movements");
-  if (!goals.length) return null;
-
-  const summaries = goals.map((g) => goalSummary(g, movements));
-  const monthlyMovements = new Map<string, number>();
-  for (const movement of movements) {
-    const period = movement.date.slice(0, 7);
-    if (period) monthlyMovements.set(period, (monthlyMovements.get(period) ?? 0) + (movement.kind === "withdrawal" ? -movement.amount : movement.amount));
-  }
-  let balance = goals.reduce((total, goal) => total + goal.openingBalance, 0);
-  const balanceTrend = [...monthlyMovements.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, change]) => {
-    balance += change;
-    return { label: monthLong(period), balance: Math.max(0, balance) };
-  });
-
-  return (
-    <div className="grid gap-3 lg:grid-cols-2">
-    <Panel title="Goal progress" description="Contributions minus withdrawals, against each target" icon="piggy-bank">
-      <div className="flex flex-col gap-3">
-        {summaries.map((s) => (
-          <div key={s.id} className="flex items-center gap-3">
-            <ProgressRing value={s.progressPct} size={40} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="truncate text-[13px] font-medium">{s.name}</p>
-                <p className="tnum text-[12.5px] text-fg-muted">
-                  {formatMoney(s.balance, { currency })} / {formatMoney(s.target, { currency })}
-                </p>
-              </div>
-              <p className="text-[11.5px] text-fg-subtle">
-                {s.remaining <= 0
-                  ? "Target reached"
-                  : s.requiredMonthly
-                    ? `${formatMoney(s.requiredMonthly, { currency })}/month to finish on time`
-                    : `${formatMoney(s.remaining, { currency })} remaining`}
-                {s.overdue ? " · target date passed" : ""}
-                {s.monthsOfCover ? ` · ${s.monthsOfCover} months of cover` : ""}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-    <ChartContainer title="Savings balance over time" subtitle="Opening balances plus recorded contributions and withdrawals" icon="trending-up">
-      <TrendChart data={balanceTrend} xKey="label" series={[{ key: "balance", name: "Total savings" }]} formatValue={(value) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 })} type="area" height={220} />
-    </ChartContainer>
-    </div>
   );
 }
 
