@@ -25,10 +25,9 @@ export interface CreateEngineOptions {
 }
 
 /**
- * Creates the engine, preferring WebGPU and falling back to CPU.
- *
- * GPU creation can succeed at the API level and still fail when the shader compiles, so the fallback
- * is a real retry rather than a capability check.
+ * Creates the engine with LiteRT-LM's default GPU Artisan backend. The Gemma web model is packaged
+ * for that streaming WebGPU executor; forcing the plain GPU enum is unsupported by this runtime,
+ * and the model does not contain the CPU prefill section needed for a CPU fallback.
  */
 export async function createEngine(options: CreateEngineOptions): Promise<Engine> {
   const litert = await import("@litert-lm/core");
@@ -57,38 +56,13 @@ export async function createEngine(options: CreateEngineOptions): Promise<Engine
   const cached = await getModelBlob(options.manifest);
   const model = cached ?? options.manifest.sourceUrl;
 
-  const hasWebGpu = typeof navigator !== "undefined" && "gpu" in navigator;
-  let gpuError: unknown;
-
-  if (hasWebGpu) {
-    try {
-      options.onStatus?.("creating-engine-gpu");
-      return await litert.Engine.create({ model, backend: litert.Backend.GPU });
-    } catch (error) {
-      // Keep the cause so a failed CPU fallback does not hide why GPU initialization failed.
-      gpuError = error;
-    }
+  if (typeof navigator === "undefined" || !("gpu" in navigator)) {
+    throw new Error("This on-device AI model requires a browser with WebGPU support.");
   }
 
-  options.onStatus?.("creating-engine-cpu");
-  try {
-    return await litert.Engine.create({ model, backend: litert.Backend.CPU });
-  } catch (cpuError) {
-    if (!gpuError) throw cpuError;
-    throw new Error(
-      `On-device AI could not initialize either backend. WebGPU: ${describeError(gpuError)} CPU: ${describeError(cpuError)}`,
-    );
-  }
-}
-
-function describeError(error: unknown): string {
-  if (error instanceof Error) return error.message || error.name;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
+  options.onStatus?.("creating-engine-gpu");
+  // Omitting `backend` selects LiteRT-LM's GPU_ARTISAN backend, which supports this web model.
+  return litert.Engine.create({ model });
 }
 
 export interface GenerateOptions {
