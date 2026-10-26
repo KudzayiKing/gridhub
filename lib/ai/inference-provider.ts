@@ -142,13 +142,22 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
       return false;
     }
 
-    const ready = new Promise<boolean>((resolve) => {
+    const ready = new Promise<boolean>((resolve, reject) => {
       this.readyResolve = () => resolve(true);
-      this.readyReject = () => resolve(false);
+      this.readyReject = (error) => reject(error);
     });
 
     worker.postMessage({ type: "init", manifest: this.manifest });
-    return ready;
+    try {
+      return await ready;
+    } catch (error) {
+      // Engine initialization errors are useful diagnostics and inline initialization repeats
+      // the same backend/model setup. Only use inline mode when the worker itself cannot boot.
+      this.status = "error";
+      this.lastError = error instanceof Error ? error.message : String(error);
+      this.initPromise = null;
+      throw error;
+    }
   }
 
   private failWorker(error: Error) {
@@ -186,6 +195,8 @@ export class LocalLiteRTLMProvider implements InferenceProvider {
           this.readyReject?.(new Error(message.message));
           this.readyReject = null;
           this.readyResolve = null;
+          this.worker?.terminate();
+          this.worker = null;
           // Fatal worker errors leave the provider uninitialised so a later call can fall back.
           this.initPromise = null;
           this.status = "error";

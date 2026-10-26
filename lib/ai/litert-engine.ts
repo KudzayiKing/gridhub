@@ -42,18 +42,37 @@ export async function createEngine(options: CreateEngineOptions): Promise<Engine
   const model = cached ?? options.manifest.sourceUrl;
 
   const hasWebGpu = typeof navigator !== "undefined" && "gpu" in navigator;
+  let gpuError: unknown;
 
   if (hasWebGpu) {
     try {
       options.onStatus?.("creating-engine-gpu");
       return await litert.Engine.create({ model, backend: litert.Backend.GPU });
-    } catch {
-      // Fall through to CPU. A GPU that advertises WebGPU but rejects the kernel is common.
+    } catch (error) {
+      // Keep the cause so a failed CPU fallback does not hide why GPU initialization failed.
+      gpuError = error;
     }
   }
 
   options.onStatus?.("creating-engine-cpu");
-  return litert.Engine.create({ model, backend: litert.Backend.CPU });
+  try {
+    return await litert.Engine.create({ model, backend: litert.Backend.CPU });
+  } catch (cpuError) {
+    if (!gpuError) throw cpuError;
+    throw new Error(
+      `On-device AI could not initialize either backend. WebGPU: ${describeError(gpuError)} CPU: ${describeError(cpuError)}`,
+    );
+  }
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }
 
 export interface GenerateOptions {

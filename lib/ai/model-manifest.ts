@@ -54,11 +54,11 @@ export const AI_MODEL: AIModelManifest = {
    * Measured from the deployed artifact on 2026-10-23: `Content-Length: 2008432640` (1.87 GiB).
    * This is a real measurement, not an estimate, and it is what the download UI shows.
    *
-   * sha256 is still absent. R2's ETag is a multipart digest, not a SHA-256, so it cannot be used.
-   * The downloader computes the hash and records it on install; once the owner publishes the
-   * expected value, set it here and the downloader will verify instead of merely record.
+   * Verified against the original Hugging Face artifact and the deployed R2 copy on 2026-10-26.
+   * The downloader checks this hash before marking an install verified.
    */
   sizeBytes: 2_008_432_640,
+  sha256: "3a08e8d94e23b814ae5414469c370c503813949acb8ceaa17e4ebf8a35af35b5",
   minimumRequirements: { webgpu: false },
 };
 
