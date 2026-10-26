@@ -82,6 +82,32 @@ export function deterministicParse(input: string): DeterministicMatch | null {
   if (!text) return null;
   const lower = text.toLowerCase();
 
+  // Plain income entries should not need on-device model inference. Support the natural forms
+  // shown in the AI examples, including "add salary 1000" and "received $150 freelance".
+  const incomeNoun = "(?:salary|income|wages?|pay|freelance(?:\\s+income)?)";
+  const amount = "(?:\\$\\s*)?([\\d,]+(?:\\.\\d{1,2})?)";
+  const dateSuffix = "(?:\\s+(today|yesterday))?[.!?]?";
+  const incomeDescriptionFirst = text.match(
+    new RegExp(`^(?:(?:please\\s+)?(?:add|log|record|receive|received|earn|earned)\\s+)?(?:a\\s+)?(${incomeNoun})\\s+(?:of\\s+)?${amount}(?:\\s+dollars?)?${dateSuffix}$`, "i"),
+  );
+  const incomeAmountFirst = text.match(
+    new RegExp(`^(?:please\\s+)?(?:add|log|record|receive|received|earn|earned)\\s+${amount}(?:\\s+dollars?)?\\s+(?:(?:from|for|as)\\s+)?(.+?)${dateSuffix}$`, "i"),
+  );
+  const incomeMatch = incomeDescriptionFirst ?? (incomeAmountFirst && new RegExp(`\\b${incomeNoun}\\b`, "i").test(incomeAmountFirst[2]) ? incomeAmountFirst : null);
+  if (incomeMatch) {
+    const amountText = incomeMatch[incomeDescriptionFirst ? 2 : 1];
+    const amountValue = Number(amountText.replaceAll(",", ""));
+    const description = incomeMatch[incomeDescriptionFirst ? 1 : 2].trim();
+    const date = incomeMatch[3]?.toLowerCase();
+    if (Number.isFinite(amountValue) && amountValue > 0 && description.length <= 140) {
+      return {
+        intent: "action",
+        actionId: "budget.create_income",
+        parameters: { amount: amountValue, description, date },
+      };
+    }
+  }
+
   // Conservative, typed fallback for a common expense entry. This intentionally accepts only a
   // small, explicit grammar; the normal permission checks and confirmation card still apply.
   const expense = text.match(
