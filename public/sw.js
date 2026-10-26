@@ -18,7 +18,7 @@ const ASSET_CACHE = `${VERSION}-assets`;
  * do not change between releases, so without a bump a stale runtime would be served forever.
  * The name still starts with VERSION so the activate cleanup below preserves it.
  */
-const AI_RUNTIME_VERSION = "ai-runtime-v1";
+const AI_RUNTIME_VERSION = "ai-runtime-v2";
 const AI_CACHE = `${VERSION}-${AI_RUNTIME_VERSION}`;
 
 const SHELL_URLS = [

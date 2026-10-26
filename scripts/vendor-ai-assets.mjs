@@ -87,14 +87,26 @@ async function copyLiteRtWasm() {
   const wanted = entries.filter((name) => name.endsWith(".js") || name.endsWith(".wasm"));
   for (const name of wanted) {
     const destination = join(OUT, "wasm", name);
-    if (!FORCE && (await exists(destination))) {
-      process.stdout.write(`  = wasm/${name} (already present)\n`);
-      continue;
-    }
     await mkdir(dirname(destination), { recursive: true });
-    await writeFile(destination, await readFile(join(source, name)));
+    let contents = await readFile(join(source, name));
+    if (name.endsWith(".js")) {
+      const sourceText = contents.toString("utf8");
+      const workerRelativePath = 'scriptDirectory = new URL(".", _scriptName).href;';
+      if (!sourceText.includes(workerRelativePath)) {
+        throw new Error(`${name}: expected LiteRT worker WASM path hook was not found.`);
+      }
+      // In a worker, LiteRT derives the binary URL from the worker bundle (/_next/static/...)
+      // because importScripts() has no document.currentScript. Pin it to the colocated assets.
+      contents = Buffer.from(
+        sourceText.replace(
+          workerRelativePath,
+          'scriptDirectory = new URL("/ai/wasm/", globalThis.location.origin).href;',
+        ),
+      );
+    }
+    await writeFile(destination, contents);
     const { size } = await stat(destination);
-    process.stdout.write(`  + wasm/${name} (${human(size)})\n`);
+    process.stdout.write(`  + wasm/${name} (${human(size)}${name.endsWith(".js") ? ", worker path fixed" : ""})\n`);
   }
 }
 
