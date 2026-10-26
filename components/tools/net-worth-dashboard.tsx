@@ -20,7 +20,7 @@ const PALETTE = ["var(--positive)", "var(--accent)", "var(--warning)", "var(--ne
 const sum = (values: number[]) => round2(values.reduce((total, value) => total + (Number.isFinite(value) ? value : 0), 0));
 const asDate = (value: string) => new Date(value + "T00:00:00");
 
-export function NetWorthDashboard({ data, currency, onOpenTab }: { data: DataMap; currency: string; onOpenTab: (tab: string) => void }) {
+export function NetWorthDashboard({ data, currency, onOpenTab, onAddRecord }: { data: DataMap; currency: string; onOpenTab: (tab: string) => void; onAddRecord: (tab: string) => void }) {
   const items = rows<NetWorthItem>(data, "items").filter((row) => !row.deleted && (row.currency || "USD") === currency);
   const holdings = rows<Holding>(data, "holdings").filter((row) => !row.deleted && (row.currency || "USD") === currency);
   const snapshotStore = useCollection<ValuationSnapshot>("net-worth", "snapshots");
@@ -127,7 +127,7 @@ export function NetWorthDashboard({ data, currency, onOpenTab }: { data: DataMap
 
   const createSnapshot = async () => {
     setMessage(""); setError("");
-    if (snapshots.some((row) => row.date === currentDate)) { setMessage("A snapshot already exists for today. Edit it in Snapshots if you need to correct the recorded values."); return; }
+    if (snapshots.some((row) => row.date === currentDate)) { setMessage("A snapshot already exists for today. Open Snapshots to review or edit it."); onOpenTab("snapshots"); return; }
     setSaving(true);
     try {
       const assetsByCategory = Object.fromEntries(assetSlices.map((slice) => [slice.name, slice.value]));
@@ -154,8 +154,8 @@ export function NetWorthDashboard({ data, currency, onOpenTab }: { data: DataMap
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h2 className="text-[16px] font-semibold">Wealth dashboard</h2><p className="text-[11px] text-fg-muted">Values use {currency} records only. No exchange rates or market prices are invented.</p></div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="primary" icon="plus" onClick={() => onOpenTab("items")}>Add asset or liability</Button>
-        <Button size="sm" variant="secondary" icon="line-chart" onClick={() => onOpenTab("holdings")}>Add investment</Button>
+        <Button size="sm" variant="primary" icon="plus" onClick={() => onAddRecord("items")}>Add asset or liability</Button>
+        <Button size="sm" variant="secondary" icon="line-chart" onClick={() => onAddRecord("holdings")}>Add investment</Button>
         <Button size="sm" variant="secondary" icon="camera" disabled={saving} onClick={() => void createSnapshot()}>{saving ? "Recording…" : "Record snapshot"}</Button>
         <Button size="sm" variant="secondary" icon="download" onClick={exportReport}>Export report</Button>
       </div>

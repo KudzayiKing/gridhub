@@ -151,6 +151,8 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
 
   const [drill, setDrill] = React.useState<DrillState>({});
   const [requestedTab, setRequestedTab] = React.useState<string | undefined>();
+  const [requestedAdd, setRequestedAdd] = React.useState<{ tabId: string; id: number } | null>(null);
+  const addRequestId = React.useRef(0);
 
   const tabs = React.useMemo(() => buildTabs(toolId, data), [toolId, data]);
   // These overviews already contain the complete summary, so showing LedgerTool's
@@ -185,8 +187,10 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
         <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
       ))}
       overview={
-        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} onOpenTab={setRequestedTab} dashboardMetrics={dashboardMetrics} />
+        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} onOpenTab={setRequestedTab} onAddRecord={(tabId) => { setRequestedTab(tabId); setRequestedAdd({ tabId, id: ++addRequestId.current }); }} dashboardMetrics={dashboardMetrics} />
       }
+      addRequest={requestedAdd}
+      onAddRequestHandled={(id) => setRequestedAdd((current) => current?.id === id ? null : current)}
       defaultTab={requestedTab ?? (drill.month || drill.day || drill.categoryId ? "transactions" : undefined)}
       onClearFilter={() => setDrill({})}
     />
@@ -204,6 +208,7 @@ function Overview({
   drill,
   onDrill,
   onOpenTab,
+  onAddRecord,
   dashboardMetrics,
 }: {
   toolId: ToolId;
@@ -212,6 +217,7 @@ function Overview({
   drill: DrillState;
   onDrill: (next: DrillState) => void;
   onOpenTab: (tab: string) => void;
+  onAddRecord: (tab: string) => void;
   dashboardMetrics: ReturnType<typeof computeMetrics>;
 }) {
   const operationsTool = ["bookkeeping", "inventory", "sales", "invoicing", "cash-flow", "wedding", "property", "nutrition", "projects", "habits", "content"].includes(toolId);
@@ -225,10 +231,10 @@ function Overview({
         pin={{ chartId: operationsWidgetId(toolId), title: operationsWidgetTitle(toolId), tool: toolId }}
         action={<DashboardAction label={operationsActionLabel(toolId)} onClick={() => onOpenTab(operationsDefaultTab(toolId))} />}
       />
-      <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} />
+      <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} />
     </div>;
   }
-  return <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} />;
+  return <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} />;
 }
 
 function operationsDashboardTitle(toolId: ToolId) {
@@ -254,6 +260,7 @@ function OverviewContent({
   drill,
   onDrill,
   onOpenTab,
+  onAddRecord,
 }: {
   toolId: ToolId;
   data: DataMap;
@@ -261,6 +268,7 @@ function OverviewContent({
   drill: DrillState;
   onDrill: (next: DrillState) => void;
   onOpenTab: (tab: string) => void;
+  onAddRecord: (tab: string) => void;
 }) {
   switch (toolId) {
     case "paycheck":
@@ -280,7 +288,7 @@ function OverviewContent({
     case "invoicing":
       return <InvoicingOverview data={data} currency={currency} />;
     case "net-worth":
-      return <NetWorthDashboard data={data} currency={currency} onOpenTab={onOpenTab} />;
+      return <NetWorthDashboard data={data} currency={currency} onOpenTab={onOpenTab} onAddRecord={onAddRecord} />;
     case "bookkeeping":
     case "inventory":
     case "sales":

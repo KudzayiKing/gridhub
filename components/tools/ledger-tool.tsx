@@ -54,17 +54,21 @@ function TabPanel({
   toolId,
   tab,
   onClearFilter,
+  addRequest,
+  onAddRequestHandled,
 }: {
   toolId: ToolId;
   tab: LedgerTab;
   onClearFilter?: () => void;
+  addRequest?: { tabId: string; id: number } | null;
+  onAddRequestHandled?: (id: number) => void;
 }) {
   const { t } = useI18n();
   const { rows, loading, add, update, remove, reload } = useCollection<BaseRecord>(
     toolId,
     tab.collection,
   );
-  const [formOpen, setFormOpen] = React.useState(false);
+  const [formOpen, setFormOpen] = React.useState(() => addRequest?.tabId === tab.id);
   const [editing, setEditing] = React.useState<BaseRecord | null>(null);
 
   const openNew = () => {
@@ -129,7 +133,10 @@ function TabPanel({
         open={formOpen}
         onOpenChange={(v) => {
           setFormOpen(v);
-          if (!v) setEditing(null);
+          if (!v) {
+            setEditing(null);
+            if (addRequest?.tabId === tab.id) onAddRequestHandled?.(addRequest.id);
+          }
         }}
         title={editing ? t("Edit {item}", { item: t(singularLabel) }) : tab.addLabel ? t(tab.addLabel) : t("New {item}", { item: t(singularLabel) })}
         fields={tab.fields}
@@ -152,6 +159,9 @@ export interface LedgerToolProps {
   children?: React.ReactNode;
   /** When provided, the tool opens on this tab (used by chart drill-down to reveal filtered rows). */
   defaultTab?: string;
+  /** One-shot request to open a new-record form on a specific tab. */
+  addRequest?: { tabId: string; id: number } | null;
+  onAddRequestHandled?: (id: number) => void;
   /** Called when the user dismisses an active tab filter chip. */
   onClearFilter?: () => void;
 }
@@ -172,6 +182,8 @@ export function LedgerTool({
   children,
   defaultTab,
   onClearFilter,
+  addRequest,
+  onAddRequestHandled,
 }: LedgerToolProps) {
   const { t: translateText } = useI18n();
   const tool = TOOL_MAP[toolId];
@@ -180,8 +192,16 @@ export function LedgerTool({
 
   // Drill-down (e.g. clicking a month in a chart) asks to focus a specific tab.
   React.useEffect(() => {
-    if (defaultTab) setActive(defaultTab);
+    if (!defaultTab) return;
+    const requested = defaultTab;
+    queueMicrotask(() => setActive(requested));
   }, [defaultTab]);
+
+  React.useEffect(() => {
+    if (!addRequest) return;
+    const requested = addRequest.tabId;
+    queueMicrotask(() => setActive(requested));
+  }, [addRequest]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -263,7 +283,7 @@ export function LedgerTool({
 
       <Card className="p-3 sm:p-4">
         {activeTab ? (
-          <TabPanel key={activeTab.id} toolId={toolId} tab={activeTab} onClearFilter={onClearFilter} />
+          <TabPanel key={`${activeTab.id}:${addRequest?.tabId === activeTab.id ? addRequest.id : ""}`} toolId={toolId} tab={activeTab} onClearFilter={onClearFilter} addRequest={addRequest} onAddRequestHandled={onAddRequestHandled} />
         ) : null}
       </Card>
     </div>
