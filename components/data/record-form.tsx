@@ -48,6 +48,8 @@ export interface RecordFormProps {
   submitLabel?: string;
   /** Extra content below the fields (e.g. a calculated preview). */
   footer?: React.ReactNode;
+  /** Render the validated form inside another dialog or sheet. */
+  embedded?: boolean;
 }
 
 function initialValues(fields: FormField[], initial?: FormValues): FormValues {
@@ -77,6 +79,7 @@ export function RecordForm({
   onSubmit,
   submitLabel = "Save",
   footer,
+  embedded = false,
 }: RecordFormProps) {
   const { t } = useI18n();
   const [values, setValues] = React.useState<FormValues>(() => initialValues(fields, initial));
@@ -94,14 +97,17 @@ export function RecordForm({
    */
   const signature = `${open ? "open" : "closed"}:${initial ? JSON.stringify(initial) : "new"}`;
   const [lastSignature, setLastSignature] = React.useState(signature);
+  const [submitError, setSubmitError] = React.useState(false);
   if (signature !== lastSignature) {
     setLastSignature(signature);
     setValues(initialValues(fields, initial));
     setErrors({});
+    setSubmitError(false);
   }
 
   const set = (key: string, value: unknown) => {
     setValues((v) => ({ ...v, [key]: value }));
+    setSubmitError(false);
     setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
   };
 
@@ -151,6 +157,8 @@ export function RecordForm({
       }
       await onSubmit(payload);
       onOpenChange(false);
+    } catch {
+      setSubmitError(true);
     } finally {
       setSaving(false);
     }
@@ -158,9 +166,7 @@ export function RecordForm({
 
   const visible = fields.filter((f) => !f.visibleWhen || f.visibleWhen(values));
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={title} description={description}>
+  const form = (
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {visible.map((f) => {
@@ -222,6 +228,12 @@ export function RecordForm({
 
           {footer}
 
+          {submitError ? (
+            <p className="text-xs text-[var(--negative)]" role="alert">
+              {t("Could not save this record. Please try again.")}
+            </p>
+          ) : null}
+
           <div className="mt-1 flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
@@ -231,7 +243,13 @@ export function RecordForm({
             </Button>
           </div>
         </form>
-      </DialogContent>
+  );
+
+  if (embedded) return form;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent title={title} description={description}>{form}</DialogContent>
     </Dialog>
   );
 }

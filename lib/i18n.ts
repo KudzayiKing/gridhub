@@ -18,6 +18,19 @@ type Translation = readonly [string, string, string, string, string];
 // English phrases are the stable keys used by the existing interface. Missing translations
 // intentionally fall back to English while the language catalog is completed and reviewed.
 const catalog: Record<string, Translation> = {
+  "Quick add": ["Añadir rápido", "快速添加", "Adição rápida", "Ajout rapide", "Быстрое добавление"],
+  "Ask Gridhub AI": ["Preguntar a Gridhub AI", "询问 Gridhub AI", "Perguntar ao Gridhub AI", "Demander à Gridhub AI", "Спросить Gridhub AI"],
+  "Add a record directly to one of your tools.": ["Añade un registro directamente en una de tus herramientas.", "直接向某个工具添加记录。", "Adicione um registro diretamente a uma das suas ferramentas.", "Ajoutez directement un enregistrement dans l’un de vos outils.", "Добавьте запись прямо в один из инструментов."],
+  "No tools are available on this plan yet.": ["Este plan todavía no incluye herramientas disponibles.", "此方案暂时没有可用工具。", "Este plano ainda não tem ferramentas disponíveis.", "Aucun outil n’est encore disponible avec cette formule.", "В этом тарифе пока нет доступных инструментов."],
+  "Tool": ["Herramienta", "工具", "Ferramenta", "Outil", "Инструмент"],
+  "What to add": ["Qué quieres añadir", "要添加什么", "O que adicionar", "Que souhaitez-vous ajouter ?", "Что добавить"],
+  "This tool has no quick-add form available.": ["Esta herramienta no tiene un formulario de adición rápida.", "此工具没有可用的快速添加表单。", "Esta ferramenta não tem um formulário de adição rápida disponível.", "Aucun formulaire d’ajout rapide n’est disponible pour cet outil.", "Для этого инструмента нет формы быстрого добавления."],
+  "Ask Gridhub AI instead": ["Preguntar a Gridhub AI", "改为询问 Gridhub AI", "Perguntar ao Gridhub AI", "Demander à Gridhub AI", "Спросить Gridhub AI"],
+  "Could not save this record. Please try again.": ["No se pudo guardar este registro. Inténtalo de nuevo.", "无法保存此记录，请重试。", "Não foi possível salvar este registro. Tente novamente.", "Impossible d’enregistrer cet élément. Réessayez.", "Не удалось сохранить запись. Попробуйте ещё раз."],
+  "Text commands": ["Comandos de texto", "文字命令", "Comandos de texto", "Commandes textuelles", "Текстовые команды"],
+  "Enable the text assistant": ["Activar el asistente de texto", "启用文字助手", "Ativar o assistente de texto", "Activer l’assistant textuel", "Включить текстового помощника"],
+  "Opens the assistant from the ⌘J / Ctrl+J shortcut.": ["Abre el asistente con el atajo ⌘J / Ctrl+J.", "使用 ⌘J / Ctrl+J 快捷键打开助手。", "Abre o assistente pelo atalho ⌘J / Ctrl+J.", "Ouvre l’assistant avec le raccourci ⌘J / Ctrl+J.", "Открывает помощника сочетанием ⌘J / Ctrl+J."],
+  "Typed commands and quick entry that work with your local workspace.": ["Comandos escritos y registros rápidos en tu espacio de trabajo local.", "通过文字命令和快速录入使用本地工作空间。", "Comandos digitados e lançamentos rápidos no seu espaço de trabalho local.", "Commandes écrites et saisie rapide dans votre espace de travail local.", "Текстовые команды и быстрый ввод в вашем локальном пространстве."],
   "16 tools. One beautiful workspace.": ["16 herramientas. Un espacio de trabajo único.", "16 款工具，一个精美工作空间。", "16 ferramentas. Um espaço de trabalho completo.", "16 outils. Un espace de travail élégant.", "16 инструментов. Одно удобное пространство."],
   "One hub.": ["Un solo centro.", "一个中心。", "Um só lugar.", "Un seul espace.", "Один центр."],
   "Everything organized": ["Todo organizado", "一切井井有条", "Tudo organizado", "Tout est organisé", "Всё организовано"],
@@ -926,6 +939,19 @@ const catalog: Record<string, Translation> = {
 
 // Arabic translations for the interface phrase catalog.
 const arabicCatalog: Record<string, string> = {
+  "Quick add": "إضافة سريعة",
+  "Ask Gridhub AI": "اسأل Gridhub AI",
+  "Add a record directly to one of your tools.": "أضف سجلًا مباشرةً إلى إحدى أدواتك.",
+  "No tools are available on this plan yet.": "لا تتوفر أدوات في هذه الخطة حتى الآن.",
+  "Tool": "الأداة",
+  "What to add": "ما الذي تريد إضافته؟",
+  "This tool has no quick-add form available.": "لا يتوفر نموذج إضافة سريعة لهذه الأداة.",
+  "Ask Gridhub AI instead": "اسأل Gridhub AI بدلًا من ذلك",
+  "Could not save this record. Please try again.": "تعذر حفظ هذا السجل. يُرجى المحاولة مرة أخرى.",
+  "Text commands": "الأوامر النصية",
+  "Enable the text assistant": "تفعيل المساعد النصي",
+  "Opens the assistant from the ⌘J / Ctrl+J shortcut.": "يفتح المساعد باستخدام الاختصار ⌘J / Ctrl+J.",
+  "Typed commands and quick entry that work with your local workspace.": "أوامر مكتوبة وإدخال سريع يعملان مع مساحة عملك المحلية.",
   "A queued outbox retries with idempotent mutation ids.": "تعيد قائمة الإرسال المحاولة باستخدام معرّفات تغييرات آمنة للتكرار.",
   "Answers from your records": "يجيب استنادًا إلى سجلاتك",
   "Asks before writing": "يطلب الإذن قبل الحفظ",

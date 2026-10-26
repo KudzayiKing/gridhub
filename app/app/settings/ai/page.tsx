@@ -3,8 +3,8 @@
 /**
  * Settings → Gridhub AI.
  *
- * Everything here is device-scoped: the model, the microphone preference and the command history
- * live in this browser only. The page states plainly what runs locally and what is stored.
+ * Everything here is device-scoped: the model and command history live in this browser only.
+ * The page states plainly what runs locally and what is stored.
  */
 
 import * as React from "react";
@@ -14,7 +14,6 @@ import { Badge, Card, InlineAlert, SectionHeading } from "@/components/ui/card";
 import { Field, Select, Switch } from "@/components/ui/field";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { AIModelInstaller } from "@/components/ai/ai-model-installer";
-import { AISpeechInstaller } from "@/components/ai/ai-speech-installer";
 import { useGridhubAI } from "@/components/ai/ai-provider";
 import { PRIVACY_FACTS, type HistoryRetention } from "@/lib/ai/ai-privacy";
 import { useAISettings } from "@/lib/use-ai-settings";
@@ -28,7 +27,7 @@ const RETENTION_LABEL: Record<HistoryRetention, string> = {
 };
 
 export default function GridhubAISettingsPage() {
-  const { ai, model, speech } = useGridhubAI();
+  const { ai, model } = useGridhubAI();
   const { settings, update: updateSettings } = useAISettings();
 
   const update = (patch: Parameters<typeof updateSettings>[0]) => {
@@ -39,13 +38,11 @@ export default function GridhubAISettingsPage() {
   const caps = model.capabilities;
   const level = caps?.level ?? "basic";
   const levelLabel =
-    level === "full"
-      ? "Voice and text"
-      : level === "text"
-        ? "Text only"
-        : level === "basic"
-          ? "Basic commands"
-          : "Unavailable";
+    level === "full" || level === "text"
+      ? "Text commands"
+      : level === "basic"
+        ? "Basic commands"
+        : "Unavailable";
 
   return (
     <div className="flex flex-col gap-5">
@@ -62,7 +59,7 @@ export default function GridhubAISettingsPage() {
       <SectionHeading
         eyebrow="Assistant"
         title="Gridhub AI"
-        description="Voice and natural-language commands that run on this device."
+        description="Typed commands and quick entry that work with your local workspace."
       />
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -84,27 +81,6 @@ export default function GridhubAISettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-[14px] font-semibold">Voice input</h2>
-              <p className="mt-0.5 text-[12px] text-fg-muted">
-                A small speech model, installed separately from the assistant.
-              </p>
-            </div>
-            <Badge tone={speech.status === "ready" ? "positive" : "neutral"}>
-              {speech.status === "ready" ? "Installed" : "Not installed"}
-            </Badge>
-          </div>
-          <div className="mt-3">
-            <AISpeechInstaller speech={speech} />
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-fg-subtle">
-            Transcription runs locally. Audio is never uploaded and is discarded as soon as the
-            words are extracted.
-          </p>
-        </Card>
-
-        <Card className="p-4">
           <h2 className="text-[14px] font-semibold">This device</h2>
           <p className="mt-0.5 text-[12px] text-fg-muted">
             What Gridhub AI can use in this browser.
@@ -113,8 +89,6 @@ export default function GridhubAISettingsPage() {
             <Row label="Capability" value={levelLabel} />
             <Row label="WebAssembly" value={caps?.wasm ? "Available" : "Missing"} />
             <Row label="WebGPU" value={caps?.webgpu ? "Available" : "Not available"} />
-            <Row label="Microphone" value={caps?.microphone ? "Available" : "Not available"} />
-            <Row label="Recording" value={caps?.mediaRecorder ? "Available" : "Not available"} />
             <Row
               label="Storage"
               value={
@@ -145,29 +119,15 @@ export default function GridhubAISettingsPage() {
           <div className="mt-3 flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[13px]">Show the assistant button</p>
+                <p className="text-[13px]">Enable the text assistant</p>
                 <p className="text-[11.5px] text-fg-subtle">
-                  The floating microphone on every page.
+                  Opens the assistant from the ⌘J / Ctrl+J shortcut.
                 </p>
               </div>
               <Switch
                 checked={settings.enabled}
                 onCheckedChange={(v) => update({ enabled: v })}
-                aria-label="Show the assistant button"
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[13px]">Voice input</p>
-                <p className="text-[11.5px] text-fg-subtle">
-                  Speech is transcribed on this device and never uploaded.
-                </p>
-              </div>
-              <Switch
-                checked={settings.voice}
-                onCheckedChange={(v) => update({ voice: v })}
-                aria-label="Voice input"
-                disabled={!caps?.microphone}
+                aria-label="Enable the text assistant"
               />
             </div>
             <Field

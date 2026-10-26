@@ -130,13 +130,10 @@ export async function detectCapabilities(): Promise<AICapabilities> {
   }
 
   if (!wasm) reasons.push("WebAssembly is unavailable, so the local model cannot run.");
-  if (!microphone) reasons.push("Microphone capture is unavailable in this browser.");
-  if (!mediaRecorder) reasons.push("MediaRecorder is unavailable, so voice input is disabled.");
   if (!webgpu) reasons.push("WebGPU is unavailable; this web model cannot run in this browser. Simple typed commands and manual tools remain available.");
 
   let level: AICompatibilityLevel;
   if (!wasm || !webgpu) level = "basic";
-  else if (microphone && mediaRecorder) level = "full";
   else level = "text";
 
   return {

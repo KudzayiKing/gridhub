@@ -13,15 +13,15 @@ export interface MarketingFaqItem {
 export const AI_FAQ: MarketingFaqItem[] = [
   {
     q: "Is GridHub AI available yet?",
-    a: "Not yet. It is in development: the interface and the on-device model integration exist, but we have not finished verifying them end to end on real devices. We will switch it on only once a download, a typed command and a spoken command all work reliably.",
+    a: "The typed assistant is in development. Quick add is available for entering records directly, and voice input is planned for a later release.",
   },
   {
     q: "Will GridHub AI cost extra?",
     a: "No. When it ships it will be included in every plan, including Free. Your plan decides which applications you can open, not whether you can use the assistant.",
   },
   {
-    q: "Does GridHub AI send my voice to a server?",
-    a: "The design is on-device. After an optional download, the model and speech recognition run inside your browser, so supported commands do not need a cloud AI service. Your records still sync to your private workspace the way they do today — the assistant does not change how sync works.",
+    q: "Does GridHub AI send my requests to a server?",
+    a: "Typed requests run in your browser after the optional model download. Your records still sync to your private workspace the way they do today — the assistant does not change how sync works.",
   },
   {
     q: "Can AI change my records without asking?",

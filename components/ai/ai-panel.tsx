@@ -17,28 +17,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { AIActionPreview } from "./ai-action-preview";
 import { AIModelInstaller } from "./ai-model-installer";
-import { AISpeechInstaller } from "./ai-speech-installer";
-import { AIWaveform } from "./ai-waveform";
+import { QuickAddDialog } from "./quick-add-dialog";
 import { useGridhubAI } from "./ai-provider";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function GridhubAIPanel() {
-  const { ai, model, speech, recorder, listen, stopListening, enabled, voiceEnabled } =
-    useGridhubAI();
+  const { ai, model, enabled } = useGridhubAI();
+  const { t } = useI18n();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
-
-  const recording = recorder.status === "recording";
-  const transcribing = recorder.status === "transcribing" || recorder.status === "requesting";
+  const [quickAddOpen, setQuickAddOpen] = React.useState(false);
   const installed = model.status === "ready";
 
-  // Focus the composer when the panel opens in an idle state, but never steal focus mid-recording.
+  // Focus the composer when the panel opens in an idle state.
   React.useEffect(() => {
     if (!ai.open) return;
-    if (recording || transcribing) return;
     const id = window.setTimeout(() => inputRef.current?.focus(), 60);
     return () => window.clearTimeout(id);
-  }, [ai.open, recording, transcribing]);
+  }, [ai.open]);
 
   // Keep the newest content in view.
   React.useEffect(() => {
@@ -50,22 +47,8 @@ export function GridhubAIPanel() {
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (recording) {
-      void stopListening({ autoSubmit: false });
-      return;
-    }
     void ai.submit();
   };
-
-  const micLabel = recording
-    ? "Stop and transcribe"
-    : transcribing
-      ? "Transcribing"
-      : voiceEnabled
-        ? "Speak your command"
-        : speech.status === "not-installed"
-          ? "Install voice input"
-          : "Voice input is turned off in settings";
 
   return (
     <DialogPrimitive.Root
@@ -131,17 +114,11 @@ export function GridhubAIPanel() {
               <AIModelInstaller model={model} compact />
             ) : null}
 
-            {/* Voice is a second, smaller download. It is offered separately so a user who only
-                wants to type is never asked to fetch a speech model. */}
-            {speech.status !== "ready" && speech.status !== "checking" ? (
-              <AISpeechInstaller speech={speech} compact />
-            ) : null}
-
             {ai.phase === "idle" ? (
               <div className="space-y-3">
                 <p className="text-[12.5px] leading-relaxed text-fg-muted">
-                  Ask in plain language, or say it. I can log spending, record payments, look things
-                  up and open any tool you have.
+                  Ask in plain language, or use Quick add to enter a record directly. I can look up
+                  information and prepare changes for your review.
                 </p>
                 {ai.examples.length ? (
                   <div className="space-y-1.5">
@@ -271,11 +248,9 @@ export function GridhubAIPanel() {
               </div>
             ) : null}
 
-            {ai.error || recorder.error ? (
+            {ai.error ? (
               <div className="rounded-2xl border border-[var(--negative)]/30 bg-[var(--negative)]/5 px-3 py-2.5">
-                <p className="text-[12.5px] leading-relaxed text-fg">
-                  {ai.error ?? recorder.error}
-                </p>
+                <p className="text-[12.5px] leading-relaxed text-fg">{ai.error}</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-fg-muted">
                   You can still type a simple command such as “Add $40 for groceries” or enter it
                   in the tool directly. Any AI change still waits for your confirmation.
@@ -285,11 +260,7 @@ export function GridhubAIPanel() {
                     variant="ghost"
                     size="sm"
                     icon="refresh"
-                    onClick={() => {
-                      recorder.clearError();
-                      if (ai.error) void ai.submit(ai.lastCommand);
-                      else ai.reset();
-                    }}
+                  onClick={() => void ai.submit(ai.lastCommand)}
                   >
                     Try again
                   </Button>
@@ -303,48 +274,18 @@ export function GridhubAIPanel() {
 
           {/* Composer */}
           <form onSubmit={onSubmit} className="border-t border-line px-3 py-2.5">
-            {recording ? (
-              <div className="mb-1.5">
-                <AIWaveform level={recorder.level} active />
-                <p className="mt-1 text-center text-[11px] tabular-nums text-fg-subtle">
-                  Listening · {recorder.seconds}s · tap stop to finish
-                </p>
-              </div>
-            ) : null}
-
-            {transcribing ? (
-              <p className="mb-1.5 text-center text-[11px] text-fg-subtle">
-                Transcribing on this device…
-              </p>
-            ) : null}
-
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => {
-                  if (recording) void stopListening({ autoSubmit: false });
-                  else if (transcribing) recorder.cancel();
-                  else if (speech.status === "not-installed") void speech.install();
-                  else void listen();
+                  ai.closePanel();
+                  setQuickAddOpen(true);
                 }}
-                disabled={!recording && speech.status !== "not-installed" && !voiceEnabled}
-                aria-label={micLabel}
-                title={micLabel}
-                className={cn(
-                  "press grid h-9 w-9 shrink-0 place-items-center rounded-full border transition-colors",
-                  recording
-                    ? "border-transparent bg-[var(--brand)] text-[#06231a]"
-                    : "border-line bg-[var(--surface-strong)] text-fg-muted hover:text-fg",
-                  !voiceEnabled && "opacity-40",
-                )}
+                aria-label={t("Quick add")}
+                title={t("Quick add")}
+                className="press grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-[var(--surface-strong)] text-fg-muted transition-colors hover:text-fg"
               >
-                {transcribing ? (
-                  <AnimatedIcon name="loader" size={16} trigger="mount" className="animate-spin" />
-                ) : recording ? (
-                  <AnimatedIcon name="stop" size={16} trigger="click" />
-                ) : (
-                  <AnimatedIcon name="mic" size={16} trigger="hover" />
-                )}
+                <AnimatedIcon name="plus" size={16} trigger="click" />
               </button>
 
               <Input
@@ -365,7 +306,7 @@ export function GridhubAIPanel() {
                 size="icon"
                 variant="primary"
                 aria-label="Send"
-                disabled={ai.busy || (!ai.transcript.trim() && !recording)}
+                disabled={ai.busy || !ai.transcript.trim()}
                 className="h-9 w-9"
               >
                 <AnimatedIcon name="send" size={15} trigger="click" />
@@ -378,6 +319,14 @@ export function GridhubAIPanel() {
           </form>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
+      <QuickAddDialog
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        onAskAI={() => {
+          setQuickAddOpen(false);
+          ai.openPanel();
+        }}
+      />
     </DialogPrimitive.Root>
   );
 }

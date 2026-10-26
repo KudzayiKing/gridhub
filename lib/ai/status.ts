@@ -1,8 +1,8 @@
 /**
  * Public availability of GridHub AI.
  *
- * The feature is implemented in the app — model manager, worker inference, speech install, the
- * action registry and the confirmation flow — but it has **not** been verified end to end on real
+ * The feature is implemented in the app — model manager, worker inference, the action registry and
+ * the confirmation flow — but it has **not** been verified end to end on real
  * devices. Until it has, every public surface must label it as in development. That is the launch
  * rule from the marketing brief: only display a feature as available once it is actually
  * functional.
@@ -10,9 +10,8 @@
  * Flip `AI_PUBLICLY_AVAILABLE` only after all of the following pass on a clean profile:
  *   1. the 1.87 GiB model downloads, hashes and installs without a reload;
  *   2. a typed command is routed, prepared and confirmed, and the record appears;
- *   3. a spoken command transcribes and does the same;
- *   4. the whole flow still works with the network disabled;
- *   5. the worker path is used (not the inline fallback) on a mid-range phone.
+ *   3. the whole flow still works with the network disabled;
+ *   4. the worker path is used on a mid-range phone.
  */
 export const AI_PUBLICLY_AVAILABLE = false;
 

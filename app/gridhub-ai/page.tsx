@@ -18,7 +18,7 @@ const CAPABILITIES = [
   {
     icon: "search",
     title: "Finds the right tool",
-    body: "You say “log two eggs for breakfast”; it works out that this is the nutrition diary and not the grocery budget.",
+    body: "You type “log two eggs for breakfast”; it works out that this is the nutrition diary and not the grocery budget.",
     detail: "It chooses from a fixed list of known actions, so it cannot invent a screen that does not exist.",
   },
   {
@@ -43,10 +43,10 @@ const CAPABILITIES = [
 
 const STEPS = [
   {
-    icon: "mic",
-    title: "You type or speak",
-    body: "Everyday language, in your own words. No command syntax to learn.",
-    detail: "Speech runs through a local recogniser after an optional download; typing needs no download at all.",
+    icon: "edit",
+    title: "You type a request",
+    body: "Use everyday language, or add a record directly with Quick add.",
+    detail: "Typed requests use the on-device model; Quick add uses the tool's standard form.",
   },
   {
     icon: "target",
@@ -70,7 +70,7 @@ const STEPS = [
 
 const PRIVACY = [
   { icon: "download", title: "Optional model download", body: "Nothing is downloaded until you choose to install the model." },
-  { icon: "lock", title: "Runs on your device", body: "Supported voice and text commands are processed in the browser, not by a cloud AI service." },
+  { icon: "lock", title: "Runs on your device", body: "Typed requests are processed in the browser, not by a cloud AI service." },
   { icon: "offline", title: "Works offline after setup", body: "Once installed, supported commands do not need a connection." },
   { icon: "gauge", title: "No metered AI credits", body: "Local inference has no per-command API cost, so there is nothing to meter." },
 ];
@@ -150,7 +150,7 @@ export default function GridhubAIPage() {
         <h2 className="text-xl font-semibold tracking-tight">What it deliberately does not do</h2>
         <ul className="mt-3 flex flex-col gap-2 text-[12.5px] leading-relaxed text-fg-muted">
           <li>· It does not write anything without a confirmation step you can cancel.</li>
-          <li>· It does not listen continuously — voice input starts when you start it and stops when you stop it.</li>
+          <li>· Voice input is not available yet; the current assistant accepts typed requests.</li>
           <li>· It does not invent actions. Requests outside the supported set are refused, not approximated.</li>
           <li>· It does not run on every device or browser; compatibility is checked before installation.</li>
           <li>· It does not change how your records sync — the same sync engine still moves your data between devices.</li>

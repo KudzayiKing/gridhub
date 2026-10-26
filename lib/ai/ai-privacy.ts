@@ -3,7 +3,7 @@
  *
  * Conversation history never leaves the device. It is small, human-readable metadata kept in
  * localStorage, separate from the customer's records in IndexedDB, so "Clear AI history" can never
- * touch business data. Audio is never written to disk at all.
+ * touch business data.
  */
 
 export type HistoryRetention = "session" | "7days" | "30days" | "off";
@@ -20,9 +20,9 @@ export interface AIHistoryEntry {
 }
 
 export interface AISettings {
-  /** Master switch. When false the FAB is hidden and no model is loaded. */
+  /** Master switch for the text assistant panel and model. */
   enabled: boolean;
-  /** Voice input. Typed input keeps working when this is off. */
+  /** Retained for compatibility with saved settings; voice input is currently unavailable. */
   voice: boolean;
   /** How long command history is kept. */
   retention: HistoryRetention;
@@ -196,9 +196,9 @@ export const PRIVACY_FACTS: { title: string; detail: string }[] = [
       "The model runs inside your browser. What you say or type is never sent to a server, and there is no API key or hosted endpoint involved.",
   },
   {
-    title: "Audio is never uploaded or stored",
+    title: "Quick add uses the regular forms",
     detail:
-      "The microphone is only opened while you hold a recording. Speech is transcribed locally and the audio is discarded when the command finishes.",
+      "Quick add uses the same validated record forms and local save path as the tools themselves.",
   },
   {
     title: "Your records are not sent to the model",
@@ -211,8 +211,8 @@ export const PRIVACY_FACTS: { title: string; detail: string }[] = [
       "Every change is a proposal you confirm. Changes go through the same save path as manual entry, so they queue and sync like anything else.",
   },
   {
-    title: "Nothing listens in the background",
+    title: "No background activity",
     detail:
-      "There is no wake word and no continuous listening. The microphone opens on a deliberate tap and stops when you stop.",
+      "The assistant only runs after you submit a typed request. Quick add waits for you to enter and save a record.",
   },
 ];
