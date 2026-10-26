@@ -327,6 +327,7 @@ export interface DebtScheduleRow {
 export interface DebtSimulation {
   strategy: PayoffStrategy;
   rows: DebtScheduleRow[];
+  monthlyBalances: { month: number; date: string; total: number; balances: { debtId: string; name: string; balance: number }[] }[];
   months: number;
   payoffDate: string;
   totalInterest: number;
@@ -367,6 +368,7 @@ export function simulateDebt(
     .map((d) => ({ ...d, balance: round2(d.balance) }));
 
   const rows: DebtScheduleRow[] = [];
+  const monthlyBalances: DebtSimulation["monthlyBalances"] = [];
   const perDebt = new Map<string, { interest: number; paid: number; payoffMonth: number }>();
   for (const d of live) perDebt.set(d.id, { interest: 0, paid: 0, payoffMonth: 0 });
 
@@ -452,6 +454,13 @@ export function simulateDebt(
 
     // Any debt that reached zero this month is removed from further accrual
     for (const d of live) if (d.balance <= 0) d.balance = 0;
+
+    monthlyBalances.push({
+      month,
+      date,
+      total: round2(sumBy(live, (debt) => Math.max(0, debt.balance))),
+      balances: live.map((debt) => ({ debtId: debt.id, name: debt.name, balance: Math.max(0, debt.balance) })),
+    });
   }
 
   const payoffDate = new Date(cursor.getFullYear(), cursor.getMonth() + month, 1)
@@ -464,6 +473,7 @@ export function simulateDebt(
   return {
     strategy,
     rows,
+    monthlyBalances,
     months: month,
     payoffDate,
     totalInterest,

@@ -105,6 +105,13 @@ export interface Debt extends BaseRecord {
   /** Compounding / payment cadence. */
   frequency: "monthly" | "biweekly";
   notes?: string;
+  lender?: string;
+  /** Contractual day of month, when known. Never inferred from payment history. */
+  dueDay?: number;
+  /** Anchor date for biweekly payment schedules. */
+  nextDueDate?: string;
+  /** User-selected in-app reminder lead times in days. */
+  reminderDaysBefore?: number[];
 }
 
 export interface DebtPayment extends BaseRecord {
@@ -116,6 +123,10 @@ export interface DebtPayment extends BaseRecord {
   fees?: number;
   /** Optional link to a budget transaction for the same cash outflow. */
   transactionId?: string;
+  /** Missing status on legacy rows means an actual recorded payment. */
+  status?: "planned" | "paid" | "partial" | "skipped";
+  paycheckId?: string;
+  notes?: string;
 }
 
 export interface SavingsGoal extends BaseRecord {

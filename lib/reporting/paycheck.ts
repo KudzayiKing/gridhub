@@ -1,8 +1,8 @@
 import { D, round2, sumBy } from "@/lib/money";
-import type { Paycheck, PaycheckAllocation, RecurringBill } from "@/lib/types";
+import type { DebtPayment, Paycheck, PaycheckAllocation, RecurringBill } from "@/lib/types";
 
 export interface PaycheckAllocationSlice {
-  id: "bill" | "spending" | "savings" | "unallocated";
+  id: "bill" | "debt" | "spending" | "savings" | "unallocated";
   name: string;
   value: number;
 }
@@ -28,18 +28,23 @@ function localISODate(date: Date): string {
 export function paycheckAllocationBreakdown(
   paycheck: Paycheck,
   allocations: PaycheckAllocation[],
+  debtPayments: DebtPayment[] = [],
 ): { amount: number; allocated: number; unallocated: number; overallocated: number; slices: PaycheckAllocationSlice[] } {
   const active = allocations.filter((row) => !row.deleted && row.paycheckId === paycheck.id);
   const bills = round2(sumBy(active.filter((row) => row.kind === "bill"), (row) => Math.max(0, row.amount)));
   const spending = round2(sumBy(active.filter((row) => row.kind === "spending"), (row) => Math.max(0, row.amount)));
   const rowSavings = sumBy(active.filter((row) => row.kind === "savings"), (row) => Math.max(0, row.amount));
   const savings = round2(Math.max(Number(rowSavings), Math.max(0, paycheck.savingsAllocation ?? 0)));
+  const debt = round2(debtPayments
+    .filter((row) => !row.deleted && row.paycheckId === paycheck.id && row.status !== "skipped")
+    .reduce((sum, row) => sum + Math.max(0, row.amount), 0));
   const amount = round2(Math.max(0, paycheck.actualAmount ?? paycheck.expectedAmount));
-  const allocated = round2(D(bills).plus(spending).plus(savings));
+  const allocated = round2(D(bills).plus(debt).plus(spending).plus(savings));
   const unallocated = round2(Math.max(0, Number(D(amount).minus(allocated))));
   const overallocated = round2(Math.max(0, Number(D(allocated).minus(amount))));
   const slices: PaycheckAllocationSlice[] = ([
     { id: "bill", name: "Bills", value: bills },
+    { id: "debt", name: "Debt payments", value: debt },
     { id: "spending", name: "Everyday spending", value: spending },
     { id: "savings", name: "Savings", value: savings },
     { id: "unallocated", name: "Unallocated", value: unallocated },

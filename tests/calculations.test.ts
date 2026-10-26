@@ -194,6 +194,18 @@ describe("debt payoff", () => {
     expect(sim.months).toBe(1);
   });
 
+  it("returns total and per-debt balances for every projected month", () => {
+    const sim = simulateDebt([
+      { id: "a", name: "Card A", balance: 100, annualRate: 0, minimumPayment: 10 },
+      { id: "b", name: "Card B", balance: 50, annualRate: 0, minimumPayment: 0 },
+    ], 10, "snowball", new Date("2026-01-01"));
+    expect(sim.monthlyBalances[0]).toMatchObject({ month: 1, total: 130 });
+    expect(sim.monthlyBalances[0].balances).toEqual([
+      { debtId: "a", name: "Card A", balance: 90 },
+      { debtId: "b", name: "Card B", balance: 40 },
+    ]);
+  });
+
   it("summarises totals across debts", () => {
     const debts: Debt[] = [
       { ...base, id: "1", name: "A", openingPrincipal: 1000, annualRate: 10, minimumPayment: 50, extraPayment: 0, currency: "USD", frequency: "monthly" },

@@ -20,7 +20,7 @@ import { useActiveTools } from "@/lib/use-tools";
 import { TOOL_MAP } from "@/lib/catalog";
 import type { ToolId } from "@/lib/catalog";
 import { formatMoney, round2 } from "@/lib/money";
-import { accountBalance, budgetSummary, currentMonth, currentYear, savingsTotals, goalSummary, debtTotals } from "@/lib/calc/money";
+import { accountBalance, budgetSummary, currentMonth, currentYear, savingsTotals, goalSummary, debtTotals, simulateDebt } from "@/lib/calc/money";
 import { dailyTotals } from "@/lib/calc/life";
 import { projectProgress } from "@/lib/calc/work";
 import { inventorySummary } from "@/lib/calc/business";
@@ -34,10 +34,17 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { AreaTrend } from "@/components/charts/trend";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { ToolIcon } from "@/components/icons/tool-icons";
-import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill } from "@/lib/types";
+import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, DebtPayment, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill } from "@/lib/types";
 import { monthlyComparisonData, categorySlices, budgetActualRows, cashFlowTrend } from "@/lib/reporting/budget";
 import { paycheckAllocationBreakdown, monthlyBillOccurrences, nextPaydayDate } from "@/lib/reporting/paycheck";
 import { BudgetVsActualChart } from "@/components/charts/budget-vs-actual-chart";
+import { debtDueOccurrences, estimatedDebtProgress, localISODate } from "@/lib/reporting/debt-tracker";
+
+function dateAfterDays(date: string, days: number) {
+  const next = new Date(date + "T00:00:00");
+  next.setDate(next.getDate() + days);
+  return localISODate(next);
+}
 
 /* ==========================================================================
    Pure pin-state reducers (unit tested)
@@ -228,6 +235,59 @@ function DebtPayoffWidget({ currency }: { currency: string }) {
   );
 }
 
+function DebtTotalWidget({ currency }: { currency: string }) {
+  const debts = useCollection<Debt>("debt", "debts");
+  return <p className="py-5 text-center text-2xl font-semibold tnum">{formatMoney(debtTotals(debts.rows.filter((debt) => !debt.deleted)).balance, { currency })}</p>;
+}
+
+function DebtFreeWidget({ currency }: { currency: string }) {
+  const debts = useCollection<Debt>("debt", "debts");
+  const { prefs } = usePrefs();
+  const strategy = prefs.periods?.["debt-strategy"] === "avalanche" ? "avalanche" : "snowball";
+  const input = debts.rows.filter((debt) => !debt.deleted && debt.openingPrincipal > 0).map((debt) => ({ id: debt.id, name: debt.name, balance: debt.openingPrincipal, annualRate: debt.annualRate, minimumPayment: debt.minimumPayment * (debt.frequency === "biweekly" ? 26 / 12 : 1) }));
+  const extra = debts.rows.filter((debt) => !debt.deleted).reduce((sum, debt) => sum + Math.max(0, debt.extraPayment ?? 0), 0);
+  const simulation = simulateDebt(input, extra, strategy);
+  return <div className="py-4 text-center"><p className="text-xl font-semibold">{!input.length ? "No debts" : simulation.nonAmortizing ? "Payment too low" : simulation.payoffDate.slice(0, 7)}</p><p className="text-[11px] text-fg-subtle">{input.length && !simulation.nonAmortizing ? `${simulation.months} months · ${strategy}` : "Estimated payoff"}</p><p className="mt-1 text-[11px]">{formatMoney(simulation.totalInterest, { currency })} projected interest</p></div>;
+}
+
+function DebtProjectionWidget({ currency }: { currency: string }) {
+  const debts = useCollection<Debt>("debt", "debts");
+  const { prefs } = usePrefs();
+  const strategy = prefs.periods?.["debt-strategy"] === "avalanche" ? "avalanche" : "snowball";
+  const input = debts.rows.filter((debt) => !debt.deleted && debt.openingPrincipal > 0).map((debt) => ({ id: debt.id, name: debt.name, balance: debt.openingPrincipal, annualRate: debt.annualRate, minimumPayment: debt.minimumPayment * (debt.frequency === "biweekly" ? 26 / 12 : 1) }));
+  const extra = debts.rows.filter((debt) => !debt.deleted).reduce((sum, debt) => sum + Math.max(0, debt.extraPayment ?? 0), 0);
+  const simulation = simulateDebt(input, extra, strategy);
+  return simulation.nonAmortizing ? <p className="py-6 text-center text-[11px] text-fg-subtle">Payment does not amortise this balance</p> : <TrendChart data={[{ label: "Now", balance: input.reduce((sum, debt) => sum + debt.balance, 0) }, ...simulation.monthlyBalances.map((point) => ({ label: `M${point.month}`, balance: point.total }))]} xKey="label" series={[{ key: "balance", name: "Projected debt" }]} formatValue={fmtFactory(currency)} type="line" height={190} />;
+}
+
+function DebtProgressWidget({ currency }: { currency: string }) {
+  const debts = useCollection<Debt>("debt", "debts");
+  const payments = useCollection<DebtPayment>("debt", "payments");
+  const progress = debts.rows.filter((debt) => !debt.deleted).map((debt) => estimatedDebtProgress(debt, payments.rows));
+  const paid = progress.reduce((sum, row) => sum + row.principalPaid, 0);
+  const original = progress.reduce((sum, row) => sum + row.estimatedOriginal, 0);
+  return <ProgressChart items={[{ id: "debt-progress", label: "Principal repaid · estimate", value: paid, target: original, formatValue: fmtFactory(currency) }]} />;
+}
+
+function DebtNextPaymentWidget({ currency }: { currency: string }) {
+  const debts = useCollection<Debt>("debt", "debts");
+  const payments = useCollection<DebtPayment>("debt", "payments");
+  const today = localISODate(new Date());
+  const events = debtDueOccurrences(debts.rows.filter((debt) => !debt.deleted), payments.rows, today, dateAfterDays(today, 31), today)
+    .filter((event) => event.status !== "paid" && event.status !== "skipped").sort((a, b) => a.date.localeCompare(b.date));
+  const next = events[0];
+  return next ? <div className="py-4 text-center"><p className="text-xl font-semibold">{formatMoney(next.amount, { currency })}</p><p className="text-[11px] text-fg-subtle">{next.debtName} · {next.date}</p><p className="text-[10px] capitalize">{next.status}</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">No known upcoming date</p>;
+}
+
+function DebtUpcomingWidget({ currency }: { currency: string }) {
+  const debts = useCollection<Debt>("debt", "debts");
+  const payments = useCollection<DebtPayment>("debt", "payments");
+  const today = localISODate(new Date());
+  const events = debtDueOccurrences(debts.rows.filter((debt) => !debt.deleted), payments.rows, today, dateAfterDays(today, 31), today)
+    .filter((event) => event.status !== "paid" && event.status !== "skipped").slice(0, 5);
+  return events.length ? <div className="flex flex-col gap-2 py-1">{events.map((event) => <div key={event.id} className="flex justify-between gap-2 text-[11px]"><span className="truncate">{event.debtName} · {event.date}</span><span className="tnum">{formatMoney(event.amount, { currency })}</span></div>)}</div> : <p className="py-6 text-center text-[11px] text-fg-subtle">No known upcoming dates</p>;
+}
+
 function PaycheckNextWidget({ currency }: { currency: string }) {
   const schedules = useCollection<PaySchedule>("paycheck", "schedules");
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
@@ -265,10 +325,11 @@ function PaycheckAvailableWidget({ currency }: { currency: string }) {
 function PaycheckAllocationWidget({ currency }: { currency: string }) {
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
   const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
+  const debtPayments = useCollection<DebtPayment>("debt", "payments");
   const schedules = useCollection<PaySchedule>("paycheck", "schedules");
   const check = checks.rows.filter((p) => p.date.startsWith(currentMonth()) && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).sort((a, b) => b.date.localeCompare(a.date))[0];
   if (!check) return <p className="py-6 text-center text-[12px] text-fg-subtle">No paycheck recorded this month</p>;
-  const breakdown = paycheckAllocationBreakdown(check, allocations.rows);
+  const breakdown = paycheckAllocationBreakdown(check, allocations.rows, debtPayments.rows);
   return <CategoryBreakdownChart data={breakdown.slices} formatValue={fmtFactory(currency)} centerLabel={check.actualAmount == null ? "Expected" : "Received"} centerValue={formatMoney(breakdown.amount, { currency })} height={220} />;
 }
 
@@ -341,6 +402,12 @@ export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "inventory.lowstock", tool: "inventory", title: "Low-stock products", description: "Inventory · items needing reorder", Component: InventoryLowStockWidget },
   { id: "bookkeeping.revenue", tool: "bookkeeping", title: "Revenue trend", description: "Bookkeeping · monthly revenue", Component: BookkeepingRevenueWidget },
   { id: "debt.payoff", tool: "debt", title: "Debt balances", description: "Debt · balance by account", Component: DebtPayoffWidget },
+  { id: "debt.total", tool: "debt", title: "Total Debt Remaining", description: "Debt · current tracked balances", Component: DebtTotalWidget },
+  { id: "debt.next-payment", tool: "debt", title: "Next Debt Payment", description: "Debt · next dated payment", Component: DebtNextPaymentWidget },
+  { id: "debt.payoff-date", tool: "debt", title: "Estimated Debt-Free Date", description: "Debt · current strategy projection", Component: DebtFreeWidget },
+  { id: "debt.projection", tool: "debt", title: "Debt Balance Projection", description: "Debt · monthly projected balances", Component: DebtProjectionWidget },
+  { id: "debt.progress", tool: "debt", title: "Debt-Free Progress", description: "Debt · principal repaid estimate", Component: DebtProgressWidget },
+  { id: "debt.upcoming", tool: "debt", title: "Upcoming Debt Payments", description: "Debt · next 31 days", Component: DebtUpcomingWidget },
   { id: "paycheck.next-paycheck", tool: "paycheck", title: "Next Paycheck", description: "Paycheck Planner · next expected payday and amount", Component: PaycheckNextWidget },
   { id: "paycheck.available-spend", tool: "paycheck", title: "Available to Spend", description: "Paycheck Planner · checking/cash less known bills", Component: PaycheckAvailableWidget },
   { id: "paycheck.allocation", tool: "paycheck", title: "Paycheck allocation", description: "Paycheck Planner · recorded allocation breakdown", Component: PaycheckAllocationWidget },

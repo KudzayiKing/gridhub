@@ -269,6 +269,9 @@ export function debtTabs(data: DataMap): LedgerTab[] {
         { key: "minimumPayment", label: "Minimum payment", type: "currency", required: true, min: 0 },
         { key: "extraPayment", label: "Extra payment", type: "currency", defaultValue: 0 },
         { key: "frequency", label: "Payment frequency", type: "select", options: [{ value: "monthly", label: "Monthly" }, { value: "biweekly", label: "Every two weeks" }], defaultValue: "monthly" },
+        { key: "lender", label: "Lender", type: "text" },
+        { key: "dueDay", label: "Contractual due day of month", type: "number", min: 1, max: 31, help: "Leave blank if unknown. Used only for monthly schedules." },
+        { key: "nextDueDate", label: "Next contractual payment date", type: "date", help: "Required to project biweekly payment dates." },
         { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
       ],
       columns: [
@@ -293,12 +296,15 @@ export function debtTabs(data: DataMap): LedgerTab[] {
         { key: "principal", label: "Principal portion", type: "currency" },
         { key: "interest", label: "Interest portion", type: "currency" },
         { key: "fees", label: "Fees", type: "currency", defaultValue: 0 },
+        { key: "status", label: "Status", type: "select", options: [{ value: "paid", label: "Paid" }, { value: "partial", label: "Partially paid" }, { value: "planned", label: "Planned" }, { value: "skipped", label: "Skipped" }], defaultValue: "paid" },
+        { key: "notes", label: "Notes", type: "textarea", span: 2 },
       ],
       columns: [
         { key: "date", header: "Date", primary: true, value: (r) => r.date, render: (r) => formatDate(r.date) },
         { key: "debtId", header: "Debt", value: (r) => lookup(debts, r.debtId), render: (r) => lookup(debts, r.debtId) },
         { key: "amount", header: "Amount", align: "right", value: (r) => r.amount, render: (r) => formatMoney(r.amount) },
         { key: "interest", header: "Interest", align: "right", value: (r) => r.interest ?? 0, render: (r) => formatMoney(r.interest ?? 0) },
+        { key: "status", header: "Status", value: (r) => r.status ?? "paid", render: (r) => <span className="capitalize">{r.status ?? "paid"}</span> },
       ],
     }),
   ];

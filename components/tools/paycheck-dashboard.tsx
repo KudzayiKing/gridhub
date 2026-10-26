@@ -12,7 +12,7 @@ import { formatMoney, formatPercent, round2 } from "@/lib/money";
 import { paycheckAllocationBreakdown, monthlyBillOccurrences, nextPaydayDate } from "@/lib/reporting/paycheck";
 import { rows } from "@/lib/tools/shared";
 import type { DataMap } from "@/lib/tools/shared";
-import type { GoalMovement, MoneyAccount, MoneyBudget, MoneyCategory, MoneyTransaction, PaySchedule, Paycheck, PaycheckAllocation, RecurringBill, SavingsGoal } from "@/lib/types";
+import type { DebtPayment, GoalMovement, MoneyAccount, MoneyBudget, MoneyCategory, MoneyTransaction, PaySchedule, Paycheck, PaycheckAllocation, RecurringBill, SavingsGoal } from "@/lib/types";
 import { PinChartButton } from "@/lib/chart-widgets";
 
 type Mode = "monthly" | "paycheck";
@@ -31,6 +31,8 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
   const accounts = useCollection<MoneyAccount>("budget", "accounts");
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
+  const debtPaymentRecords = useCollection<DebtPayment>("debt", "payments");
+  const debtPayments = debtPaymentRecords.rows;
   const moneyRows = React.useMemo(() => transactions.rows.filter((row) => !row.currency || row.currency === currency), [transactions.rows, currency]);
   const schedules = React.useMemo(() => rows<PaySchedule>(data, "schedules").filter((s) => !s.deleted), [data]);
   const paychecks = React.useMemo(() => rows<Paycheck>(data, "paychecks").filter((p) => !p.deleted && (!p.scheduleId || !schedules.some((s) => s.id === p.scheduleId) || schedules.find((s) => s.id === p.scheduleId)?.currency === currency)).sort((a, b) => a.date.localeCompare(b.date)), [data, schedules, currency]);
@@ -67,7 +69,7 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
   const categoryRows = monthly.byCategory.filter((row) => row.kind === "expense" && (row.budget > 0 || row.actual > 0) && (!selectedCategory || row.categoryId === selectedCategory)).map((row) => ({ category: row.name, categoryId: row.categoryId, budget: row.budget, actual: row.actual, variance: round2(row.budget - row.actual), used: row.budget > 0 ? row.actual / row.budget * 100 : null }));
   const categoryDonut = monthly.byCategory.filter((row) => row.kind === "expense" && row.actual > 0 && (!selectedCategory || row.categoryId === selectedCategory)).map((row) => ({ id: row.categoryId, name: row.name, value: row.actual }));
   const selectedAllocations = paycheck ? allocations.filter((a) => !a.deleted && a.paycheckId === paycheck.id) : [];
-  const allocation = paycheck ? paycheckAllocationBreakdown(paycheck, selectedAllocations) : null;
+  const allocation = paycheck ? paycheckAllocationBreakdown(paycheck, selectedAllocations, debtPayments) : null;
 
   const periodChecks = monthPaychecks;
   const savingsTarget = periodChecks.reduce((total, check) => {
@@ -127,7 +129,7 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
     });
   }, [month, range, moneyRows, categories.rows, currency]);
 
-  const paycheckBreakdowns = monthPaychecks.map((check) => ({ paycheck: check, ...paycheckAllocationBreakdown(check, allocations) }));
+  const paycheckBreakdowns = monthPaychecks.map((check) => ({ paycheck: check, ...paycheckAllocationBreakdown(check, allocations, debtPayments) }));
 
   const forecast = (() => {
     if (verifiedBalance === null || !nextPayDateValue || nextPayDateValue <= now) return { points: [], lowest: 0, beforePayday: 0 };
@@ -182,7 +184,7 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
           {allocation ? <>
             {allocation.overallocated > 0 ? <p className="mb-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-2.5 py-2 text-[11px] text-[var(--warning)]">Allocations exceed this paycheck by {fmt(allocation.overallocated)}. Values are shown as planned; no negative donut slice is drawn.</p> : null}
             <CategoryBreakdownChart data={allocation.slices.map((slice) => ({ ...slice }))} formatValue={fmt} centerLabel={paycheck?.actualAmount == null ? "Expected" : "Received"} centerValue={fmt(allocation.amount)} onSliceClick={setSelectedAllocation} height={280} />
-            {selectedAllocation ? <div className="mt-2 rounded-xl border border-line p-2 text-[11px]">{selectedAllocation === "unallocated" ? <p className="py-1 text-fg-muted">No assigned records · {fmt(allocation.unallocated)} remains available to allocate.</p> : selectedAllocations.filter((row) => row.kind === selectedAllocation).map((row) => <p key={row.id} className="flex justify-between gap-2 border-b border-line py-1 last:border-0"><span>{row.label}</span><span className="tnum">{fmt(row.amount)}</span></p>)}</div> : null}
+            {selectedAllocation ? <div className="mt-2 rounded-xl border border-line p-2 text-[11px]">{selectedAllocation === "unallocated" ? <p className="py-1 text-fg-muted">No assigned records · {fmt(allocation.unallocated)} remains available to allocate.</p> : selectedAllocation === "debt" ? debtPayments.filter((row) => row.paycheckId === paycheck?.id && row.status !== "skipped").map((row) => <p key={row.id} className="flex justify-between gap-2 border-b border-line py-1 last:border-0"><span>Debt payment · {row.date}{row.status === "planned" ? " · planned" : " · recorded"}</span><span className="tnum">{fmt(row.amount)}</span></p>) : selectedAllocations.filter((row) => row.kind === selectedAllocation).map((row) => <p key={row.id} className="flex justify-between gap-2 border-b border-line py-1 last:border-0"><span>{row.label}</span><span className="tnum">{fmt(row.amount)}</span></p>)}</div> : null}
           </> : <ChartEmptyState label="Add or select a paycheck to see its allocation" />}
         </ChartContainer>
 
@@ -248,7 +250,7 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
           <ChartContainer title="Paycheck comparison" subtitle="Each bar reconciles to received or expected paycheck allocations" icon="layers">
             {paycheckBreakdowns.length ? <>
               {paycheckBreakdowns.some((item) => item.overallocated > 0) ? <p className="mb-2 text-[10.5px] text-[var(--warning)]">One or more paychecks have allocations above their amount; those bars exceed the paycheck value.</p> : null}
-              <StackedBarChart data={paycheckBreakdowns.map((item) => ({ label: `${new Date(`${item.paycheck.date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${item.paycheck.actualAmount == null ? "Expected" : "Received"}`, bills: item.slices.find((slice) => slice.id === "bill")?.value ?? 0, spending: item.slices.find((slice) => slice.id === "spending")?.value ?? 0, savings: item.slices.find((slice) => slice.id === "savings")?.value ?? 0, unallocated: item.unallocated }))} xKey="label" series={[{ key: "bills", name: "Bills" }, { key: "spending", name: "Everyday spending" }, { key: "savings", name: "Savings" }, { key: "unallocated", name: "Unallocated" }]} formatValue={fmt} height={230} />
+              <StackedBarChart data={paycheckBreakdowns.map((item) => ({ label: `${new Date(`${item.paycheck.date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${item.paycheck.actualAmount == null ? "Expected" : "Received"}`, bills: item.slices.find((slice) => slice.id === "bill")?.value ?? 0, debt: item.slices.find((slice) => slice.id === "debt")?.value ?? 0, spending: item.slices.find((slice) => slice.id === "spending")?.value ?? 0, savings: item.slices.find((slice) => slice.id === "savings")?.value ?? 0, unallocated: item.unallocated }))} xKey="label" series={[{ key: "bills", name: "Bills" }, { key: "debt", name: "Debt payments" }, { key: "spending", name: "Everyday spending" }, { key: "savings", name: "Savings" }, { key: "unallocated", name: "Unallocated" }]} formatValue={fmt} height={230} />
             </> : <ChartEmptyState label="Record paychecks to compare their allocations" />}
           </ChartContainer>
         </div>
