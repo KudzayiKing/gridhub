@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartEmptyState, RechartsTooltip, useMounted } from "./chart-kit";
+import { ChartEmptyState, ChartLegend, RechartsTooltip, useMounted } from "./chart-kit";
 
 export interface BudgetActualRow {
   category: string;
@@ -32,7 +32,8 @@ export function BudgetVsActualChart({
   const h = height ?? Math.max(160, data.length * 34 + 24);
 
   return (
-    <div style={{ width: "100%", height: h }}>
+    <div>
+      <div style={{ width: "100%", height: h }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           layout="vertical"
@@ -67,7 +68,7 @@ export function BudgetVsActualChart({
             radius={[0, 4, 4, 0]}
             maxBarSize={14}
             className="cursor-pointer"
-            onClick={(d: any) => onCategoryClick?.(d?.category)}
+            onClick={(datum) => onCategoryClick?.(datum?.payload?.category)}
           >
             {data.map((r, i) => (
               <Cell key={i} fill={r.actual > r.budget ? "var(--negative)" : "var(--positive)"} />
@@ -75,6 +76,12 @@ export function BudgetVsActualChart({
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
+      <ChartLegend items={[
+        { label: "Budget", color: "var(--border)" },
+        { label: "Within budget", color: "var(--positive)" },
+        { label: "Over budget", color: "var(--negative)" },
+      ]} />
     </div>
   );
 }

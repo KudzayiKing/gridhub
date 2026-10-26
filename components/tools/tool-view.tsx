@@ -48,6 +48,7 @@ import {
 } from "@/lib/reporting/budget";
 import { useToolPeriod, yearOptions } from "@/lib/use-tool-period";
 import { PinChartButton } from "@/lib/chart-widgets";
+import { PaycheckDashboard } from "./paycheck-dashboard";
 import type { ToolId } from "@/lib/catalog";
 import type { DataMap } from "@/lib/tools/shared";
 import type { BaseRecord } from "@/lib/types";
@@ -144,6 +145,7 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
   const currency = prefs.currency || "USD";
 
   const [drill, setDrill] = React.useState<DrillState>({});
+  const [requestedTab, setRequestedTab] = React.useState<string | undefined>();
 
   const tabs = React.useMemo(() => buildTabs(toolId, data), [toolId, data]);
   // These overviews already contain the complete summary, so showing LedgerTool's
@@ -176,9 +178,9 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
         <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
       ))}
       overview={
-        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} />
+        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} onOpenTab={setRequestedTab} />
       }
-      defaultTab={drill.month || drill.day || drill.categoryId ? "transactions" : undefined}
+      defaultTab={requestedTab ?? (drill.month || drill.day || drill.categoryId ? "transactions" : undefined)}
       onClearFilter={() => setDrill({})}
     />
   );
@@ -194,14 +196,18 @@ function Overview({
   currency,
   drill,
   onDrill,
+  onOpenTab,
 }: {
   toolId: ToolId;
   data: DataMap;
   currency: string;
   drill: DrillState;
   onDrill: (next: DrillState) => void;
+  onOpenTab: (tab: string) => void;
 }) {
   switch (toolId) {
+    case "paycheck":
+      return <PaycheckDashboard data={data} currency={currency} onOpenAllocations={() => onOpenTab("allocations")} />;
     case "budget":
       return <BudgetOverview data={data} currency={currency} drill={drill} onDrill={onDrill} />;
     case "debt":
@@ -216,7 +222,6 @@ function Overview({
       return <NutritionDiary data={data} />;
     case "invoicing":
       return <InvoicingOverview data={data} currency={currency} />;
-    case "paycheck":
     case "net-worth":
     case "bookkeeping":
     case "inventory":
@@ -294,14 +299,6 @@ function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap;
     const statusOrder = ["idea", "draft", "scheduled", "published"] as const;
     const counts = statusOrder.map((status) => ({ id: status, label: status[0].toUpperCase() + status.slice(1), value: posts.filter((post) => post.status === status).length }));
     return <ChartContainer title="Publishing pipeline" subtitle="Content count by current status" icon="calendar-range"><HorizontalRankingChart data={counts} formatValue={(value) => `${Number(value ?? 0)} posts`} height={175} /></ChartContainer>;
-  }
-  if (toolId === "paycheck") {
-    const checks = rows<Paycheck>(data, "paychecks").sort((a, b) => b.date.localeCompare(a.date));
-    const latest = checks[0];
-    if (!latest) return null;
-    const allocations = rows<PaycheckAllocation>(data, "allocations").filter((item) => item.paycheckId === latest.id);
-    if (!allocations.length) return null;
-    return <ChartContainer title="Latest paycheck allocation" subtitle={`How the ${latest.date} paycheck is planned`} icon="wallet"><HorizontalRankingChart data={allocations.map((item) => ({ id: item.id, label: item.label, value: item.amount }))} formatValue={money} height={Math.max(170, Math.min(allocations.length, 8) * 32 + 30)} /></ChartContainer>;
   }
   return null;
 }

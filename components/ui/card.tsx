@@ -98,6 +98,7 @@ export function MetricCard({
   trend,
   className,
   onClick,
+  action,
 }: {
   label: string;
   value: React.ReactNode;
@@ -107,6 +108,7 @@ export function MetricCard({
   trend?: { direction: "up" | "down" | "flat"; label: string };
   className?: string;
   onClick?: () => void;
+  action?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const toneColor =
@@ -141,7 +143,10 @@ export function MetricCard({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="truncate text-[12px] font-medium uppercase tracking-[0.08em] text-fg-subtle">{t(label)}</p>
-        {icon ? <AnimatedIcon name={icon} size={16} className="text-fg-subtle" trigger="hover" /> : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {action}
+          {icon ? <AnimatedIcon name={icon} size={16} className="text-fg-subtle" trigger="hover" /> : null}
+        </div>
       </div>
       <div>
         <p className="tnum truncate text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]" style={{ color: toneColor }}>

@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ChartEmptyState, RechartsTooltip, useMounted, monthLabel } from "./chart-kit";
+import { ChartEmptyState, ChartLegend, RechartsTooltip, useMounted, monthLabel } from "./chart-kit";
 
 export interface MonthlyPointInput {
   /** "YYYY-MM" or "YYYY". */
@@ -50,7 +50,8 @@ export function MonthlyComparisonChart({
   }));
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div>
+      <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: -8 }} barGap={2}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
@@ -78,7 +79,7 @@ export function MonthlyComparisonChart({
             fill="var(--positive)"
             radius={[3, 3, 0, 0]}
             maxBarSize={18}
-            onClick={(d: any) => onMonthClick?.(d?.month)}
+            onClick={(datum) => onMonthClick?.(datum?.payload?.month)}
             className="cursor-pointer"
           />
           <Bar
@@ -87,7 +88,7 @@ export function MonthlyComparisonChart({
             fill="var(--chart-3)"
             radius={[3, 3, 0, 0]}
             maxBarSize={18}
-            onClick={(d: any) => onMonthClick?.(d?.month)}
+            onClick={(datum) => onMonthClick?.(datum?.payload?.month)}
             className="cursor-pointer"
           >
             {rows.map((r, i) => (
@@ -96,6 +97,11 @@ export function MonthlyComparisonChart({
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
+      <ChartLegend items={[
+        { label: "Income", color: "var(--positive)" },
+        { label: "Expenses", color: "var(--chart-3)" },
+      ]} />
     </div>
   );
 }

@@ -19,8 +19,8 @@ import { usePrefs, useSyncState } from "@/components/providers";
 import { useActiveTools } from "@/lib/use-tools";
 import { TOOL_MAP } from "@/lib/catalog";
 import type { ToolId } from "@/lib/catalog";
-import { formatMoney } from "@/lib/money";
-import { budgetSummary, currentYear, savingsTotals, goalSummary, debtTotals } from "@/lib/calc/money";
+import { formatMoney, round2 } from "@/lib/money";
+import { accountBalance, budgetSummary, currentMonth, currentYear, savingsTotals, goalSummary, debtTotals } from "@/lib/calc/money";
 import { dailyTotals } from "@/lib/calc/life";
 import { projectProgress } from "@/lib/calc/work";
 import { inventorySummary } from "@/lib/calc/business";
@@ -34,8 +34,10 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { AreaTrend } from "@/components/charts/trend";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { ToolIcon } from "@/components/icons/tool-icons";
-import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, BusinessTransaction } from "@/lib/types";
+import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill } from "@/lib/types";
 import { monthlyComparisonData, categorySlices, budgetActualRows, cashFlowTrend } from "@/lib/reporting/budget";
+import { paycheckAllocationBreakdown, monthlyBillOccurrences, nextPaydayDate } from "@/lib/reporting/paycheck";
+import { BudgetVsActualChart } from "@/components/charts/budget-vs-actual-chart";
 
 /* ==========================================================================
    Pure pin-state reducers (unit tested)
@@ -226,6 +228,110 @@ function DebtPayoffWidget({ currency }: { currency: string }) {
   );
 }
 
+function PaycheckNextWidget({ currency }: { currency: string }) {
+  const schedules = useCollection<PaySchedule>("paycheck", "schedules");
+  const checks = useCollection<Paycheck>("paycheck", "paychecks");
+  const now = new Date();
+  const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  const schedulePay = schedules.rows.filter((s) => !s.deleted && (!s.currency || s.currency === currency)).map((s) => ({ date: nextPaydayDate(s.frequency, s.nextPayDate, today), amount: s.expectedAmount, name: s.name })).filter((item): item is { date: string; amount: number; name: string } => Boolean(item.date)).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const recorded = checks.rows.filter((p) => !p.deleted && p.date >= today && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const next = schedulePay && (!recorded || schedulePay.date <= recorded.date) ? schedulePay : recorded ? { date: recorded.date, amount: recorded.expectedAmount, name: "Recorded paycheck" } : null;
+  if (!next) return <p className="py-6 text-center text-[12px] text-fg-subtle">Add a pay schedule with its next payday</p>;
+  return <div className="py-4 text-center"><p className="tnum text-2xl font-semibold">{formatMoney(next.amount, { currency })}</p><p className="mt-1 text-[12px] text-fg-muted">Expected {next.date} · {next.name}</p></div>;
+}
+
+function PaycheckAvailableWidget({ currency }: { currency: string }) {
+  const schedules = useCollection<PaySchedule>("paycheck", "schedules");
+  const checks = useCollection<Paycheck>("paycheck", "paychecks");
+  const accounts = useCollection<MoneyAccount>("budget", "accounts");
+  const transactions = useCollection<MoneyTransaction>("budget", "transactions");
+  const bills = useCollection<RecurringBill>("budget", "bills");
+  const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
+  const now = new Date();
+  const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  const payday = schedules.rows.filter((s) => !s.deleted && (!s.currency || s.currency === currency)).map((s) => nextPaydayDate(s.frequency, s.nextPayDate, today)).filter((date): date is string => Boolean(date)).sort()[0]
+    ?? checks.rows.filter((p) => !p.deleted && p.date >= today && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).map((p) => p.date).sort()[0];
+  const cashAccounts = accounts.rows.filter((account) => (account.kind === "checking" || account.kind === "cash") && account.currency === currency);
+  if (!cashAccounts.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">Add a checking or cash account balance</p>;
+  const balance = cashAccounts.reduce((sum, account) => sum + accountBalance(account.openingBalance, transactions.rows, account.id), 0);
+  const start = new Date(today + "T00:00:00");
+  const end = payday ? new Date(payday + "T00:00:00") : new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  const endDate = end.getFullYear() + "-" + String(end.getMonth() + 1).padStart(2, "0") + "-" + String(end.getDate()).padStart(2, "0");
+  const pendingBills = monthlyBillOccurrences(bills.rows, today, endDate, checks.rows, allocations.rows).filter((bill) => !bill.paid && !transactions.rows.some((tx) => !tx.deleted && tx.status === "posted" && tx.type === "expense" && tx.date === bill.dueDate && tx.description.trim().toLocaleLowerCase() === bill.name.trim().toLocaleLowerCase()));
+  const remaining = round2(balance - pendingBills.reduce((sum, bill) => sum + bill.amount, 0));
+  return <div className="py-4 text-center"><p className={"tnum text-2xl font-semibold " + (remaining < 0 ? "text-[var(--negative)]" : "text-fg")}>{formatMoney(remaining, { currency })}</p><p className="mt-1 text-[12px] text-fg-muted">Checking/cash balance less known bills before payday · estimate</p></div>;
+}
+
+function PaycheckAllocationWidget({ currency }: { currency: string }) {
+  const checks = useCollection<Paycheck>("paycheck", "paychecks");
+  const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
+  const schedules = useCollection<PaySchedule>("paycheck", "schedules");
+  const check = checks.rows.filter((p) => p.date.startsWith(currentMonth()) && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!check) return <p className="py-6 text-center text-[12px] text-fg-subtle">No paycheck recorded this month</p>;
+  const breakdown = paycheckAllocationBreakdown(check, allocations.rows);
+  return <CategoryBreakdownChart data={breakdown.slices} formatValue={fmtFactory(currency)} centerLabel={check.actualAmount == null ? "Expected" : "Received"} centerValue={formatMoney(breakdown.amount, { currency })} height={220} />;
+}
+
+function PaycheckBudgetWidget({ currency }: { currency: string }) {
+  const tx = useCollection<MoneyTransaction>("budget", "transactions");
+  const cats = useCollection<MoneyCategory>("budget", "categories");
+  const budgets = useCollection<MoneyBudget>("budget", "budgets");
+  const summary = budgetSummary({ transactions: tx.rows.filter((row) => !row.currency || row.currency === currency), categories: cats.rows, budgets: budgets.rows, period: currentMonth(), currency });
+  return <BudgetVsActualChart data={budgetActualRows(summary.byCategory)} formatValue={fmtFactory(currency)} />;
+}
+
+function PaycheckMonthlyWidget({ currency }: { currency: string }) {
+  const tx = useCollection<MoneyTransaction>("budget", "transactions");
+  const cats = useCollection<MoneyCategory>("budget", "categories");
+  const summary = budgetSummary({ transactions: tx.rows.filter((row) => !row.currency || row.currency === currency), categories: cats.rows, budgets: [], period: currentYear(), currency });
+  return <MonthlyComparisonChart data={monthlyComparisonData(summary)} formatValue={fmtFactory(currency)} height={220} />;
+}
+
+function PaycheckBillsWidget({ currency }: { currency: string }) {
+  const bills = useCollection<RecurringBill>("budget", "bills");
+  const checks = useCollection<Paycheck>("paycheck", "paychecks");
+  const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
+  const start = currentMonth() + "-01";
+  const endDate = new Date(start + "T00:00:00");
+  endDate.setMonth(endDate.getMonth() + 1);
+  const end = endDate.getFullYear() + "-" + String(endDate.getMonth() + 1).padStart(2, "0") + "-01";
+  const scheduled = monthlyBillOccurrences(bills.rows, start, end, checks.rows, allocations.rows).filter((bill) => !bill.paid);
+  if (!scheduled.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">No monthly bills marked as due</p>;
+  return <div className="flex flex-col gap-2">{scheduled.slice(0, 6).map((bill) => <div key={bill.id} className="flex items-center justify-between gap-2 rounded-lg border border-line px-2.5 py-2 text-[11px]"><span className="truncate">{bill.name} · {bill.dueDate}</span><span className="tnum shrink-0">{formatMoney(bill.amount, { currency })}</span></div>)}</div>;
+}
+
+function PaycheckForecastWidget({ currency }: { currency: string }) {
+  const schedules = useCollection<PaySchedule>("paycheck", "schedules");
+  const checks = useCollection<Paycheck>("paycheck", "paychecks");
+  const accounts = useCollection<MoneyAccount>("budget", "accounts");
+  const transactions = useCollection<MoneyTransaction>("budget", "transactions");
+  const bills = useCollection<RecurringBill>("budget", "bills");
+  const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
+  const now = new Date();
+  const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  const scheduleDate = schedules.rows.filter((s) => !s.currency || s.currency === currency).map((s) => nextPaydayDate(s.frequency, s.nextPayDate, today)).filter((date): date is string => Boolean(date)).sort()[0];
+  const recordedDate = checks.rows.filter((p) => p.date >= today).map((p) => p.date).sort()[0];
+  const payday = scheduleDate ?? recordedDate;
+  const cashAccounts = accounts.rows.filter((account) => (account.kind === "checking" || account.kind === "cash") && account.currency === currency);
+  if (!payday || !cashAccounts.length || payday <= today) return <p className="py-6 text-center text-[12px] text-fg-subtle">Add a checking/cash balance and an upcoming payday to forecast</p>;
+  const days = Math.ceil((new Date(payday + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / 86400000);
+  if (days > 90) return <p className="py-6 text-center text-[12px] text-fg-subtle">Next payday is more than 90 days away</p>;
+  const opening = cashAccounts.reduce((sum, account) => sum + accountBalance(account.openingBalance, transactions.rows, account.id), 0);
+  const billsToPay = monthlyBillOccurrences(bills.rows, today, payday, checks.rows, allocations.rows).filter((bill) => !bill.paid);
+  const deductions = new Map<string, number>();
+  for (const bill of billsToPay) deductions.set(bill.dueDate, (deductions.get(bill.dueDate) ?? 0) + bill.amount);
+  let balance = opening;
+  const points = [{ label: "Today", balance }];
+  for (let offset = 1; offset < days; offset++) {
+    const day = new Date(today + "T00:00:00");
+    day.setDate(day.getDate() + offset);
+    const date = day.getFullYear() + "-" + String(day.getMonth() + 1).padStart(2, "0") + "-" + String(day.getDate()).padStart(2, "0");
+    balance -= deductions.get(date) ?? 0;
+    points.push({ label: date.slice(5), balance });
+  }
+  return <><p className="mb-2 text-[10px] text-fg-subtle">Account balance less scheduled monthly bills · excludes unlinked planned expenses</p><TrendChart data={points} xKey="label" series={[{ key: "balance", name: "Estimated cash" }]} formatValue={fmtFactory(currency)} height={190} type="line" /></>;
+}
+
 export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "budget.monthly", tool: "budget", title: "Monthly income vs expenses", description: "Annual Budget · all 12 months", Component: BudgetMonthlyWidget },
   { id: "budget.categories", tool: "budget", title: "Spending by category", description: "Annual Budget · expense breakdown", Component: BudgetCategoriesWidget },
@@ -235,6 +341,13 @@ export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "inventory.lowstock", tool: "inventory", title: "Low-stock products", description: "Inventory · items needing reorder", Component: InventoryLowStockWidget },
   { id: "bookkeeping.revenue", tool: "bookkeeping", title: "Revenue trend", description: "Bookkeeping · monthly revenue", Component: BookkeepingRevenueWidget },
   { id: "debt.payoff", tool: "debt", title: "Debt balances", description: "Debt · balance by account", Component: DebtPayoffWidget },
+  { id: "paycheck.next-paycheck", tool: "paycheck", title: "Next Paycheck", description: "Paycheck Planner · next expected payday and amount", Component: PaycheckNextWidget },
+  { id: "paycheck.available-spend", tool: "paycheck", title: "Available to Spend", description: "Paycheck Planner · checking/cash less known bills", Component: PaycheckAvailableWidget },
+  { id: "paycheck.allocation", tool: "paycheck", title: "Paycheck allocation", description: "Paycheck Planner · recorded allocation breakdown", Component: PaycheckAllocationWidget },
+  { id: "paycheck.budget-actual", tool: "paycheck", title: "Budget vs actual", description: "Paycheck Planner · monthly category budget comparison", Component: PaycheckBudgetWidget },
+  { id: "paycheck.payday-forecast", tool: "paycheck", title: "Money left until payday", description: "Paycheck Planner · estimated cash and known monthly bills", Component: PaycheckForecastWidget },
+  { id: "paycheck.bills", tool: "paycheck", title: "Bills still due", description: "Paycheck Planner · monthly bill templates not marked paid", Component: PaycheckBillsWidget },
+  { id: "paycheck.monthly-trend", tool: "paycheck", title: "Monthly income vs expenses", description: "Paycheck Planner · posted income and expenses", Component: PaycheckMonthlyWidget },
 ];
 
 export function getWidget(id: string): ChartWidgetDef | undefined {
