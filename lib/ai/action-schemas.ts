@@ -121,7 +121,7 @@ export const ACTION_SCHEMAS = {
   /* -------------------------------- Work -------------------------------- */
   "projects.create_task": z.object({
     title: label,
-    project: z.string().trim().min(1).max(120),
+    project: z.string().trim().min(1).max(120).optional(),
     dueDate: when,
     priority: z.enum(["low", "medium", "high"]).optional(),
   }),

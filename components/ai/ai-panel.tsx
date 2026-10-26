@@ -16,19 +16,17 @@ import { Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { AIActionPreview } from "./ai-action-preview";
-import { AIModelInstaller } from "./ai-model-installer";
 import { QuickAddDialog } from "./quick-add-dialog";
 import { useGridhubAI } from "./ai-provider";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 export function GridhubAIPanel() {
-  const { ai, model, enabled } = useGridhubAI();
+  const { ai, enabled } = useGridhubAI();
   const { t } = useI18n();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   const [quickAddOpen, setQuickAddOpen] = React.useState(false);
-  const installed = model.status === "ready";
 
   // Focus the composer when the panel opens in an idle state.
   React.useEffect(() => {
@@ -91,12 +89,10 @@ export function GridhubAIPanel() {
                 Gridhub AI
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="text-[10.5px] leading-tight text-fg-subtle">
-                {installed ? "On-device · works offline" : "On-device · model not installed"}
+                Text commands · works offline
               </DialogPrimitive.Description>
             </div>
-            <Badge tone={installed ? "positive" : "neutral"}>
-              {installed ? "Local" : "Quick commands"}
-            </Badge>
+            <Badge tone="positive">Local commands</Badge>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -109,16 +105,11 @@ export function GridhubAIPanel() {
 
           {/* Scrollable body */}
           <div ref={listRef} className="thin-scroll flex-1 space-y-3 overflow-y-auto px-4 py-3">
-            {/* Installer first when the model is missing: it explains why some commands fail. */}
-            {!installed && model.status !== "checking" ? (
-              <AIModelInstaller model={model} compact />
-            ) : null}
-
             {ai.phase === "idle" ? (
               <div className="space-y-3">
                 <p className="text-[12.5px] leading-relaxed text-fg-muted">
-                  Ask in plain language, or use Quick add to enter a record directly. I can look up
-                  information and prepare changes for your review.
+                  Type a command in plain language. I can look up supported summaries and prepare
+                  changes for your review. Use Quick add for records outside the command list.
                 </p>
                 {ai.examples.length ? (
                   <div className="space-y-1.5">
@@ -291,7 +282,7 @@ export function GridhubAIPanel() {
                 value={ai.transcript}
                 onChange={(event) => ai.setTranscript(event.target.value)}
                 placeholder={
-                  installed ? "Add $40 for fuel today…" : "Try: show my unpaid invoices"
+                  "Try: add salary 1000"
                 }
                 aria-label="Ask Gridhub AI"
                 className="h-9 flex-1"

@@ -757,7 +757,15 @@ export async function prepareAction(
         recs<Project>("projects", "projects"),
         recs<Task>("projects", "tasks"),
       ]);
-      const project = resolveOrClarify(projects, p.project, (x) => x.name, "project");
+      const project = p.project
+        ? resolveOrClarify(projects, p.project, (x) => x.name, "project")
+        : projects.length === 1
+          ? projects[0]
+          : {
+              kind: "clarification" as const,
+              question: "Which project should this task belong to?",
+              options: projects.slice(0, 8).map((item) => item.name),
+            };
       if (isClarification(project)) return project;
       const dueDate = p.dueDate ? dateOrClarify(p.dueDate, ctx.today) : undefined;
       if (dueDate && isClarification(dueDate)) return dueDate;

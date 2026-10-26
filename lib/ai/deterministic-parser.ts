@@ -1,8 +1,8 @@
 /**
  * Gridhub AI — deterministic command router.
  *
- * Navigation and a handful of exact read-only questions never need the model. Handling them here
- * cuts latency, saves battery, and keeps working even when no model is installed.
+ * Navigation, read queries, and common create/update commands are routed without the model.
+ * Writes are still validated and shown in the confirmation UI before they are committed.
  */
 
 import { TOOLS, type ToolId } from "@/lib/catalog";
@@ -38,6 +38,24 @@ const TOOL_TARGETS: NavTarget[] = TOOLS.map((tool) => ({
 }));
 
 const TARGETS = [...TOOL_TARGETS, ...EXTRA_TARGETS];
+function amountValue(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const value = Number(raw.replaceAll(",", ""));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function cleanPhrase(value: string | undefined): string | undefined {
+  const cleaned = value?.trim().replace(/^[\s:,-]+|[\s.!?,;:]+$/g, "");
+  return cleaned || undefined;
+}
+
+function action(actionId: ActionId, parameters: Record<string, unknown>): DeterministicMatch {
+  return { intent: "action", actionId, parameters };
+}
+
+function dateFromText(text: string): string | undefined {
+  return text.match(/\b(today|yesterday|tomorrow)\b/i)?.[1].toLowerCase();
+}
 
 /** Exact, unambiguous read-only questions. Anything fuzzier goes to the model. */
 const QUERY_SHORTCUTS: Array<{ pattern: RegExp; actionId: ActionId }> = [
@@ -82,6 +100,76 @@ export function deterministicParse(input: string): DeterministicMatch | null {
   if (!text) return null;
   const lower = text.toLowerCase();
 
+  // Paycheck, debt, savings, and balance-sheet entries.
+  const paycheck = text.match(/^(?:(?:i\s+)?got paid|(?:record|add) (?:a )?paycheck|received (?:a )?paycheck)(?:\s+(?:of|for))?\s+(?:\$\s*)?([\d,]+(?:\.\d{1,2})?)(?:\s+dollars?)?(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (paycheck && amountValue(paycheck[1])) return action("paycheck.record_paycheck", { amount: amountValue(paycheck[1]), date: paycheck[2]?.toLowerCase() });
+
+  const debtPayment = text.match(/^(?:(?:i )?(?:paid|pay|record payment of) )(?:\$\s*)?([\d,]+(?:\.\d{1,2})?) (?:towards?|to|on) (?:my )?(.+?)(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (debtPayment && amountValue(debtPayment[1]) && cleanPhrase(debtPayment[2])) return action("debt.record_payment", { amount: amountValue(debtPayment[1]), debt: cleanPhrase(debtPayment[2]), date: debtPayment[3]?.toLowerCase() });
+
+  const savings = text.match(/^(?:(?:please )?(?:add|save|contribute|put aside) )(?:\$\s*)?([\d,]+(?:\.\d{1,2})?) (?:to|for) (?:my )?(.+?)(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (savings && amountValue(savings[1]) && cleanPhrase(savings[2])) return action("savings.add_contribution", { amount: amountValue(savings[1]), goal: cleanPhrase(savings[2]), date: savings[3]?.toLowerCase() });
+
+  const asset = text.match(/^(?:(?:please )?(?:add|record|track) )?(?:my )?(.+?) as an? (asset|liability) (?:worth|valued at|of) (?:\$\s*)?([\d,]+(?:\.\d{1,2})?)[.!?]?$/i);
+  if (asset && cleanPhrase(asset[1]) && amountValue(asset[3])) return action("net-worth.add_asset", { name: cleanPhrase(asset[1]), value: amountValue(asset[3]), kind: asset[2].toLowerCase() });
+
+  // Business ledger entries. Explicit business wording or the action-example vocabulary is
+  // required so a personal budget transaction is never silently routed to bookkeeping.
+  const businessEntry = text.match(/^(?:(?:please )?(?:record|add|log) )?(?:(business|bookkeeping) )?(income|revenue|expense|cost) (?:of )?(?:\$\s*)?([\d,]+(?:\.\d{1,2})?) (?:for |from |on )?(.+?)(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (businessEntry && amountValue(businessEntry[3]) && cleanPhrase(businessEntry[4]) && (businessEntry[1] || /\b(client|invoice|office|printer|supplies|business|revenue|income|expense|cost)\b/i.test(text))) {
+    return action(businessEntry[2] === "income" || businessEntry[2] === "revenue" ? "bookkeeping.record_income" : "bookkeeping.record_expense", { amount: amountValue(businessEntry[3]), description: cleanPhrase(businessEntry[4]), date: businessEntry[5]?.toLowerCase() });
+  }
+  const businessAmount = text.match(/^(?:please )?(?:record|add|log) (?:\$\s*)?([\d,]+(?:\.\d{1,2})?) (?:for|from|on) (.+?)(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (businessAmount && /\b(business|bookkeeping|client payment|printer ink|office|supplies|revenue)\b/i.test(text) && amountValue(businessAmount[1]) && cleanPhrase(businessAmount[2])) {
+    return action(/\b(client payment|revenue|income)\b/i.test(text) ? "bookkeeping.record_income" : "bookkeeping.record_expense", { amount: amountValue(businessAmount[1]), description: cleanPhrase(businessAmount[2]), date: businessAmount[3]?.toLowerCase() });
+  }
+  const clientPayment = text.match(/^(?:please )?(?:record|add|log) (?:a )?(?:client )?payment (?:of )?(?:\$\s*)?([\d,]+(?:\.\d{1,2})?)(?: from (.+?))?(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (clientPayment && amountValue(clientPayment[1])) return action("bookkeeping.record_income", { amount: amountValue(clientPayment[1]), description: "Client payment", contact: cleanPhrase(clientPayment[2]), date: clientPayment[3]?.toLowerCase() });
+  const recordClientPayment = text.match(/^(?:please )?record (?:\$\s*)?([\d,]+(?:\.\d{1,2})?) (.+?payment)(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (recordClientPayment && /\bclient\b/i.test(recordClientPayment[2]) && amountValue(recordClientPayment[1])) return action("bookkeeping.record_income", { amount: amountValue(recordClientPayment[1]), description: cleanPhrase(recordClientPayment[2]), date: recordClientPayment[3]?.toLowerCase() });
+
+  // Operations, life, and work records.
+  const stock = text.match(/^(?:(?:please )?(?:add|receive|restock) )?(\d+(?:\.\d+)?) (?:units? of |x )(.+?)[.!?]?$/i);
+  if (stock && Number(stock[1]) > 0 && cleanPhrase(stock[2])) return action("inventory.receive", { quantity: Number(stock[1]), product: cleanPhrase(stock[2]) });
+
+  const sale = text.match(/^(?:please )?(?:sold|sell|record sale of) (\d+(?:\.\d+)?) (.+?) at (?:\$\s*)?([\d,]+(?:\.\d{1,2})?) each(?: on (.+))?[.!?]?$/i);
+  if (sale && Number(sale[1]) > 0 && cleanPhrase(sale[2]) && amountValue(sale[3])) return action("sales.create_sale", { quantity: Number(sale[1]), description: cleanPhrase(sale[2]), product: cleanPhrase(sale[2]), unitPrice: amountValue(sale[3]), date: cleanPhrase(sale[4]) });
+
+  const invoice = text.match(/^(?:(?:please )?(?:prepare|create|draft)) (?:an? )?invoice for (.+?) for (?:\$\s*)?([\d,]+(?:\.\d{1,2})?)(?: due (.+))?[.!?]?$/i);
+  if (invoice && cleanPhrase(invoice[1]) && amountValue(invoice[2])) return action("invoicing.prepare_invoice", { customer: cleanPhrase(invoice[1]), amount: amountValue(invoice[2]), dueDate: cleanPhrase(invoice[3]) });
+
+  const guest = text.match(/^(?:(?:please )?(?:add|invite)) (.+?) to (?:the )?(?:wedding )?guest list[.!?]?$/i);
+  if (guest && cleanPhrase(guest[1])) {
+    const household = cleanPhrase(guest[1])!;
+    const partner = household.match(/^(.+?) and (?:their|her|his) partner$/i);
+    return action("wedding.add_guest", { name: partner?.[1] ?? household, household, seats: partner ? 2 : 1 });
+  }
+
+  const propertyExpense = text.match(/^(?:(?:please )?(?:add|record|log)) (?:\$\s*)?([\d,]+(?:\.\d{1,2})?) (.+?) (?:cost|expense|to) (?:the )?(.+?)(?: property)?(?:\s+(today|yesterday))?[.!?]?$/i);
+  if (propertyExpense && amountValue(propertyExpense[1]) && cleanPhrase(propertyExpense[2]) && cleanPhrase(propertyExpense[3])) return action("property.add_expense", { amount: amountValue(propertyExpense[1]), category: cleanPhrase(propertyExpense[2]), property: cleanPhrase(propertyExpense[3]), date: propertyExpense[4]?.toLowerCase() });
+
+  const food = text.match(/^(?:(?:i )?(?:had|ate|log|logged|add)) (.+?)(?: for (breakfast|lunch|dinner|snack))?(?: (today|yesterday))?[.!?]?$/i);
+  if (food && /\b(had|ate|food|breakfast|lunch|dinner|snack|log|logged)\b/i.test(text)) {
+    const name = cleanPhrase(food[1].replace(/^(?:two|three|four|five) /i, ""));
+    const meal = food[2]?.toLowerCase() ?? (/\bbreakfast\b/i.test(text) ? "breakfast" : undefined);
+    if (name) return action("nutrition.log_food", { name, meal, date: food[3]?.toLowerCase() });
+  }
+
+  const task = text.match(/^(?:(?:please )?(?:add|create)) (?:a )?task (?:to|for) (.+?)(?: in (?:the )?(.+?))?[.!?]?$/i);
+  if (task && cleanPhrase(task[1])) return action("projects.create_task", { title: cleanPhrase(task[1]), project: cleanPhrase(task[2]) });
+
+  const completedTask = text.match(/^(?:please )?(?:mark|complete|finish) (?:the )?(.+?) task as (?:complete|done)[.!?]?$/i);
+  if (completedTask && cleanPhrase(completedTask[1])) return action("projects.complete_task", { task: cleanPhrase(completedTask[1]) });
+
+  const habit = text.match(/^(?:please )?(?:mark|complete|log) (?:my )?(.+?) as (?:done|complete)(?: (today|yesterday))?[.!?]?$/i);
+  if (habit && cleanPhrase(habit[1])) return action("habits.complete_habit", { habit: cleanPhrase(habit[1]), date: habit[2]?.toLowerCase() });
+
+  const contentSchedule = text.match(/^(?:please )?schedule (?:a |an )?(?:social media )?(?:post|story|reel|video|article|newsletter)(?: about (.+?))? for (.+?)[.!?]?$/i);
+  if (contentSchedule) return action("content.schedule_post", { title: cleanPhrase(contentSchedule[1]) ?? "Social media post", platform: /social media/i.test(text) ? "social media" : "instagram", scheduledDate: cleanPhrase(contentSchedule[2]) });
+
+  const contentDraft = text.match(/^(?:please )?(?:draft|write|create) (?:a |an )?(?:post|story|reel|video|article|newsletter)(?: about| on| for)? (.+?)[.!?]?$/i);
+  if (contentDraft && cleanPhrase(contentDraft[1])) return action("content.create_draft", { title: cleanPhrase(contentDraft[1]), contentType: "post" });
+
   // Plain income entries should not need on-device model inference. Support the natural forms
   // shown in the AI examples, including "add salary 1000" and "received $150 freelance".
   const incomeNoun = "(?:salary|income|wages?|pay|freelance(?:\\s+income)?)";
@@ -124,6 +212,18 @@ export function deterministicParse(input: string): DeterministicMatch | null {
         parameters: { amount, description, date },
       };
     }
+  }
+
+  if (/\b(how much did i spend|spending summary|spend summary)\b/i.test(text)) {
+    const period = text.match(/\b(today|yesterday|this week|last week|this month|last month|this year|last year)\b/i)?.[1];
+    return { intent: "query", actionId: "budget.query_spend", parameters: { period } };
+  }
+  if (/\b(budget remaining|how much (?:budget|money) (?:do i have )?left|remaining budget)\b/i.test(text)) {
+    const month = text.match(/\b(this month|last month|this year|last year)\b/i)?.[1];
+    return { intent: "query", actionId: "budget.query_remaining", parameters: { month } };
+  }
+  if (/\bhow many calories (?:have i had|did i have)|nutrition summary\b/i.test(text)) {
+    return { intent: "query", actionId: "nutrition.query_summary", parameters: { date: dateFromText(text) } };
   }
 
   for (const shortcut of QUERY_SHORTCUTS) {

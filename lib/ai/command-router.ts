@@ -1,9 +1,9 @@
 /**
  * Gridhub AI — command routing.
  *
- * Deterministic commands are answered without the model. Everything else goes to the local model,
- * whose output is validated before it is returned. Both paths converge on the same proposal shape,
- * so authorization and execution are identical.
+ * Deterministic commands are answered without the model. An optional model fallback remains for
+ * callers that explicitly allow it; the signed-in text-command UI currently uses deterministic-only
+ * routing. Both paths converge on the same proposal shape and authorization checks.
  */
 
 import { AI_LOCALE, AI_MODEL } from "./model-manifest";

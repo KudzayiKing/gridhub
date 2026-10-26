@@ -80,19 +80,14 @@ export interface GridhubAIController {
 
   examples: string[];
   entitlement: EntitlementState;
-  /** True when the local model is not installed, so only deterministic commands work. */
+  /** Text commands use the deterministic action grammar and do not invoke model inference. */
   deterministicOnly: boolean;
   history: AIHistoryEntry[];
   clearHistory: () => void;
   refreshHistory: () => void;
 }
 
-export interface UseGridhubAIOptions {
-  /** Whether the local model is cached and ready. */
-  modelReady: boolean;
-}
-
-export function useGridhubAIController({ modelReady }: UseGridhubAIOptions): GridhubAIController {
+export function useGridhubAIController(): GridhubAIController {
   const router = useRouter();
   const { prefs } = usePrefs();
   const { active } = useActiveTools();
@@ -147,7 +142,9 @@ export function useGridhubAIController({ modelReady }: UseGridhubAIOptions): Gri
     };
   }, [server, active]);
 
-  const deterministicOnly = !modelReady;
+  // Text commands use the deterministic action grammar. This keeps routine entries fast and
+  // avoids loading LiteRT for command routing; unsupported phrasing gets a useful prompt instead.
+  const deterministicOnly = true;
 
   /**
    * Examples are generated from the actions this account can actually use. Showing an example that
