@@ -34,12 +34,13 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { AreaTrend } from "@/components/charts/trend";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { ToolIcon } from "@/components/icons/tool-icons";
-import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, DebtPayment, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill } from "@/lib/types";
+import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, DebtPayment, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill, NetWorthItem, Holding, ValuationSnapshot } from "@/lib/types";
 import { monthlyComparisonData, categorySlices, budgetActualRows, cashFlowTrend } from "@/lib/reporting/budget";
 import { paycheckAllocationBreakdown, monthlyBillOccurrences, nextPaydayDate } from "@/lib/reporting/paycheck";
 import { BudgetVsActualChart } from "@/components/charts/budget-vs-actual-chart";
 import { debtDueOccurrences, estimatedDebtProgress, localISODate } from "@/lib/reporting/debt-tracker";
 import { savingsBalanceTrend, savingsGoalRows } from "@/lib/reporting/savings-dashboard";
+import { netWorthSummary } from "@/lib/calc/money";
 
 function dateAfterDays(date: string, days: number) {
   const next = new Date(date + "T00:00:00");
@@ -432,9 +433,44 @@ function PaycheckForecastWidget({ currency }: { currency: string }) {
   return <><p className="mb-2 text-[10px] text-fg-subtle">Account balance less scheduled monthly bills · excludes unlinked planned expenses</p><TrendChart data={points} xKey="label" series={[{ key: "balance", name: "Estimated cash" }]} formatValue={fmtFactory(currency)} height={190} type="line" /></>;
 }
 
+function NetWorthAllocationWidget({ currency }: { currency: string }) {
+  const itemStore = useCollection<NetWorthItem>("net-worth", "items");
+  const holdingStore = useCollection<Holding>("net-worth", "holdings");
+  const allItems = itemStore.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency);
+  const items = allItems.filter((row) => row.kind === "asset" && row.value > 0);
+  const assetIds = new Set(allItems.filter((row) => row.kind === "asset").map((row) => row.id));
+  const holdings = holdingStore.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency);
+  const totals = new Map<string, number>();
+  items.forEach((row) => {
+    const label = row.category?.trim() || "Uncategorized";
+    totals.set(label, (totals.get(label) ?? 0) + row.value);
+  });
+  holdings.filter((row) => !row.parentAssetId || !assetIds.has(row.parentAssetId)).forEach((row) => {
+    const label = "Investment · " + (row.assetClass?.trim() || "Unclassified");
+    totals.set(label, (totals.get(label) ?? 0) + row.quantity * row.unitPrice);
+  });
+  const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
+  const total = data.reduce((sum, row) => sum + row.value, 0);
+  return <CategoryBreakdownChart data={data} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} centerLabel="Total assets" centerValue={formatMoney(total, { currency })} height={210} />;
+}
+
+function NetWorthGrowthWidget({ currency }: { currency: string }) {
+  const itemStore = useCollection<NetWorthItem>("net-worth", "items");
+  const holdingStore = useCollection<Holding>("net-worth", "holdings");
+  const snapshotStore = useCollection<ValuationSnapshot>("net-worth", "snapshots");
+  const snapshots = snapshotStore.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency).sort((a, b) => a.date.localeCompare(b.date));
+  const summary = netWorthSummary(itemStore.rows, holdingStore.rows, snapshots, currency);
+  const values = summary.history.map((row) => ({ date: row.date, netWorth: row.netWorth }));
+  return values.length > 1
+    ? <TrendChart data={values} xKey="date" series={[{ key: "netWorth", name: "Net worth" }]} formatValue={fmtFactory(currency)} type="line" height={210} />
+    : <p className="py-6 text-center text-[12px] text-fg-subtle">Record another dated valuation to see net-worth growth</p>;
+}
+
 export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "budget.monthly", tool: "budget", title: "Monthly income vs expenses", description: "Annual Budget · all 12 months", Component: BudgetMonthlyWidget },
   { id: "budget.categories", tool: "budget", title: "Spending by category", description: "Annual Budget · expense breakdown", Component: BudgetCategoriesWidget },
+  { id: "net-worth.assets", tool: "net-worth", title: "Asset Allocation", description: "Net Worth · current values grouped by category", Component: NetWorthAllocationWidget },
+  { id: "net-worth.growth", tool: "net-worth", title: "Net Worth Growth", description: "Net Worth · recorded snapshot history", Component: NetWorthGrowthWidget },
   { id: "savings.goals", tool: "savings", title: "Savings goal progress", description: "Savings · contributions vs targets", Component: SavingsGoalsWidget },
   { id: "savings.balance-trend", tool: "savings", title: "Savings Balance Trend", description: "Savings · last 12 months of dated activity", Component: SavingsBalanceWidget },
   { id: "savings.emergency-coverage", tool: "savings", title: "Emergency Fund Coverage", description: "Savings · verified essential expense baseline", Component: SavingsEmergencyWidget },

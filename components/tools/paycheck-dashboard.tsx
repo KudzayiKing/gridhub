@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Select } from "@/components/ui/field";
 import { CartesianGrid, LineChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CompactMetric, Badge } from "@/components/ui/card";
 import { ChartContainer, ChartEmptyState, ChartPeriodSelector, MonthlyComparisonChart, BudgetVsActualChart, CategoryBreakdownChart, ProgressChart, StackedBarChart } from "@/components/charts";
@@ -167,14 +168,14 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="sr-only" htmlFor="paycheck-month">Select month</label>
-          <select id="paycheck-month" value={month} onChange={(e) => period.setValue(e.target.value)} className="h-9 rounded-full border border-line bg-[var(--surface)] px-3 text-[12px] text-fg">
+          <Select id="paycheck-month" value={month} onChange={(e) => period.setValue(e.target.value)} className="h-9 w-auto">
             {monthOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
+          </Select>
           {mode === "paycheck" ? <>
             <label className="sr-only" htmlFor="paycheck-select">Select paycheck</label>
-            <select id="paycheck-select" value={paycheck?.id ?? ""} onChange={(e) => setSelectedPaycheckId(e.target.value)} className="h-9 max-w-[16rem] rounded-full border border-line bg-[var(--surface)] px-3 text-[12px] text-fg">
+            <Select id="paycheck-select" value={paycheck?.id ?? ""} onChange={(e) => setSelectedPaycheckId(e.target.value)} className="h-9 w-auto max-w-[16rem]">
               {!monthPaychecks.length ? <option value="">No paychecks for this month</option> : monthPaychecks.map((check) => <option key={check.id} value={check.id}>{dateLabel(check.date)} · {check.actualAmount == null ? "Expected" : "Received"} · {fmt(check.actualAmount ?? check.expectedAmount)}</option>)}
-            </select>
+            </Select>
           </> : null}
         </div>
       </div>
@@ -210,7 +211,7 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
         <ChartContainer title="Budget vs actual" subtitle={`${month} · tap a category to filter spending`} icon="target" action={<PinChartButton chartId="paycheck.budget-actual" title="Budget vs actual" tool="paycheck" />}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <label className="sr-only" htmlFor="paycheck-category">Filter by category</label>
-            <select id="paycheck-category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="h-8 max-w-full rounded-lg border border-line bg-[var(--surface)] px-2 text-[11px] text-fg"><option value="">All expense categories</option>{categories.rows.filter((c) => c.kind === "expense").map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+            <Select id="paycheck-category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="h-8 w-auto max-w-full"><option value="">All expense categories</option>{categories.rows.filter((c) => c.kind === "expense").map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select>
           </div>
           <BudgetVsActualChart data={categoryRows.map((row) => ({ category: row.category, budget: row.budget, actual: row.actual }))} formatValue={fmt} height={Math.max(170, categoryRows.length * 34 + 25)} onCategoryClick={(name) => setSelectedCategory(categories.rows.find((c) => c.name === name)?.id ?? "")} />
           {categoryRows.some((row) => row.variance < 0) ? <p className="mt-2 text-[11px] text-[var(--negative)]">Overspent categories are highlighted. A category without a budget has no percentage-used value.</p> : null}

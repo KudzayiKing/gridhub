@@ -616,20 +616,27 @@ export function netWorthSummary(
   items: NetWorthItem[],
   holdings: Holding[],
   snapshots: ValuationSnapshot[],
+  currency = "USD",
 ): NetWorthSummary {
-  const live = items.filter((i) => !i.deleted);
+  // Values in different currencies are never added together without an explicit FX rate.
+  const live = items.filter((i) => !i.deleted && (i.currency || "USD") === currency);
   const assets = round2(sumBy(live.filter((i) => i.kind === "asset"), (i) => i.value));
   const liabilities = round2(sumBy(live.filter((i) => i.kind === "liability"), (i) => i.value));
 
-  const liveHoldings = holdings.filter((h) => !h.deleted);
-  const holdingsValue = round2(sumBy(liveHoldings, (h) => D(h.quantity).times(h.unitPrice)));
-  const holdingsCost = round2(sumBy(liveHoldings, (h) => h.costBasis));
+  const liveHoldings = holdings.filter((h) => !h.deleted && (h.currency || "USD") === currency);
+  const holdingsValue = round2(sumBy(liveHoldings, (h) => round2(Number(h.quantity) * Number(h.unitPrice))));
+  const assetIds = new Set(live.filter((item) => item.kind === "asset").map((item) => item.id));
+  const holdingsCountedAsAssets = liveHoldings.filter((holding) => !holding.parentAssetId || !assetIds.has(holding.parentAssetId));
+  const nonDuplicatedHoldingValue = round2(sumBy(holdingsCountedAsAssets, (h) => round2(Number(h.quantity) * Number(h.unitPrice))));
+  const holdingsWithBasis = liveHoldings.filter((h) => Number(h.costBasis) > 0);
+  const holdingsCost = round2(sumBy(holdingsWithBasis, (h) => h.costBasis));
+  const unrealizedGain = round2(sumBy(holdingsWithBasis, (h) => D(h.quantity).times(h.unitPrice).minus(h.costBasis)));
 
   const currencies = new Set<string>([...live.map((i) => i.currency || "USD"), ...liveHoldings.map((h) => h.currency || "USD")]);
   const byCurrency = [...currencies].map((currency) => {
     const a = round2(
       D(sumBy(live.filter((i) => i.kind === "asset" && (i.currency || "USD") === currency), (i) => i.value)).plus(
-        sumBy(liveHoldings.filter((h) => (h.currency || "USD") === currency), (h) => D(h.quantity).times(h.unitPrice)),
+        sumBy(holdingsCountedAsAssets.filter((h) => (h.currency || "USD") === currency), (h) => round2(Number(h.quantity) * Number(h.unitPrice))),
       ),
     );
     const l = round2(sumBy(live.filter((i) => i.kind === "liability" && (i.currency || "USD") === currency), (i) => i.value));
@@ -637,24 +644,25 @@ export function netWorthSummary(
   });
 
   const sorted = snapshots
-    .filter((s) => !s.deleted)
+    .filter((s) => !s.deleted && (s.currency || "USD") === currency)
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date));
-  const current = round2(D(assets).plus(holdingsValue).minus(liabilities));
+  const current = round2(D(assets).plus(nonDuplicatedHoldingValue).minus(liabilities));
   const previous = sorted.length >= 1 ? round2(D(sorted[sorted.length - 1].totalAssets).minus(sorted[sorted.length - 1].totalLiabilities)) : null;
   const change = previous === null ? null : round2(D(current).minus(previous));
 
   return {
-    assets: round2(D(assets).plus(holdingsValue)),
+    assets: round2(D(assets).plus(nonDuplicatedHoldingValue)),
     liabilities,
     netWorth: current,
     byCurrency,
     holdingsValue,
     holdingsCost,
-    unrealizedGain: round2(D(holdingsValue).minus(holdingsCost)),
-    unrealizedGainPct: pct(D(holdingsValue).minus(holdingsCost), holdingsCost),
+    unrealizedGain,
+    unrealizedGainPct: pct(unrealizedGain, holdingsCost),
     change,
-    changePct: change === null || previous === null || previous === 0 ? null : round2(D(change).div(Math.abs(previous)).times(100)),
+    // Percentage growth is not meaningful from zero/negative starting wealth or across a sign change.
+    changePct: change === null || previous === null || previous <= 0 || current < 0 ? null : round2(D(change).div(previous).times(100)),
     history: [
       ...sorted.map((s) => ({ date: s.date, netWorth: round2(D(s.totalAssets).minus(s.totalLiabilities)) })),
       { date: new Date().toISOString().slice(0, 10), netWorth: current },

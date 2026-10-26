@@ -163,6 +163,8 @@ export interface NetWorthItem extends BaseRecord {
   value: number;
   currency: string;
   valuationDate: string;
+  notes?: string;
+  linkedDebtId?: string;
 }
 
 export interface Holding extends BaseRecord {
@@ -174,6 +176,28 @@ export interface Holding extends BaseRecord {
   currency: string;
   valuationDate: string;
   priceSource: "manual" | "import";
+  assetClass?: string;
+  accountName?: string;
+  /** Parent asset record already represents this brokerage account's full balance. */
+  parentAssetId?: string;
+  notes?: string;
+}
+
+export type InvestmentTransactionKind = "contribution" | "withdrawal" | "dividend" | "interest" | "fee";
+
+/** Dated cash movement used for money-weighted investment return calculations. */
+export interface InvestmentTransaction extends BaseRecord {
+  date: string;
+  kind: InvestmentTransactionKind;
+  /** Positive amount; direction is determined by kind. */
+  amount: number;
+  currency: string;
+  holdingId?: string;
+  /** Reinvested distributions remain in portfolio value and are not an investor cash flow. */
+  reinvested?: boolean;
+  /** If true, the fee is already reflected in portfolio valuations. */
+  paidFromPortfolio?: boolean;
+  notes?: string;
 }
 
 export interface ValuationSnapshot extends BaseRecord {
@@ -182,6 +206,14 @@ export interface ValuationSnapshot extends BaseRecord {
   totalLiabilities: number;
   currency: string;
   note?: string;
+  investmentValue?: number;
+  assetsByCategory?: Record<string, number>;
+  liabilitiesByCategory?: Record<string, number>;
+}
+
+export interface NetWorthAllocationTarget extends BaseRecord {
+  assetClass: string;
+  targetPercent: number;
 }
 
 /* ------------------------------ BUSINESS -------------------------------- */

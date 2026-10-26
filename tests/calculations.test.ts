@@ -290,6 +290,37 @@ describe("net worth", () => {
     const s = netWorthSummary(items, holdings, [{ ...base, id: "s0", date: "2025-11-01", totalAssets: 0, totalLiabilities: 0, currency: "USD" }]);
     expect(s.changePct).toBeNull();
   });
+
+  it("does not combine currencies without a verified exchange rate", () => {
+    const mixedItems = [
+      ...items,
+      { ...base, id: "gbp-asset", name: "GBP cash", kind: "asset" as const, category: "Cash", value: 900, currency: "GBP", valuationDate: "2026-01-01" },
+    ];
+    expect(netWorthSummary(mixedItems, holdings, snapshots, "USD").assets).toBe(11000);
+    expect(netWorthSummary(mixedItems, holdings, snapshots, "GBP").assets).toBe(900);
+  });
+
+  it("does not treat a holding without cost basis as an investment gain", () => {
+    const noBasis: Holding = { ...holdings[0], id: "no-basis", costBasis: 0, quantity: 2, unitPrice: 50 };
+    const s = netWorthSummary([], [noBasis], []);
+    expect(s.holdingsValue).toBe(100);
+    expect(s.unrealizedGain).toBe(0);
+    expect(s.unrealizedGainPct).toBeNull();
+  });
+
+  it("does not double count holdings already included in a brokerage asset record", () => {
+    const brokerage: NetWorthItem = { ...base, id: "brokerage", name: "Brokerage account", kind: "asset", category: "Investments", value: 1000, currency: "USD", valuationDate: "2026-01-01" };
+    const linkedHolding: Holding = { ...holdings[0], id: "linked", parentAssetId: "brokerage", quantity: 10, unitPrice: 100 };
+    const s = netWorthSummary([brokerage], [linkedHolding], []);
+    expect(s.holdingsValue).toBe(1000);
+    expect(s.assets).toBe(1000);
+    expect(s.netWorth).toBe(1000);
+  });
+
+  it("does not show percentage change when net worth crosses from negative to positive", () => {
+    const prior = { ...base, id: "negative-snapshot", date: "2025-12-01", totalAssets: 1000, totalLiabilities: 1500, currency: "USD" };
+    expect(netWorthSummary(items, holdings, [prior]).changePct).toBeNull();
+  });
 });
 
 /* --------------------------------------------------------------- BUSINESS */

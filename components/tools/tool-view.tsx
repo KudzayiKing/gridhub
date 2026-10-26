@@ -50,6 +50,7 @@ import { PinChartButton } from "@/lib/chart-widgets";
 import { PaycheckDashboard } from "./paycheck-dashboard";
 import { DebtDashboard } from "./debt-dashboard";
 import { SavingsDashboard } from "./savings-dashboard";
+import { NetWorthDashboard } from "./net-worth-dashboard";
 import type { ToolId } from "@/lib/catalog";
 import type { DataMap } from "@/lib/tools/shared";
 import type { BaseRecord } from "@/lib/types";
@@ -152,7 +153,7 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
   // These overviews already contain the complete summary, so showing LedgerTool's
   // headline cards above them repeats the same figures with a second time period.
   const metrics = React.useMemo(
-    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" ? [] : computeMetrics(toolId, data, currency)),
+    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" || toolId === "net-worth" ? [] : computeMetrics(toolId, data, currency)),
     [toolId, data, currency],
   );
   const displayTabs = React.useMemo(() => applyDrill(tabs, drill, toolId), [tabs, drill, toolId]);
@@ -224,6 +225,7 @@ function Overview({
     case "invoicing":
       return <InvoicingOverview data={data} currency={currency} />;
     case "net-worth":
+      return <NetWorthDashboard data={data} currency={currency} onOpenTab={onOpenTab} />;
     case "bookkeeping":
     case "inventory":
     case "sales":
@@ -239,11 +241,6 @@ function Overview({
 
 function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap; currency: string }) {
   const money = (value: number | string | undefined) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 });
-  if (toolId === "net-worth") {
-    const snapshots = rows<ValuationSnapshot>(data, "snapshots").sort((a, b) => a.date.localeCompare(b.date));
-    if (snapshots.length < 2) return null;
-    return <ChartContainer title="Net worth history" subtitle="Recorded asset and liability snapshots" icon="line-chart"><TrendChart data={snapshots.map((item) => ({ label: item.date, assets: item.totalAssets, liabilities: item.totalLiabilities, net: item.totalAssets - item.totalLiabilities }))} xKey="label" series={[{ key: "assets", name: "Assets" }, { key: "liabilities", name: "Liabilities" }, { key: "net", name: "Net worth" }]} formatValue={money} type="line" height={240} /></ChartContainer>;
-  }
   if (toolId === "bookkeeping") {
     const transactions = rows<BusinessTransaction>(data, "transactions");
     if (!transactions.length) return null;
@@ -1020,6 +1017,7 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
         rows<NetWorthItem>(data, "items"),
         rows<Holding>(data, "holdings"),
         rows<ValuationSnapshot>(data, "snapshots"),
+        currency,
       );
       return [
         m("Net worth", formatMoney(s.netWorth, { currency }), "line-chart", undefined, s.netWorth >= 0 ? "positive" : "negative"),

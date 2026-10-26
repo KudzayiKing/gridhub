@@ -6,10 +6,12 @@ import type {
   DebtPayment,
   GoalMovement,
   Holding,
+  InvestmentTransaction,
   MoneyAccount,
   MoneyBudget,
   MoneyCategory,
   MoneyTransaction,
+  NetWorthAllocationTarget,
   NetWorthItem,
   PaySchedule,
   Paycheck,
@@ -105,6 +107,7 @@ export function budgetTabs(data: DataMap): LedgerTab[] {
         { key: "kind", label: "Type", type: "select", options: ACCOUNT_KINDS, required: true, defaultValue: "checking" },
         { key: "openingBalance", label: "Opening balance", type: "currency", defaultValue: 0 },
         { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
+        { key: "notes", label: "Notes", type: "textarea", span: 2 },
       ],
       columns: [
         { key: "name", header: "Account", primary: true, value: (r) => r.name, render: (r) => r.name },
@@ -379,6 +382,8 @@ export function savingsTabs(data: DataMap): LedgerTab[] {
 }
 
 export function netWorthTabs(data: DataMap): LedgerTab[] {
+  const existingAssets = rows<NetWorthItem>(data, "items").filter((item) => !item.deleted && item.kind === "asset");
+  const existingHoldings = rows<Holding>(data, "holdings").filter((holding) => !holding.deleted);
   return [
     defineTab<NetWorthItem>({
       id: "items",
@@ -395,6 +400,7 @@ export function netWorthTabs(data: DataMap): LedgerTab[] {
         { key: "value", label: "Value", type: "currency", required: true, min: 0 },
         { key: "valuationDate", label: "Valued on", type: "date", required: true, defaultValue: today() },
         { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
+        { key: "notes", label: "Notes", type: "textarea", span: 2 },
       ],
       columns: [
         { key: "name", header: "Name", primary: true, value: (r) => r.name, render: (r) => r.name },
@@ -419,7 +425,11 @@ export function netWorthTabs(data: DataMap): LedgerTab[] {
         { key: "unitPrice", label: "Unit price", type: "currency", required: true, min: 0 },
         { key: "costBasis", label: "Total cost basis", type: "currency", required: true, min: 0 },
         { key: "valuationDate", label: "Price date", type: "date", required: true, defaultValue: today() },
+        { key: "assetClass", label: "Asset class", type: "select", options: ["Stocks", "ETFs", "Bonds", "Cash equivalents", "Funds", "Retirement", "Alternatives", "Other"].map((label) => ({ value: label, label })) },
+        { key: "accountName", label: "Investment account", type: "text" },
+        { key: "parentAssetId", label: "Already included in asset record", type: "select", options: [{ value: "", label: "No — count this holding separately" }, ...options(existingAssets)], help: "Select an asset record that already stores the brokerage account's full balance to avoid counting these holdings twice." },
         { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
+        { key: "notes", label: "Notes", type: "textarea", span: 2 },
       ],
       columns: [
         { key: "name", header: "Holding", primary: true, value: (r) => r.name, render: (r) => r.name },
@@ -448,6 +458,34 @@ export function netWorthTabs(data: DataMap): LedgerTab[] {
         },
       ],
     }),
+    defineTab<InvestmentTransaction>({
+      id: "investmentTransactions",
+      label: "Investment activity",
+      icon: "repeat",
+      collection: "investmentTransactions",
+      addLabel: "Add activity",
+      emptyTitle: "No investment cash flows",
+      emptyDescription: "Record contributions, withdrawals, distributions, and fees to calculate money-weighted returns.",
+      fields: [
+        { key: "date", label: "Date", type: "date", required: true, defaultValue: today() },
+        { key: "kind", label: "Activity", type: "select", required: true, defaultValue: "contribution", options: [
+          { value: "contribution", label: "Contribution" }, { value: "withdrawal", label: "Withdrawal" },
+          { value: "dividend", label: "Dividend" }, { value: "interest", label: "Interest" }, { value: "fee", label: "Fee" },
+        ] },
+        { key: "amount", label: "Amount", type: "currency", required: true, min: 0 },
+        { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
+        { key: "holdingId", label: "Holding", type: "select", options: [{ value: "", label: "Portfolio level" }, ...options(existingHoldings)] },
+        { key: "reinvested", label: "Distribution reinvested", type: "checkbox", visibleWhen: (value) => value.kind === "dividend" || value.kind === "interest" },
+        { key: "paidFromPortfolio", label: "Fee already included in portfolio value", type: "checkbox", visibleWhen: (value) => value.kind === "fee", help: "Mark this when the fee has already reduced the saved portfolio valuation." },
+        { key: "notes", label: "Notes", type: "textarea", span: 2 },
+      ],
+      columns: [
+        { key: "date", header: "Date", primary: true, value: (row) => row.date, render: (row) => formatDate(row.date) },
+        { key: "kind", header: "Activity", value: (row) => row.kind, render: (row) => <span className="capitalize text-fg-muted">{row.kind}</span> },
+        { key: "amount", header: "Amount", align: "right", value: (row) => row.amount, render: (row) => formatMoney(row.amount, { currency: row.currency }) },
+        { key: "holdingId", header: "Holding", value: (row) => row.holdingId ?? "", render: (row) => existingHoldings.find((holding) => holding.id === row.holdingId)?.name ?? "Portfolio" },
+      ],
+    }),
     defineTab<ValuationSnapshot>({
       id: "snapshots",
       label: "Snapshots",
@@ -460,6 +498,7 @@ export function netWorthTabs(data: DataMap): LedgerTab[] {
         { key: "date", label: "Date", type: "date", required: true, defaultValue: today() },
         { key: "totalAssets", label: "Total assets", type: "currency", required: true, min: 0 },
         { key: "totalLiabilities", label: "Total liabilities", type: "currency", required: true, min: 0 },
+        { key: "investmentValue", label: "Investment portfolio value", type: "currency", min: 0, help: "Optional historical value; used only for portfolio value history." },
         { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
         { key: "note", label: "Note", type: "text" },
       ],
@@ -467,6 +506,7 @@ export function netWorthTabs(data: DataMap): LedgerTab[] {
         { key: "date", header: "Date", primary: true, value: (r) => r.date, render: (r) => formatDate(r.date) },
         { key: "totalAssets", header: "Assets", align: "right", value: (r) => r.totalAssets, render: (r) => formatMoney(r.totalAssets) },
         { key: "totalLiabilities", header: "Liabilities", align: "right", value: (r) => r.totalLiabilities, render: (r) => formatMoney(r.totalLiabilities) },
+        { key: "investmentValue", header: "Portfolio", align: "right", value: (r) => r.investmentValue ?? 0, render: (r) => r.investmentValue == null ? "—" : formatMoney(r.investmentValue) },
         {
           key: "net",
           header: "Net worth",
@@ -474,6 +514,23 @@ export function netWorthTabs(data: DataMap): LedgerTab[] {
           value: (r) => r.totalAssets - r.totalLiabilities,
           render: (r) => formatMoney(r.totalAssets - r.totalLiabilities),
         },
+      ],
+    }),
+    defineTab<NetWorthAllocationTarget>({
+      id: "allocationTargets",
+      label: "Allocation targets",
+      icon: "target",
+      collection: "allocationTargets",
+      addLabel: "Add allocation target",
+      emptyTitle: "No allocation targets",
+      emptyDescription: "Set your own portfolio targets. Targets are informational and never trigger trades or recommendations.",
+      fields: [
+        { key: "assetClass", label: "Asset class", type: "text", required: true, placeholder: "Stocks" },
+        { key: "targetPercent", label: "Target allocation (%)", type: "number", required: true, min: 0, max: 100, step: "0.1" },
+      ],
+      columns: [
+        { key: "assetClass", header: "Asset class", primary: true, value: (r) => r.assetClass, render: (r) => r.assetClass },
+        { key: "targetPercent", header: "Target", align: "right", value: (r) => r.targetPercent, render: (r) => `${r.targetPercent}%` },
       ],
     }),
   ];
