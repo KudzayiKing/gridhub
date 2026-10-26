@@ -5,7 +5,6 @@ import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Toolt
 import { CategoryBreakdownChart, ChartContainer, ChartEmptyState, ChartLegend, ProgressChart, TrendChart } from "@/components/charts";
 import { Button } from "@/components/ui/button";
 import { Badge, CompactMetric } from "@/components/ui/card";
-import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { PinChartButton } from "@/lib/chart-widgets";
 import { savingsBalanceTrend, savingsGoalRows, savingsMovementMonths, type SavingsGoalDashboardRow } from "@/lib/reporting/savings-dashboard";
 import { useCollection } from "@/lib/store";
@@ -31,7 +30,6 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
   const summaries = savingsGoalRows(goals, movements, today);
   const [selectedId, setSelectedId] = React.useState(goals[0]?.id ?? "");
   const [range, setRange] = React.useState<Range>(12);
-  const [sortBy, setSortBy] = React.useState<"progress" | "date" | "remaining" | "name">("date");
   const [inspectedMonth, setInspectedMonth] = React.useState("");
   const [chartGoalId, setChartGoalId] = React.useState("");
   const [segmentMessage, setSegmentMessage] = React.useState("");
@@ -65,12 +63,6 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
     { id: "saved", name: "Saved · " + formatMoney(visualSaved, { currency }), value: visualSaved, color: "var(--positive)" },
     { id: "remaining", name: "Remaining · " + formatMoney(visualRemaining, { currency }), value: visualRemaining, color: "var(--bg-subtle)" },
   ].filter((item) => item.value > 0) : [];
-  const compareRows = [...summaries].sort((a, b) => {
-    if (sortBy === "progress") return (b.percent ?? 0) - (a.percent ?? 0);
-    if (sortBy === "remaining") return a.remaining - b.remaining;
-    if (sortBy === "name") return a.goal.name.localeCompare(b.goal.name);
-    return (a.goal.targetDate ?? "9999").localeCompare(b.goal.targetDate ?? "9999");
-  });
   const activityTimeline = [
     ...selectedMovements.map((movement) => ({ id: movement.id, date: movement.date, title: movement.kind === "withdrawal" ? "Withdrawal" : "Contribution", detail: movement.note || selected?.goal.name || "Savings movement", amount: movement.amount, kind: movement.kind })),
     ...summaries.filter((row) => row.goal.targetDate).map((row) => ({ id: "target:" + row.goal.id, date: row.goal.targetDate!, title: row.status === "Goal Complete" ? "Goal milestone" : "Target date", detail: row.goal.name, amount: 0, kind: "target" })),
@@ -87,35 +79,24 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
         </div>
       </div>
 
-      <div className="grid auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Total saved" value={formatMoney(totalSaved, { currency })} hint={summaries.length + " distinct goal allocations"} tone="positive" /></div>
-        <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Combined goal targets" value={formatMoney(totalTarget, { currency })} hint="Active tracked goals" /></div>
-        <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Remaining to save" value={formatMoney(totalRemaining, { currency })} hint="Sum of each goal's remaining amount" /></div>
-        <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Monthly contribution needed" value={monthsNeeded == null ? "Set target date" : formatMoney(monthsNeeded, { currency })} hint={selected ? "Selected goal · " + selected.goal.name : "Select a dated goal"} /></div>
-        <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Emergency coverage" value={coverage == null ? "Set monthly essentials" : coverage.toFixed(1) + " months"} hint={emergency ? emergency.goal.name : "Create an emergency fund goal"} /></div>
-        <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Next target date" value={nextTarget?.goal.targetDate ? dateText(nextTarget.goal.targetDate) : "No upcoming date"} hint={nextTarget ? nextTarget.goal.name + (targetDays == null ? "" : " · " + targetDays + " days") : "Add a target date"} /></div>
-      </div>
-
       <div className="grid items-stretch gap-3 xl:grid-cols-2">
-        <ChartContainer title="Goal progress" subtitle="Select a goal to inspect its savings and target trajectory" icon="piggy-bank">
-          {summaries.length ? <div className="flex flex-col gap-2">
-            {summaries.map((row) => <button key={row.goal.id} type="button" onClick={() => { setSelectedId(row.goal.id); setSegmentMessage(""); }} aria-pressed={selected?.goal.id === row.goal.id} className={"rounded-xl border p-3 text-left transition-colors " + (selected?.goal.id === row.goal.id ? "border-[var(--accent)] bg-[var(--accent-soft)]/30" : "border-line bg-[var(--bg-subtle)]/25 hover:bg-[var(--bg-subtle)]")}>
-              <div className="flex items-start gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]"><AnimatedIcon name={row.goal.kind === "emergency" ? "shield" : "piggy-bank"} size={16} trigger="hover" /></span><div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center justify-between gap-1"><span className="truncate text-[12px] font-semibold">{row.goal.name}</span><Badge tone={statusTone(row.status)}>{row.status}</Badge></div>
-                <p className="mt-0.5 text-[10px] text-fg-muted">{formatMoney(row.balance, { currency })} / {formatMoney(row.target, { currency })} · {row.percent == null ? "No target" : formatPercent(row.percent, 0)}</p>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full rounded-full bg-[var(--positive)]" style={{ width: Math.min(100, Math.max(0, row.percent ?? 0)) + "%" }} /></div>
-                <p className="mt-1 text-[10px] text-fg-subtle">{row.goal.targetDate ? dateText(row.goal.targetDate) + (row.requiredMonthly == null ? "" : " · " + formatMoney(row.requiredMonthly, { currency }) + "/month") : "Add target date for a monthly plan"}{row.status === "Insufficient Data" ? " · Add a plan start date to compare trajectory" : ""}</p>
-              </div></div>
-            </button>)}
-          </div> : <ChartEmptyState label="Create a savings goal to see progress here." />}
-        </ChartContainer>
         <ChartContainer title={selected ? selected.goal.name + " · goal progress" : "Goal progress"} subtitle="Saved and remaining amounts · target track is capped at 100%" icon="chart-column">
           {summaries.length && donutTarget > 0 ? <>
-            <label className="mb-1 flex items-center gap-2 text-[11px] text-fg-muted">Selected goal<select value={selected?.goal.id ?? ""} onChange={(event) => { setSelectedId(event.target.value); setSegmentMessage(""); }} className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-[var(--surface)] px-2 text-xs">{summaries.map((row) => <option key={row.goal.id} value={row.goal.id}>{row.goal.name}</option>)}</select></label>
+            <div className="mb-1 flex items-center gap-2"><label htmlFor="savings-goal-progress-select" className="shrink-0 text-[11px] text-fg-muted">Selected goal</label><select id="savings-goal-progress-select" value={selected?.goal.id ?? ""} onChange={(event) => { setSelectedId(event.target.value); setSegmentMessage(""); }} className="h-9 min-w-0 flex-1 rounded-lg border border-line bg-[var(--surface)] px-2 text-xs">{summaries.map((row) => <option key={row.goal.id} value={row.goal.id}>{row.goal.name}</option>)}</select>{selected ? <Badge tone={statusTone(selected.status)}>{selected.status}</Badge> : null}</div>
             <CategoryBreakdownChart data={donutData} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} centerValue={formatPercent(Math.min(100, Math.max(0, truePercent)), 0)} centerLabel={"Saved " + formatMoney(selected?.balance ?? 0, { currency })} onSliceClick={(id) => setSegmentMessage(id === "saved" ? "Saved amount is the current balance from opening balance plus recorded contributions minus withdrawals." : "Remaining is the positive difference between this goal's target and current recorded balance.")} height={340} />
             {selected && selected.balance > selected.target ? <p className="text-center text-[11px] text-[var(--positive)]">True funding: {formatPercent(truePercent, 0)} · {formatMoney(selected.balance - selected.target, { currency })} above target</p> : null}
             {segmentMessage ? <p role="status" className="text-center text-[10px] text-fg-muted">{segmentMessage}</p> : null}
           </> : summaries.length ? <ChartEmptyState label="Set a positive target amount to display the goal donut." /> : <ChartEmptyState label="Create a savings goal to display its progress." />}
+        </ChartContainer>
+        <ChartContainer title="Savings summary" subtitle="Combined totals and selected goal planning details" icon="piggy-bank">
+          <div className="grid auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Total saved" value={formatMoney(totalSaved, { currency })} hint={summaries.length + " distinct goal allocations"} tone="positive" /></div>
+            <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Combined goal targets" value={formatMoney(totalTarget, { currency })} hint="Active tracked goals" /></div>
+            <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Remaining to save" value={formatMoney(totalRemaining, { currency })} hint="Sum of each goal's remaining amount" /></div>
+            <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Monthly contribution needed" value={monthsNeeded == null ? "Set target date" : formatMoney(monthsNeeded, { currency })} hint={selected ? "Selected goal · " + selected.goal.name : "Select a dated goal"} /></div>
+            <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Emergency coverage" value={coverage == null ? "Set monthly essentials" : coverage.toFixed(1) + " months"} hint={emergency ? emergency.goal.name : "Create an emergency fund goal"} /></div>
+            <div className="min-h-[94px] [&>div]:h-full"><CompactMetric label="Next target date" value={nextTarget?.goal.targetDate ? dateText(nextTarget.goal.targetDate) : "No upcoming date"} hint={nextTarget ? nextTarget.goal.name + (targetDays == null ? "" : " · " + targetDays + " days") : "Add a target date"} /></div>
+          </div>
         </ChartContainer>
       </div>
 
@@ -131,9 +112,6 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <ChartContainer title="Goal progress comparison" subtitle="Same goal balances used by the hero donut" icon="target" action={<label className="flex items-center gap-1 text-[10px] text-fg-muted">Sort<select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} className="h-8 rounded-lg border border-line bg-[var(--surface)] px-1"><option value="date">Target date</option><option value="progress">Progress</option><option value="remaining">Amount remaining</option><option value="name">Name</option></select></label>}>
-          <div className="flex flex-col gap-2">{compareRows.length ? compareRows.map((row) => <button key={row.goal.id} onClick={() => setSelectedId(row.goal.id)} className="rounded-xl border border-line p-2.5 text-left hover:bg-[var(--bg-subtle)]"><div className="flex justify-between gap-2"><span className="truncate text-[11px] font-medium">{row.goal.name}</span><span className="tnum text-[10px]">{row.percent == null ? "No target" : formatPercent(row.percent, 0)}</span></div><div className="my-1 h-1.5 rounded-full bg-[var(--bg-subtle)]"><div className="h-1.5 rounded-full bg-[var(--positive)]" style={{ width: Math.min(100, Math.max(0, row.percent ?? 0)) + "%" }}/></div><p className="text-[10px] text-fg-subtle">{formatMoney(row.balance, { currency })} saved · {formatMoney(row.remaining, { currency })} remaining · target {formatMoney(row.target, { currency })}</p></button>) : <ChartEmptyState label="Create goals to compare progress." />}</div>
-        </ChartContainer>
         <ChartContainer title="Emergency fund coverage" subtitle="Uses the designated emergency goal and its confirmed essential-expense baseline" icon="shield">
           {emergency && coverage != null ? <><ProgressChart items={[{ id: emergency.goal.id, label: emergency.goal.name, value: coverage, target: coverageTarget, formatValue: (value) => Number(value).toFixed(1) + " mo", caption: formatMoney(emergency.balance, { currency }) + " saved ÷ " + formatMoney(emergency.goal.monthlyEssentials ?? 0, { currency }) + " monthly essential expenses" }]} /><div className="mt-3 flex gap-2">{([3, 6, 12] as const).map((target) => <button key={target} type="button" aria-pressed={coverageTarget === target} onClick={() => void goalState.update(emergency.goal.id, { coverageTargetMonths: target })} className={"rounded-full border px-3 py-1.5 text-[10px] " + (coverageTarget === target ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-line")}>{target} months</button>)}</div><p className="mt-2 text-[10px] text-fg-subtle">Coverage target is a planning choice. The selected preset is saved to this emergency goal.</p></> : <ChartEmptyState label="Set monthly essential expenses on an emergency goal to calculate coverage. No expense baseline is assumed." />}
         </ChartContainer>
