@@ -233,7 +233,7 @@ export function LedgerTool({
       {notices}
 
       {metrics ? (
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">{metrics}</div>
+        <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">{metrics}</div>
       ) : null}
 
       {overview}

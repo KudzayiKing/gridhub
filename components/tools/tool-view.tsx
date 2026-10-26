@@ -406,7 +406,7 @@ function BudgetOverview({
           <PinChartButton chartId="budget.monthly" title="Monthly income vs expenses" tool="budget" />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
           <MetricCard label="Income" value={formatMoney(monthSummary.income, { currency })} icon="arrowUp" />
           <MetricCard label="Expenses" value={formatMoney(monthSummary.expenses, { currency })} icon="arrowDown" tone="negative" />
           <MetricCard
@@ -500,7 +500,7 @@ function BudgetOverview({
             <h3 className="text-[12px] font-semibold">Year summary</h3>
             <span className="text-[11px] text-fg-subtle">{year}</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid auto-rows-fr grid-cols-2 gap-2">
             <CompactMetric label="Income" value={formatMoney(summary.income, { currency })} tone="positive" />
             <CompactMetric label="Expenses" value={formatMoney(summary.expenses, { currency })} tone="negative" />
             <CompactMetric label="Net cash flow" value={formatMoney(summary.netCashFlow, { currency, signed: true })} tone={summary.netCashFlow >= 0 ? "positive" : "negative"} />
@@ -724,10 +724,10 @@ function CompactMetric({
 }) {
   const color = tone === "positive" ? "var(--positive)" : tone === "negative" ? "var(--negative)" : "var(--fg)";
   return (
-    <div className="min-w-0 rounded-xl border border-line bg-[var(--bg-subtle)]/50 px-2.5 py-2">
+    <div className="flex min-h-[82px] min-w-0 flex-col rounded-xl border border-line bg-[var(--bg-subtle)]/50 px-2.5 py-2">
       <p className="truncate text-[10px] uppercase tracking-wide text-fg-subtle">{label}</p>
-      <p className="tnum truncate text-[13px] font-semibold" style={{ color }}>{value}</p>
-      {hint ? <p className="truncate text-[10px] text-fg-subtle">{hint}</p> : null}
+      <p className="tnum truncate text-[13px] font-semibold leading-5" style={{ color }}>{value}</p>
+      <p className="min-h-[14px] truncate text-[10px] leading-[14px] text-fg-subtle">{hint || " "}</p>
     </div>
   );
 }
@@ -819,7 +819,7 @@ function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-    <div className="grid grid-cols-2 gap-2.5 sm:max-w-md">
+    <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:max-w-md">
       <MetricCard label="Total debt" value={formatMoney(totals.balance, { currency })} icon="trending-down" hint={`${totals.count} accounts`} />
       <MetricCard label="Minimum payments" value={formatMoney(totals.minimums, { currency })} icon="receipt" />
     </div>

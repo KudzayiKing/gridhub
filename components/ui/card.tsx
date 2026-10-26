@@ -121,7 +121,7 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "gp-card glass-sheen flex flex-col justify-between gap-3 p-4 sm:p-5",
+        "gp-card glass-sheen flex min-h-[112px] flex-col justify-between gap-3 p-4 sm:p-5",
         onClick && "press cursor-pointer text-left hover:bg-[var(--surface-hover)]",
         className,
       )}
@@ -140,18 +140,18 @@ export function MetricCard({
       }
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-fg-subtle">{t(label)}</p>
+        <p className="truncate text-[12px] font-medium uppercase tracking-[0.08em] text-fg-subtle">{t(label)}</p>
         {icon ? <AnimatedIcon name={icon} size={16} className="text-fg-subtle" trigger="hover" /> : null}
       </div>
       <div>
-        <p className="tnum text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]" style={{ color: toneColor }}>
+        <p className="tnum truncate text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]" style={{ color: toneColor }}>
           {value}
         </p>
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex min-h-[14px] items-center gap-1.5 overflow-hidden">
           {trend ? (
             <span
               className={cn(
-                "inline-flex items-center gap-0.5 text-[11px] font-medium",
+                "inline-flex min-w-0 items-center gap-0.5 truncate text-[11px] font-medium",
                 trend.direction === "up"
                   ? "text-[var(--positive)]"
                   : trend.direction === "down"
@@ -167,7 +167,7 @@ export function MetricCard({
               {trend.label}
             </span>
           ) : null}
-          {hint ? <span className="text-[11px] text-fg-subtle">{typeof hint === "string" ? t(hint) : hint}</span> : null}
+          {hint ? <span className="truncate text-[11px] text-fg-subtle">{typeof hint === "string" ? t(hint) : hint}</span> : null}
         </div>
       </div>
     </div>
