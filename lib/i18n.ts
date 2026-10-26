@@ -294,7 +294,6 @@ const catalog: Record<string, Translation> = {
   "Work": ["Trabajo", "工作", "Trabalho", "Travail", "Работа"],
   "Income": ["Ingresos", "收入", "Receita", "Revenus", "Доход"],
   "Expense": ["Gasto", "支出", "Despesa", "Dépense", "Расход"],
-  "Expenses": ["Gastos", "支出", "Despesas", "Dépenses", "Расходы"],
   "Transfer (internal)": ["Transferencia (interna)", "转账（内部）", "Transferência (interna)", "Virement (interne)", "Трансфер (внутренний)"],
   "Savings transfer": ["Transferencia a ahorros", "储蓄转账", "Transferência para poupança", "Virement vers l’épargne", "Сберегательный перевод"],
   "Checking": ["Cuenta corriente", "支票账户", "Conta corrente", "Compte courant", "Проверка"],
@@ -1859,13 +1858,105 @@ const arabicCatalog: Record<string, string> = {
 
 const localeIndex: Record<Exclude<UiLanguage, "en" | "ar">, number> = { es: 0, "zh-CN": 1, "pt-BR": 2, fr: 3, ru: 4 };
 
+// Reporting dashboards are composed from shared chart primitives and often pass their
+// labels as data. Keep these reporting terms together so titles, legends and donut centers
+// stay localized even when they are rendered outside a form's translation context.
+const reportingCatalog: Record<string, [string, string, string, string, string]> = {
+  "Income vs expenses": ["Ingresos y gastos", "收入与支出", "Receitas e despesas", "Revenus et dépenses", "Доходы и расходы"],
+  "Monthly income vs expenses": ["Ingresos y gastos mensuales", "月收入与支出", "Receitas e despesas mensais", "Revenus et dépenses mensuels", "Доходы и расходы по месяцам"],
+  "Spending by category": ["Gastos por categoría", "按类别查看支出", "Gastos por categoria", "Dépenses par catégorie", "Расходы по категориям"],
+  "Monthly spending breakdown": ["Desglose de gastos mensuales", "月度支出明细", "Detalhamento dos gastos mensais", "Répartition mensuelle des dépenses", "Структура расходов за месяц"],
+  "Budget vs actual": ["Presupuesto frente a gasto real", "预算与实际", "Orçamento versus realizado", "Budget et dépenses réelles", "Бюджет и фактические расходы"],
+  "Net cash flow trend": ["Tendencia del flujo de caja neto", "净现金流趋势", "Tendência do fluxo de caixa líquido", "Tendance du flux de trésorerie net", "Динамика чистого денежного потока"],
+  "Paycheck allocation": ["Distribución del salario", "工资分配", "Distribuição do pagamento", "Répartition du salaire", "Распределение зарплаты"],
+  "Paycheck comparison": ["Comparación de salarios", "工资对比", "Comparação de pagamentos", "Comparaison des salaires", "Сравнение зарплат"],
+  "Savings allocation progress": ["Progreso de distribución del ahorro", "储蓄分配进度", "Progresso da distribuição da poupança", "Progression de l’affectation de l’épargne", "Ход распределения сбережений"],
+  "Bills timeline": ["Calendario de facturas", "账单时间线", "Cronograma de contas", "Calendrier des factures", "График счетов"],
+  "Money left until next payday": ["Dinero disponible hasta el próximo pago", "下次发薪前可用金额", "Dinheiro disponível até o próximo pagamento", "Argent disponible jusqu’au prochain salaire", "Деньги до следующей зарплаты"],
+  "Savings summary": ["Resumen de ahorros", "储蓄摘要", "Resumo da poupança", "Résumé de l’épargne", "Сводка накоплений"],
+  "Savings balance over time": ["Saldo de ahorros a lo largo del tiempo", "储蓄余额变化", "Saldo da poupança ao longo do tempo", "Évolution du solde d’épargne", "Изменение остатка сбережений"],
+  "Goal progress": ["Progreso del objetivo", "目标进度", "Progresso da meta", "Progression de l’objectif", "Прогресс к цели"],
+  "Emergency fund coverage": ["Cobertura del fondo de emergencia", "应急基金覆盖月数", "Cobertura do fundo de emergência", "Couverture du fonds d’urgence", "Покрытие резервного фонда"],
+  "Contribution activity timeline": ["Historial de aportaciones", "存入记录时间线", "Histórico de contribuições", "Historique des versements", "История взносов"],
+  "Contributions vs withdrawals": ["Aportaciones y retiros", "存入与取出", "Contribuições e retiradas", "Versements et retraits", "Взносы и снятия"],
+  "Outstanding debt": ["Deuda pendiente", "未偿债务", "Dívida pendente", "Dette restante", "Оставшийся долг"],
+  "Debt-free progress": ["Progreso para quedar sin deudas", "还清债务进度", "Progresso para quitar as dívidas", "Progression vers le remboursement des dettes", "Прогресс погашения долгов"],
+  "Projected debt balance": ["Saldo de deuda previsto", "预计债务余额", "Saldo devedor projetado", "Solde de dette prévu", "Прогноз остатка долга"],
+  "Projected payoff milestones": ["Hitos previstos de amortización", "预计还款里程碑", "Marcos projetados de quitação", "Étapes prévues du remboursement", "Прогноз ключевых этапов погашения"],
+  "Actual monthly payments": ["Pagos mensuales reales", "实际月付款", "Pagamentos mensais realizados", "Paiements mensuels réels", "Фактические ежемесячные платежи"],
+  "Investment returns": ["Rendimiento de inversiones", "投资回报", "Retorno dos investimentos", "Rendement des investissements", "Доходность инвестиций"],
+  "Net worth growth": ["Crecimiento del patrimonio neto", "净资产增长", "Crescimento do patrimônio líquido", "Évolution du patrimoine net", "Рост чистого капитала"],
+  "Assets vs liabilities": ["Activos y pasivos", "资产与负债", "Ativos e passivos", "Actifs et passifs", "Активы и обязательства"],
+  "Asset allocation": ["Distribución de activos", "资产配置", "Alocação de ativos", "Répartition des actifs", "Распределение активов"],
+  "Liabilities breakdown": ["Desglose de pasivos", "负债明细", "Detalhamento dos passivos", "Détail des passifs", "Структура обязательств"],
+  "Portfolio gains and losses": ["Ganancias y pérdidas de la cartera", "投资组合盈亏", "Ganhos e perdas da carteira", "Gains et pertes du portefeuille", "Прибыль и убытки портфеля"],
+  "Portfolio value history": ["Historial del valor de la cartera", "投资组合价值历史", "Histórico do valor da carteira", "Historique de la valeur du portefeuille", "История стоимости портфеля"],
+  "Projected balance": ["Saldo previsto", "预计余额", "Saldo projetado", "Solde prévisionnel", "Прогнозируемый остаток"],
+  "Net worth": ["Patrimonio neto", "净资产", "Patrimônio líquido", "Patrimoine net", "Чистый капитал"],
+  "Assets": ["Activos", "资产", "Ativos", "Actifs", "Активы"],
+  "Liabilities": ["Pasivos", "负债", "Passivos", "Passifs", "Обязательства"],
+  "Income": ["Ingresos", "收入", "Receitas", "Revenus", "Доходы"],
+  "Expenses": ["Gastos", "支出", "Despesas", "Dépenses", "Расходы"],
+  "Savings": ["Ahorros", "储蓄", "Poupança", "Épargne", "Накопления"],
+  "Bills": ["Facturas", "账单", "Contas", "Factures", "Счета"],
+  "Debt payments": ["Pagos de deuda", "债务还款", "Pagamentos de dívidas", "Remboursements de dettes", "Платежи по долгам"],
+  "Everyday spending": ["Gastos cotidianos", "日常支出", "Gastos do dia a dia", "Dépenses courantes", "Повседневные расходы"],
+  "Unallocated": ["Sin asignar", "未分配", "Não alocado", "Non affecté", "Не распределено"],
+  "Spent": ["Gastado", "已支出", "Gasto", "Dépensé", "Потрачено"],
+  "Total debt": ["Deuda total", "债务总额", "Dívida total", "Dette totale", "Общий долг"],
+  "Total assets": ["Activos totales", "总资产", "Total de ativos", "Total des actifs", "Всего активов"],
+  "Total liabilities": ["Pasivos totales", "总负债", "Total de passivos", "Total des passifs", "Всего обязательств"],
+  "Total saved": ["Total ahorrado", "累计储蓄", "Total economizado", "Total épargné", "Всего накоплено"],
+  "Remaining": ["Restante", "剩余", "Restante", "Restant", "Осталось"],
+  "Completed": ["Completado", "已完成", "Concluído", "Terminé", "Завершено"],
+  "Remaining today": ["Restante hoy", "今日剩余", "Restante hoje", "Restant aujourd’hui", "Осталось на сегодня"],
+  "Projected closing cash": ["Saldo de caja final previsto", "预计期末现金", "Saldo final de caixa projetado", "Solde de trésorerie final prévu", "Прогноз остатка денежных средств"],
+  "Cash expenses": ["Gastos en efectivo", "现金支出", "Despesas em dinheiro", "Dépenses en espèces", "Расходы наличными"],
+  "Net sales": ["Ventas netas", "净销售额", "Vendas líquidas", "Ventes nettes", "Чистые продажи"],
+  "Total invoiced": ["Total facturado", "发票总额", "Total faturado", "Total facturé", "Выставлено счетов на сумму"],
+  "Logged calories": ["Calorías registradas", "已记录卡路里", "Calorias registradas", "Calories enregistrées", "Записано калорий"],
+  "Tasks": ["Tareas", "任务", "Tarefas", "Tâches", "Задачи"],
+  "Key performance indicators": ["Indicadores clave de rendimiento", "关键绩效指标", "Principais indicadores de desempenho", "Indicateurs clés de performance", "Ключевые показатели эффективности"],
+  "Signature visualization": ["Visualización principal", "核心图表", "Visualização principal", "Visualisation principale", "Основная визуализация"],
+  "13-week cash forecast": ["Previsión de caja de 13 semanas", "13 周现金流预测", "Previsão de caixa de 13 semanas", "Prévision de trésorerie sur 13 semaines", "Прогноз движения денежных средств на 13 недель"],
+  "Business income and expenses": ["Ingresos y gastos del negocio", "企业收入与支出", "Receitas e despesas da empresa", "Revenus et dépenses de l’entreprise", "Доходы и расходы бизнеса"],
+  "Property booking revenue": ["Ingresos por reservas", "房源预订收入", "Receita de reservas do imóvel", "Revenus des réservations immobilières", "Доход от бронирования недвижимости"],
+  "Sales revenue trend": ["Tendencia de ingresos por ventas", "销售收入趋势", "Tendência da receita de vendas", "Tendance du chiffre d’affaires", "Динамика выручки от продаж"],
+  "Stock on hand": ["Existencias disponibles", "现有库存", "Estoque disponível", "Stock disponible", "Текущий запас"],
+  "Receivables aging": ["Antigüedad de cuentas por cobrar", "应收账款账龄", "Vencimento de contas a receber", "Ancienneté des créances", "Срок задолженности по дебиторской задолженности"],
+  "Publishing pipeline": ["Flujo de publicaciones", "发布流程", "Fluxo de publicações", "Calendrier éditorial", "План публикаций"],
+  "Wedding spend by category": ["Gastos de boda por categoría", "婚礼支出分类", "Gastos do casamento por categoria", "Dépenses de mariage par catégorie", "Расходы на свадьбу по категориям"],
+  "Selected goal activity": ["Actividad del objetivo seleccionado", "所选目标活动", "Atividade da meta selecionada", "Activité de l’objectif sélectionné", "Активность выбранной цели"],
+  "Monthly required vs actual contributions": ["Aportaciones mensuales previstas y reales", "每月计划与实际存入", "Contribuições mensais previstas e realizadas", "Versements mensuels prévus et réels", "Плановые и фактические ежемесячные взносы"],
+  "Projected interest": ["Intereses previstos", "预计利息", "Juros projetados", "Intérêts prévus", "Прогнозируемые проценты"],
+  "Total repayment": ["Reembolso total", "还款总额", "Pagamento total", "Remboursement total", "Общая сумма погашения"],
+  "Monthly payment plan": ["Plan de pagos mensual", "每月还款计划", "Plano de pagamento mensal", "Plan de paiement mensuel", "План ежемесячных платежей"],
+  "Savings balance": ["Saldo de ahorros", "储蓄余额", "Saldo da poupança", "Solde d’épargne", "Остаток сбережений"],
+  "Revenue": ["Ingresos", "营收", "Receita", "Chiffre d’affaires", "Выручка"],
+  "Paid": ["Pagado", "已付款", "Pago", "Payé", "Оплачено"],
+  "Unpaid": ["Sin pagar", "未付款", "Não pago", "Impayé", "Не оплачено"],
+  "Overdue": ["Vencido", "逾期", "Atrasado", "En retard", "Просрочено"],
+  "Partially paid": ["Parcialmente pagado", "部分付款", "Parcialmente pago", "Partiellement payé", "Оплачено частично"],
+  "In progress": ["En curso", "进行中", "Em andamento", "En cours", "В процессе"],
+  "In review": ["En revisión", "审核中", "Em revisão", "En révision", "На проверке"],
+  "To do": ["Pendiente", "待办", "A fazer", "À faire", "К выполнению"],
+  "Done": ["Hecho", "已完成", "Concluído", "Fait", "Готово"],
+  "At weighted cost": ["Al costo promedio ponderado", "按加权成本", "Ao custo médio ponderado", "Au coût moyen pondéré", "По средневзвешенной стоимости"],
+  "Committed": ["Comprometido", "已承诺", "Comprometido", "Engagé", "Запланировано"],
+  "No recorded values to display yet.": ["Aún no hay valores registrados para mostrar.", "暂无已记录数据可显示。", "Ainda não há valores registrados para exibir.", "Aucune valeur enregistrée à afficher pour le moment.", "Пока нет записанных значений для отображения."],
+};
+const arabicReportingCatalog: Record<string, string> = {
+  "Income vs expenses": "الدخل والمصروفات", "Monthly income vs expenses": "الدخل والمصروفات شهريًا", "Spending by category": "الإنفاق حسب الفئة", "Monthly spending breakdown": "تفصيل الإنفاق الشهري", "Budget vs actual": "الميزانية مقابل الفعلي", "Net cash flow trend": "اتجاه صافي التدفق النقدي", "Paycheck allocation": "توزيع الراتب", "Paycheck comparison": "مقارنة الرواتب", "Savings allocation progress": "تقدم توزيع المدخرات", "Bills timeline": "الجدول الزمني للفواتير", "Money left until next payday": "المبلغ المتبقي حتى الراتب القادم", "Savings summary": "ملخص المدخرات", "Savings balance over time": "رصيد المدخرات بمرور الوقت", "Goal progress": "تقدم الهدف", "Emergency fund coverage": "تغطية صندوق الطوارئ", "Contribution activity timeline": "سجل المساهمات", "Contributions vs withdrawals": "المساهمات مقابل السحوبات", "Outstanding debt": "الدين المستحق", "Debt-free progress": "التقدم نحو سداد الديون", "Projected debt balance": "رصيد الدين المتوقع", "Projected payoff milestones": "المراحل المتوقعة للسداد", "Actual monthly payments": "المدفوعات الشهرية الفعلية", "Investment returns": "عوائد الاستثمار", "Net worth growth": "نمو صافي الثروة", "Assets vs liabilities": "الأصول مقابل الالتزامات", "Asset allocation": "توزيع الأصول", "Liabilities breakdown": "تفصيل الالتزامات", "Portfolio gains and losses": "أرباح وخسائر المحفظة", "Portfolio value history": "سجل قيمة المحفظة", "Projected balance": "الرصيد المتوقع", "Net worth": "صافي الثروة", "Assets": "الأصول", "Liabilities": "الالتزامات", "Income": "الدخل", "Expenses": "المصروفات", "Savings": "المدخرات", "Bills": "الفواتير", "Debt payments": "مدفوعات الديون", "Everyday spending": "الإنفاق اليومي", "Unallocated": "غير موزع", "Spent": "تم إنفاقه", "Total debt": "إجمالي الديون", "Total assets": "إجمالي الأصول", "Total liabilities": "إجمالي الالتزامات", "Total saved": "إجمالي المدخرات", "Remaining": "المتبقي", "Completed": "مكتمل", "Remaining today": "المتبقي اليوم", "Projected closing cash": "الرصيد النقدي الختامي المتوقع", "Cash expenses": "المصروفات النقدية", "Net sales": "صافي المبيعات", "Total invoiced": "إجمالي الفواتير", "Logged calories": "السعرات المسجلة", "Tasks": "المهام", "No recorded values to display yet.": "لا توجد قيم مسجلة لعرضها حتى الآن.", "Key performance indicators": "مؤشرات الأداء الرئيسية", "Signature visualization": "الرسم البياني الرئيسي", "13-week cash forecast": "توقع التدفق النقدي لمدة 13 أسبوعًا", "Business income and expenses": "إيرادات ومصروفات الأعمال", "Property booking revenue": "إيرادات حجوزات العقارات", "Sales revenue trend": "اتجاه إيرادات المبيعات", "Stock on hand": "المخزون المتاح", "Receivables aging": "أعمار الذمم المدينة", "Publishing pipeline": "مسار النشر", "Wedding spend by category": "نفقات الزفاف حسب الفئة", "Selected goal activity": "نشاط الهدف المحدد", "Monthly required vs actual contributions": "المساهمات الشهرية المطلوبة والفعلية", "Projected interest": "الفائدة المتوقعة", "Total repayment": "إجمالي السداد", "Monthly payment plan": "خطة الدفع الشهرية", "Savings balance": "رصيد المدخرات", "Revenue": "الإيرادات", "Paid": "مدفوع", "Unpaid": "غير مدفوع", "Overdue": "متأخر", "Partially paid": "مدفوع جزئيًا", "In progress": "قيد التنفيذ", "In review": "قيد المراجعة", "To do": "المهام المطلوبة", "Done": "مكتمل", "At weighted cost": "بالتكلفة المرجحة", "Committed": "ملتزم به"
+};
+
 export function translate(source: string, language: UiLanguage = "en", values: Record<string, string | number> = {}): string {
   const found = catalog[source];
-  let output = language === "en" || !found
+  const reporting = reportingCatalog[source];
+  let output = language === "en"
     ? source
     : language === "ar"
-      ? (arabicCatalog[source] ?? source)
-      : found[localeIndex[language]];
+      ? (arabicCatalog[source] ?? arabicReportingCatalog[source] ?? source)
+      : (found?.[localeIndex[language]] ?? reporting?.[localeIndex[language]] ?? source);
   for (const [key, value] of Object.entries(values)) output = output.replaceAll(`{${key}}`, String(value));
   return output;
 }

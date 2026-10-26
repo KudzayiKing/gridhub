@@ -38,6 +38,31 @@ const TOOL_TARGETS: NavTarget[] = TOOLS.map((tool) => ({
 }));
 
 const TARGETS = [...TOOL_TARGETS, ...EXTRA_TARGETS];
+
+// Small, explicit phrase dictionaries turn common localized commands into the same
+// conservative English grammar below. User supplied names and amounts are preserved.
+const COMMAND_ALIASES: Record<string, Record<string, string>> = {
+  es: { "agrega": "add", "añade": "add", "anota": "record", "registra": "record", "recibí": "received", "recibi": "received", "gané": "earned", "gane": "earned", "salario": "salary", "sueldo": "salary", "ingresos": "income", "ingreso": "income", "gastos": "expenses", "gasto": "expense", "para": "for", "a": "to", "en": "in", "ahorré": "save", "ahorre": "save", "ahorrar": "save", "ahorra": "save", "comida": "groceries", "facturas": "bills", "tarea": "task", "tareas": "tasks", "proyecto": "project", "deuda": "debt", "pagué": "paid", "pague": "paid", "meta": "goal", "objetivo": "goal", "activo": "asset", "pasivo": "liability", "inventario": "inventory", "vendí": "sold", "vendi": "sold", "factura": "invoice", "invitado": "guest", "invitados": "guests", "hábito": "habit", "habito": "habit", "publicación": "post", "publicacion": "post", "redacta": "draft", "escribe": "write", "programa": "schedule", "abre": "open", "mostrar": "show", "muéstrame": "show me", "muestrame": "show me", "hoy": "today", "ayer": "yesterday" },
+  "zh-CN": { "添加": "add", "记录": "record", "收到": "received", "赚了": "earned", "工资": "salary", "薪水": "salary", "收入": "income", "支出": "expense", "费用": "expense", "用于": "for", "给": "to", "存入": "save", "储蓄": "savings", "买菜": "groceries", "杂货": "groceries", "账单": "bills", "任务": "task", "项目": "project", "债务": "debt", "还款": "paid", "目标": "goal", "资产": "asset", "负债": "liability", "库存": "inventory", "销售": "sale", "发票": "invoice", "客人": "guest", "习惯": "habit", "帖子": "post", "草拟": "draft", "安排": "schedule", "打开": "open", "显示": "show", "今天": "today", "昨天": "yesterday", "为": "for" },
+  "pt-BR": { "adicionar": "add", "adicione": "add", "anotar": "record", "anote": "record", "registrar": "record", "registre": "record", "recebi": "received", "receber": "receive", "ganhei": "earned", "salário": "salary", "salario": "salary", "ordenado": "salary", "renda": "income", "receita": "income", "despesa": "expense", "gasto": "expense", "para": "for", "em": "on", "economize": "save", "guardar": "save", "mercado": "groceries", "contas": "bills", "tarefa": "task", "projeto": "project", "dívida": "debt", "divida": "debt", "paguei": "paid", "meta": "goal", "ativo": "asset", "passivo": "liability", "estoque": "inventory", "vendi": "sold", "venda": "sale", "nota fiscal": "invoice", "convidado": "guest", "hábito": "habit", "habito": "habit", "publicação": "post", "publicacao": "post", "rascunho": "draft", "agende": "schedule", "abra": "open", "mostrar": "show", "hoje": "today", "ontem": "yesterday" },
+  fr: { "ajoute": "add", "ajouter": "add", "note": "record", "enregistre": "record", "reçu": "received", "recu": "received", "gagné": "earned", "gagne": "earned", "salaire": "salary", "revenu": "income", "dépense": "expense", "depense": "expense", "pour": "for", "à": "to", "sur": "on", "épargne": "savings", "epargne": "savings", "économise": "save", "economise": "save", "courses": "groceries", "factures": "bills", "tâche": "task", "tache": "task", "projet": "project", "dette": "debt", "payé": "paid", "paye": "paid", "objectif": "goal", "actif": "asset", "passif": "liability", "stock": "inventory", "vendu": "sold", "vente": "sale", "facture": "invoice", "invité": "guest", "invite": "guest", "habitude": "habit", "publication": "post", "rédige": "draft", "redige": "draft", "programme": "schedule", "ouvre": "open", "affiche": "show", "aujourd'hui": "today", "hier": "yesterday" },
+  ru: { "добавь": "add", "добавить": "add", "добавь-ка": "add", "запиши": "record", "записать": "record", "получил": "received", "получила": "received", "получи": "received", "заработал": "earned", "зарплату": "salary", "зарплата": "salary", "доход": "income", "расход": "expense", "потратил": "spent", "на": "for", "в": "in", "сохрани": "save", "отложи": "save", "накопления": "savings", "продукты": "groceries", "счета": "bills", "задачу": "task", "задача": "task", "проект": "project", "долг": "debt", "платёж": "payment", "платеж": "payment", "заплатил": "paid", "цель": "goal", "актив": "asset", "обязательство": "liability", "запасы": "inventory", "продал": "sold", "продажа": "sale", "счёт": "invoice", "счет": "invoice", "гость": "guest", "привычка": "habit", "пост": "post", "черновик": "draft", "запланируй": "schedule", "открой": "open", "покажи": "show", "сегодня": "today", "вчера": "yesterday" },
+  ar: { "أضف": "add", "اضف": "add", "سجل": "record", "استلمت": "received", "راتب": "salary", "الراتب": "salary", "دخل": "income", "مصروف": "expense", "مصروفات": "expenses", "لـ": "for", "إلى": "to", "ادخر": "save", "وفّر": "save", "بقالة": "groceries", "فواتير": "bills", "مهمة": "task", "مشروع": "project", "دين": "debt", "سددت": "paid", "هدف": "goal", "أصل": "asset", "التزام": "liability", "مخزون": "inventory", "بعت": "sold", "فاتورة": "invoice", "ضيف": "guest", "عادة": "habit", "منشور": "post", "مسودة": "draft", "جدول": "schedule", "افتح": "open", "اعرض": "show", "اليوم": "today", "أمس": "yesterday" },
+};
+
+function normalizeLocalizedCommand(input: string, language: string): string {
+  const aliases = COMMAND_ALIASES[language.split("-")[0] === "zh" ? "zh-CN" : language] ?? {};
+  let output = input.toLocaleLowerCase();
+  // Normalize Arabic-Indic and Eastern Arabic-Indic digits before the shared numeric grammar.
+  output = output.replace(/[٠-٩۰-۹]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹".indexOf(digit) % 10));
+  for (const [localized, english] of Object.entries(aliases).sort(([a], [b]) => b.length - a.length)) {
+    const escaped = localized.toLocaleLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    output = language.startsWith("zh")
+      ? output.replaceAll(localized.toLocaleLowerCase(), ` ${english} `)
+      : output.replace(new RegExp(`(?<![\\p{L}])${escaped}(?![\\p{L}])`, "giu"), english);
+  }
+  return output;
+}
 function amountValue(raw: string | undefined): number | undefined {
   if (!raw) return undefined;
   const value = Number(raw.replaceAll(",", ""));
@@ -95,8 +120,8 @@ function matchTarget(target: string): string | null {
   return best && best.score >= 70 ? best.path : null;
 }
 
-export function deterministicParse(input: string): DeterministicMatch | null {
-  const text = input.trim();
+export function deterministicParse(input: string, language = "en"): DeterministicMatch | null {
+  const text = normalizeLocalizedCommand(input.trim(), language);
   if (!text) return null;
   const lower = text.toLowerCase();
 

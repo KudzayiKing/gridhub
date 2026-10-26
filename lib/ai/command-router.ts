@@ -19,6 +19,7 @@ export interface RouteOptions {
   today: string;
   timeZone: string;
   locale?: string;
+  language?: string;
   signal?: AbortSignal;
   /** When true, only deterministic commands are attempted. */
   deterministicOnly?: boolean;
@@ -31,7 +32,7 @@ export type RouteResult =
   | { kind: "error"; message: string };
 
 export async function routeCommand(text: string, options: RouteOptions): Promise<RouteResult> {
-  const deterministic = deterministicParse(text);
+  const deterministic = deterministicParse(text, options.language ?? options.locale);
   if (deterministic) {
     return {
       kind: "proposal",

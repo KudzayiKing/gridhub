@@ -231,6 +231,7 @@ export function useGridhubAIController(): GridhubAIController {
           today: execContext.today,
           timeZone: execContext.timeZone,
           locale: prefs.locale || undefined,
+          language: prefs.uiLanguage || undefined,
           signal: ac.signal,
           deterministicOnly,
         });
@@ -334,7 +335,7 @@ export function useGridhubAIController(): GridhubAIController {
         if (abortRef.current === ac) abortRef.current = null;
       }
     },
-    [transcript, busy, entitlement, execContext, prefs.locale, deterministicOnly, router, record],
+    [transcript, busy, entitlement, execContext, prefs.locale, prefs.uiLanguage, deterministicOnly, router, record],
   );
 
   const confirm = React.useCallback(async () => {

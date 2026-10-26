@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /* ----------------------------------------------------------------------------
@@ -13,7 +14,10 @@ import { cn } from "@/lib/utils";
  * -------------------------------------------------------------------------- */
 export function useMounted() {
   const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   return mounted;
 }
 
@@ -65,12 +69,13 @@ export function ChartContainer({
   className?: string;
   bodyClassName?: string;
 }) {
+  const { t } = useI18n();
   return (
     <section className={cn("gp-card p-4", className)}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[13.5px] font-semibold text-fg">{title}</h3>
-          {subtitle ? <p className="text-[12px] text-fg-muted">{subtitle}</p> : null}
+          <h3 className="text-[13.5px] font-semibold text-fg">{t(title)}</h3>
+          {subtitle ? <p className="text-[12px] text-fg-muted">{t(subtitle)}</p> : null}
         </div>
         {action}
       </div>
@@ -80,12 +85,13 @@ export function ChartContainer({
 }
 
 export function ChartLegend({ items }: { items: { label: string; color: string }[] }) {
+  const { t } = useI18n();
   return (
     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
       {items.map((it, i) => (
         <span key={i} className="flex items-center gap-1.5 text-[11px] text-fg-muted">
           <span className="inline-block h-2 w-2 rounded-full" style={{ background: it.color }} />
-          {it.label}
+          {t(it.label)}
         </span>
       ))}
     </div>
@@ -93,9 +99,10 @@ export function ChartLegend({ items }: { items: { label: string; color: string }
 }
 
 export function ChartEmptyState({ label = "No data for this period yet" }: { label?: string }) {
+  const { t } = useI18n();
   return (
     <div className="flex h-full min-h-[160px] items-center justify-center rounded-xl border border-dashed border-line-strong text-[12px] text-fg-subtle">
-      {label}
+      {t(label)}
     </div>
   );
 }
@@ -119,16 +126,17 @@ export function ChartTooltip({
   title?: string;
   rows?: TooltipRow[];
 }) {
+  const { t } = useI18n();
   if (!active || !rows?.length) return null;
   return (
     <div className="rounded-xl border border-line bg-[var(--surface-strong)] px-3 py-2 text-[12px] shadow-[var(--shadow-lift)]">
-      {title ? <p className="mb-1 font-medium text-fg">{title}</p> : null}
+      {title ? <p className="mb-1 font-medium text-fg">{t(title)}</p> : null}
       <div className="flex flex-col gap-0.5">
         {rows.map((r, i) => (
           <div key={i} className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-1.5 text-fg-muted">
               {r.color ? <span className="inline-block h-2 w-2 rounded-full" style={{ background: r.color }} /> : null}
-              {r.label}
+              {t(r.label)}
             </span>
             <span className="tnum font-medium text-fg">{r.value}</span>
           </div>
@@ -142,7 +150,7 @@ export function ChartTooltip({
 export function makeTooltip(
   formatValue: (entry: { name?: string; dataKey?: string; value?: number; color?: string }, title?: string) => TooltipRow[],
 ) {
-  return function Renderer(props: { active?: boolean; label?: string; payload?: any[] }) {
+  return function Renderer(props: { active?: boolean; label?: string; payload?: { name?: string; dataKey?: string; value?: number; color?: string }[] }) {
     if (!props.active || !props.payload?.length) return null;
     return (
       <ChartTooltip

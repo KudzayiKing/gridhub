@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartEmptyState, ChartLegend, RechartsTooltip, chartColor, useMounted } from "./chart-kit";
+import { useI18n } from "@/lib/i18n";
 
 export interface CategorySlice {
   id: string;
@@ -33,6 +34,7 @@ export function CategoryBreakdownChart({
   centerValue?: string;
   showLegend?: boolean;
 }) {
+  const { t } = useI18n();
   const mounted = useMounted();
   if (!mounted) return <div style={{ height }} />;
   const total = data.reduce((s, d) => s + Math.max(0, d.value), 0);
@@ -71,7 +73,7 @@ export function CategoryBreakdownChart({
         {(centerLabel || centerValue) && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             {centerValue ? <span className="tnum text-[18px] font-semibold text-fg">{centerValue}</span> : null}
-            {centerLabel ? <span className="text-[11px] text-fg-muted">{centerLabel}</span> : null}
+            {centerLabel ? <span className="text-[11px] text-fg-muted">{t(centerLabel)}</span> : null}
           </div>
         )}
       </div>
