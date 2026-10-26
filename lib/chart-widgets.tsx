@@ -20,11 +20,11 @@ import { useActiveTools } from "@/lib/use-tools";
 import { TOOL_MAP } from "@/lib/catalog";
 import type { ToolId } from "@/lib/catalog";
 import { formatMoney, round2 } from "@/lib/money";
-import { accountBalance, budgetSummary, currentMonth, currentYear, savingsTotals, goalSummary, debtTotals, simulateDebt } from "@/lib/calc/money";
+import { accountBalance, budgetSummary, currentMonth, currentYear, savingsTotals, debtTotals, simulateDebt } from "@/lib/calc/money";
 import { dailyTotals } from "@/lib/calc/life";
 import { projectProgress } from "@/lib/calc/work";
-import { inventorySummary } from "@/lib/calc/business";
-import { rows } from "@/lib/tools/shared";
+import { inventorySummary, salesSummary, invoicingSummary, forecastCashFlow } from "@/lib/calc/business";
+import { habitsOverview, contentSummary } from "@/lib/calc/work";
 import { ChartContainer } from "@/components/charts/chart-container";
 import { MonthlyComparisonChart } from "@/components/charts/monthly-comparison-chart";
 import { CategoryBreakdownChart } from "@/components/charts/category-breakdown-chart";
@@ -34,8 +34,8 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { AreaTrend } from "@/components/charts/trend";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { ToolIcon } from "@/components/icons/tool-icons";
-import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, DebtPayment, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill, NetWorthItem, Holding, ValuationSnapshot } from "@/lib/types";
-import { monthlyComparisonData, categorySlices, budgetActualRows, cashFlowTrend } from "@/lib/reporting/budget";
+import type { MoneyTransaction, MoneyCategory, MoneyBudget, SavingsGoal, GoalMovement, NutritionLog, Task, BusinessProduct, InventoryMovement, Debt, DebtPayment, BusinessTransaction, Paycheck, PaycheckAllocation, PaySchedule, MoneyAccount, RecurringBill, NetWorthItem, Holding, ValuationSnapshot, Sale, SalesTarget, Invoice, Payment, CashForecastItem, CashScenario, WeddingExpense, Property, PropertyBooking, PropertyExpense, Habit, HabitCompletion, ContentPost } from "@/lib/types";
+import { monthlyComparisonData, categorySlices, budgetActualRows } from "@/lib/reporting/budget";
 import { paycheckAllocationBreakdown, monthlyBillOccurrences, nextPaydayDate } from "@/lib/reporting/paycheck";
 import { BudgetVsActualChart } from "@/components/charts/budget-vs-actual-chart";
 import { debtDueOccurrences, estimatedDebtProgress, localISODate } from "@/lib/reporting/debt-tracker";
@@ -186,7 +186,7 @@ function SavingsMonthlyNeedWidget({ currency }: { currency: string }) {
   return <p className="py-5 text-center text-xl font-semibold">{requirements.length ? formatMoney(total, { currency }) : "Set target dates"}<span className="block text-[10px] font-normal text-fg-subtle">Combined monthly requirement</span></p>;
 }
 
-function NutritionWeeklyWidget({ currency }: { currency: string }) {
+function NutritionWeeklyWidget() {
   const logs = useCollection<NutritionLog>("nutrition", "logs");
   const days = React.useMemo(() => {
     const out: { label: string; value: number }[] = [];
@@ -201,7 +201,7 @@ function NutritionWeeklyWidget({ currency }: { currency: string }) {
   return <AreaTrend data={days} format={(n) => `${Math.round(n)} kcal`} ariaLabel="Daily calories last 7 days" height={180} />;
 }
 
-function ProjectsCompletionWidget({ currency }: { currency: string }) {
+function ProjectsCompletionWidget() {
   const tasks = useCollection<Task>("projects", "tasks");
   const s = projectProgress(tasks.rows);
   if (!s.total) return <p className="py-6 text-center text-[12px] text-fg-subtle">No tasks yet</p>;
@@ -220,7 +220,7 @@ function ProjectsCompletionWidget({ currency }: { currency: string }) {
   );
 }
 
-function InventoryLowStockWidget({ currency }: { currency: string }) {
+function InventoryLowStockWidget() {
   const products = useCollection<BusinessProduct>("inventory", "products");
   const movements = useCollection<InventoryMovement>("inventory", "movements");
   const s = inventorySummary(products.rows, movements.rows);
@@ -466,6 +466,128 @@ function NetWorthGrowthWidget({ currency }: { currency: string }) {
     : <p className="py-6 text-center text-[12px] text-fg-subtle">Record another dated valuation to see net-worth growth</p>;
 }
 
+function SalesRevenueWidget({ currency }: { currency: string }) {
+  const sales = useCollection<Sale>("sales", "sales");
+  const targets = useCollection<SalesTarget>("sales", "targets");
+  const summary = salesSummary(sales.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency), targets.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency));
+  return summary.byMonth.length
+    ? <TrendChart data={summary.byMonth.map((row) => ({ month: row.month, net: row.net }))} xKey="month" series={[{ key: "net", name: "Net sales" }]} formatValue={fmtFactory(currency)} height={210} />
+    : <p className="py-6 text-center text-[11px] text-fg-subtle">No sale records yet</p>;
+}
+
+function InvoiceCollectionsWidget({ currency }: { currency: string }) {
+  const invoices = useCollection<Invoice>("invoicing", "invoices");
+  const payments = useCollection<Payment>("invoicing", "payments");
+  const eligible = invoices.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency);
+  const invoiceIds = new Set(eligible.map((row) => row.id));
+  const summary = invoicingSummary(eligible, payments.rows.filter((row) => invoiceIds.has(row.invoiceId)), localISODate(new Date()));
+  const balances = [
+    { id: "current", name: "Current", value: summary.rows.filter((row) => row.totals.balanceDue > 0 && !row.totals.isOverdue).reduce((sum, row) => sum + row.totals.balanceDue, 0) },
+    { id: "overdue", name: "Overdue", value: summary.overdueAmount },
+  ];
+  return <CategoryBreakdownChart data={balances} formatValue={fmtFactory(currency)} centerLabel="Outstanding" centerValue={formatMoney(summary.outstanding, { currency })} height={210} />;
+}
+
+function CashForecastWidget({ currency }: { currency: string }) {
+  const scenarios = useCollection<CashScenario>("cash-flow", "scenarios");
+  const items = useCollection<CashForecastItem>("cash-flow", "items");
+  const scenario = scenarios.rows.find((row) => !row.deleted);
+  if (!scenario) return <p className="py-6 text-center text-[11px] text-fg-subtle">Create a forecast scenario</p>;
+  const forecast = forecastCashFlow(items.rows, scenario, { weeks: 13 });
+  return <TrendChart data={forecast.weeks.map((row) => ({ week: row.label, closing: row.closing }))} xKey="week" series={[{ key: "closing", name: "Projected cash" }]} formatValue={fmtFactory(currency)} height={210} type="line" />;
+}
+
+function WeddingBudgetWidget({ currency }: { currency: string }) {
+  const expenses = useCollection<WeddingExpense>("wedding", "expenses");
+  const data = expenses.rows.filter((row) => !row.deleted).reduce((list, row) => {
+    const name = row.category || "Uncategorized";
+    const existing = list.find((entry) => entry.id === name);
+    if (existing) existing.value += row.committed;
+    else list.push({ id: name, name, value: row.committed });
+    return list;
+  }, [] as { id: string; name: string; value: number }[]);
+  const committed = data.reduce((sum, row) => sum + row.value, 0);
+  return <CategoryBreakdownChart data={data} formatValue={fmtFactory(currency)} centerLabel="Committed" centerValue={formatMoney(committed, { currency })} height={210} />;
+}
+
+function PropertyRevenueWidget({ currency }: { currency: string }) {
+  const properties = useCollection<Property>("property", "properties");
+  const bookings = useCollection<PropertyBooking>("property", "bookings");
+  const eligible = new Set(properties.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency).map((row) => row.id));
+  const grouped = new Map<string, number>();
+  for (const booking of bookings.rows.filter((row) => !row.deleted && row.status !== "cancelled" && eligible.has(row.propertyId))) {
+    const month = booking.checkIn.slice(0, 7); grouped.set(month, (grouped.get(month) ?? 0) + booking.accommodation);
+  }
+  const data = [...grouped].sort(([a], [b]) => a.localeCompare(b)).map(([month, revenue]) => ({ month, revenue }));
+  return data.length ? <TrendChart data={data} xKey="month" series={[{ key: "revenue", name: "Accommodation revenue" }]} formatValue={fmtFactory(currency)} height={210} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">No non-cancelled bookings yet</p>;
+}
+
+function HabitTodayWidget() {
+  const habits = useCollection<Habit>("habits", "habits");
+  const completions = useCollection<HabitCompletion>("habits", "completions");
+  const summary = habitsOverview(habits.rows, completions.rows, localISODate(new Date()));
+  return <p className="py-6 text-center text-xl font-semibold">{summary.doneToday} / {summary.scheduledToday}<span className="block text-[11px] font-normal text-fg-subtle">scheduled habits done today</span></p>;
+}
+
+function ContentPipelineWidget() {
+  const posts = useCollection<ContentPost>("content", "posts");
+  const summary = contentSummary(posts.rows);
+  const status = ["idea", "draft", "scheduled", "published"].map((name) => ({ id: name, name: name[0].toUpperCase() + name.slice(1), value: posts.rows.filter((row) => !row.deleted && row.status === name).length }));
+  return <CategoryBreakdownChart data={status} formatValue={(value) => Number(value ?? 0) + " posts"} centerLabel="Publishing rate" centerValue={summary.publishingRate == null ? "N/A" : Math.round(summary.publishingRate) + "%"} height={210} />;
+}
+
+function BookkeepingExpensesWidget({ currency }: { currency: string }) {
+  const transactions = useCollection<BusinessTransaction>("bookkeeping", "transactions");
+  const categories = useCollection<MoneyCategory>("bookkeeping", "categories");
+  const totals = new Map<string, number>();
+  for (const row of transactions.rows.filter((item) => !item.deleted && item.type === "expense")) {
+    const name = categories.rows.find((category) => category.id === row.categoryId)?.name ?? "Uncategorized";
+    totals.set(name, (totals.get(name) ?? 0) + row.amount);
+  }
+  const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
+  return <CategoryBreakdownChart data={data} formatValue={fmtFactory(currency)} centerLabel="Cash expenses" centerValue={formatMoney(data.reduce((sum, row) => sum + row.value, 0), { currency })} height={210} />;
+}
+
+function InventoryValueWidget({ currency }: { currency: string }) {
+  const products = useCollection<BusinessProduct>("inventory", "products");
+  const movements = useCollection<InventoryMovement>("inventory", "movements");
+  const summary = inventorySummary(products.rows, movements.rows);
+  const totals = new Map<string, number>();
+  for (const row of summary.items) { const name = row.product.category || "Uncategorized"; totals.set(name, (totals.get(name) ?? 0) + row.valuation.inventoryValue); }
+  const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
+  return <CategoryBreakdownChart data={data} formatValue={fmtFactory(currency)} centerLabel="At weighted cost" centerValue={formatMoney(summary.inventoryValue, { currency })} height={210} />;
+}
+
+function SalesProductsWidget({ currency }: { currency: string }) {
+  const sales = useCollection<Sale>("sales", "sales");
+  const targets = useCollection<SalesTarget>("sales", "targets");
+  const summary = salesSummary(sales.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency), targets.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency));
+  return <CategoryBreakdownChart data={summary.byProduct.map((row) => ({ id: row.productId, name: row.label, value: row.net }))} formatValue={fmtFactory(currency)} centerLabel="Net sales" centerValue={formatMoney(summary.net, { currency })} height={210} />;
+}
+
+function PropertyExpenseWidget({ currency }: { currency: string }) {
+  const properties = useCollection<Property>("property", "properties");
+  const expenses = useCollection<PropertyExpense>("property", "expenses");
+  const propertyIds = new Set(properties.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency).map((row) => row.id));
+  const totals = new Map<string, number>();
+  for (const row of expenses.rows.filter((item) => !item.deleted && propertyIds.has(item.propertyId))) totals.set(row.category || "Uncategorized", (totals.get(row.category || "Uncategorized") ?? 0) + row.amount);
+  const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
+  return <CategoryBreakdownChart data={data} formatValue={fmtFactory(currency)} centerLabel="Expenses" centerValue={formatMoney(data.reduce((sum, row) => sum + row.value, 0), { currency })} height={210} />;
+}
+
+function NutritionMacrosWidget() {
+  const logs = useCollection<NutritionLog>("nutrition", "logs");
+  const totals = dailyTotals(logs.rows, localISODate(new Date()));
+  const data = [{ id: "protein", name: "Protein", value: totals.protein * 4 }, { id: "carbs", name: "Carbohydrates", value: totals.carbs * 4 }, { id: "fat", name: "Fat", value: totals.fat * 9 }];
+  return <CategoryBreakdownChart data={data} formatValue={(value) => Math.round(Number(value ?? 0)) + " kcal"} centerLabel="Logged" centerValue={Math.round(totals.kcal) + " kcal"} height={210} />;
+}
+
+function ProjectStatusWidget() {
+  const tasks = useCollection<Task>("projects", "tasks");
+  const items = [{ id: "todo", name: "To do", value: tasks.rows.filter((row) => !row.deleted && row.status === "todo").length }, { id: "progress", name: "In progress", value: tasks.rows.filter((row) => !row.deleted && row.status === "in_progress").length }, { id: "review", name: "In review", value: tasks.rows.filter((row) => !row.deleted && row.status === "review").length }, { id: "done", name: "Completed", value: tasks.rows.filter((row) => !row.deleted && row.status === "done").length }];
+  return <CategoryBreakdownChart data={items} formatValue={(value) => Number(value ?? 0) + " tasks"} centerLabel="Tasks" centerValue={String(items.reduce((sum, row) => sum + row.value, 0))} height={210} />;
+}
+
 export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "budget.monthly", tool: "budget", title: "Monthly income vs expenses", description: "Annual Budget · all 12 months", Component: BudgetMonthlyWidget },
   { id: "budget.categories", tool: "budget", title: "Spending by category", description: "Annual Budget · expense breakdown", Component: BudgetCategoriesWidget },
@@ -480,6 +602,19 @@ export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "projects.completion", tool: "projects", title: "Task completion", description: "Projects · overall progress", Component: ProjectsCompletionWidget },
   { id: "inventory.lowstock", tool: "inventory", title: "Low-stock products", description: "Inventory · items needing reorder", Component: InventoryLowStockWidget },
   { id: "bookkeeping.revenue", tool: "bookkeeping", title: "Revenue trend", description: "Bookkeeping · monthly revenue", Component: BookkeepingRevenueWidget },
+  { id: "sales.revenue", tool: "sales", title: "Sales revenue trend", description: "Sales · recorded net revenue", Component: SalesRevenueWidget },
+  { id: "invoicing.outstanding", tool: "invoicing", title: "Receivables status", description: "Invoices · linked payments and outstanding balances", Component: InvoiceCollectionsWidget },
+  { id: "cash-flow.forecast", tool: "cash-flow", title: "Projected cash balance", description: "Cash Flow · saved 13-week scenario", Component: CashForecastWidget },
+  { id: "wedding.budget", tool: "wedding", title: "Wedding budget allocation", description: "Wedding · committed amounts by category", Component: WeddingBudgetWidget },
+  { id: "property.revenue", tool: "property", title: "Rental revenue trend", description: "Property · non-cancelled booking revenue", Component: PropertyRevenueWidget },
+  { id: "habits.today", tool: "habits", title: "Today's habit check-ins", description: "Habits · scheduled completions", Component: HabitTodayWidget },
+  { id: "content.pipeline", tool: "content", title: "Content pipeline", description: "Content · current saved post statuses", Component: ContentPipelineWidget },
+  { id: "bookkeeping.expenses", tool: "bookkeeping", title: "Expenses by category", description: "Bookkeeping · cash-basis recorded expenses", Component: BookkeepingExpensesWidget },
+  { id: "inventory.value", tool: "inventory", title: "Inventory value by category", description: "Inventory · weighted-average cost", Component: InventoryValueWidget },
+  { id: "sales.products", tool: "sales", title: "Sales by product", description: "Sales · net amounts after returns and discounts", Component: SalesProductsWidget },
+  { id: "property.expenses", tool: "property", title: "Rental expenses by category", description: "Property · recorded operating expenses", Component: PropertyExpenseWidget },
+  { id: "nutrition.macros", tool: "nutrition", title: "Daily macro balance", description: "Nutrition · logged food only", Component: NutritionMacrosWidget },
+  { id: "projects.status", tool: "projects", title: "Task status", description: "Projects · current task records", Component: ProjectStatusWidget },
   { id: "debt.payoff", tool: "debt", title: "Debt balances", description: "Debt · balance by account", Component: DebtPayoffWidget },
   { id: "debt.total", tool: "debt", title: "Total Debt Remaining", description: "Debt · current tracked balances", Component: DebtTotalWidget },
   { id: "debt.next-payment", tool: "debt", title: "Next Debt Payment", description: "Debt · next dated payment", Component: DebtNextPaymentWidget },

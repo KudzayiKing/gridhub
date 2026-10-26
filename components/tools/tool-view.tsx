@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { LedgerTool, Panel } from "./ledger-tool";
-import { CompactMetric, MetricCard, Badge, EmptyState, InlineAlert } from "@/components/ui/card";
-import { BarList } from "@/components/charts/trend";
+import { CompactMetric, MetricCard, Badge, EmptyState } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartEmptyState,
@@ -31,10 +30,9 @@ import {
   savingsTotals,
   netWorthSummary,
   paycheckSummary,
-  nextPayDate,
 } from "@/lib/calc/money";
 import { bookkeepingSummary, inventorySummary, salesSummary, invoicingSummary, forecastCashFlow } from "@/lib/calc/business";
-import { weddingSummary, propertySummary, dailyTotals, macroSplit, nightsBetween } from "@/lib/calc/life";
+import { weddingSummary, propertySummary, dailyTotals, macroSplit } from "@/lib/calc/life";
 import { habitsOverview, projectProgress, contentSummary, isScheduled, KANBAN_COLUMNS } from "@/lib/calc/work";
 import {
   monthlyComparisonData,
@@ -51,6 +49,7 @@ import { PaycheckDashboard } from "./paycheck-dashboard";
 import { DebtDashboard } from "./debt-dashboard";
 import { SavingsDashboard } from "./savings-dashboard";
 import { NetWorthDashboard } from "./net-worth-dashboard";
+import { OperationsDashboard, OperationsHero, DashboardAction } from "./operations-dashboard";
 import type { ToolId } from "@/lib/catalog";
 import type { DataMap } from "@/lib/tools/shared";
 import type { BaseRecord } from "@/lib/types";
@@ -63,7 +62,6 @@ import type {
   Habit,
   HabitCompletion,
   Invoice,
-  MoneyAccount,
   MoneyBudget,
   MoneyCategory,
   MoneyTransaction,
@@ -76,7 +74,6 @@ import type {
   PropertyBooking,
   PropertyExpense,
   PropertyMaintenance,
-  RecurringBill,
   Sale,
   SalesTarget,
   SavingsGoal,
@@ -85,6 +82,7 @@ import type {
   WeddingGuest,
   WeddingPayment,
   WeddingTable,
+  WeddingTask,
   WeddingVendor,
   BusinessTransaction,
   BusinessProduct,
@@ -92,11 +90,16 @@ import type {
   NetWorthItem,
   Holding,
   ValuationSnapshot,
-  BusinessContact,
 } from "@/lib/types";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+const metricSum = (values: number[]) => round2(values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0));
+function addDaysISO(date: string, days: number) {
+  const value = new Date(date + "T00:00:00");
+  value.setDate(value.getDate() + days);
+  return value.toISOString().slice(0, 10);
 }
 
 /** "2026-10" -> "October 2026". Falls back to the raw string if it can't be parsed. */
@@ -152,9 +155,11 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
   const tabs = React.useMemo(() => buildTabs(toolId, data), [toolId, data]);
   // These overviews already contain the complete summary, so showing LedgerTool's
   // headline cards above them repeats the same figures with a second time period.
+  const operationsTool = ["bookkeeping", "inventory", "sales", "invoicing", "cash-flow", "wedding", "property", "nutrition", "projects", "habits", "content"].includes(toolId);
+  const dashboardMetrics = React.useMemo(() => operationsTool ? computeMetrics(toolId, data, currency) : [], [operationsTool, toolId, data, currency]);
   const metrics = React.useMemo(
-    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" || toolId === "net-worth" ? [] : computeMetrics(toolId, data, currency)),
-    [toolId, data, currency],
+    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" || toolId === "net-worth" || operationsTool ? [] : computeMetrics(toolId, data, currency)),
+    [toolId, data, currency, operationsTool],
   );
   const displayTabs = React.useMemo(() => applyDrill(tabs, drill, toolId), [tabs, drill, toolId]);
 
@@ -180,7 +185,7 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
         <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
       ))}
       overview={
-        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} onOpenTab={setRequestedTab} />
+        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} onOpenTab={setRequestedTab} dashboardMetrics={dashboardMetrics} />
       }
       defaultTab={requestedTab ?? (drill.month || drill.day || drill.categoryId ? "transactions" : undefined)}
       onClearFilter={() => setDrill({})}
@@ -193,6 +198,56 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
    ========================================================================== */
 
 function Overview({
+  toolId,
+  data,
+  currency,
+  drill,
+  onDrill,
+  onOpenTab,
+  dashboardMetrics,
+}: {
+  toolId: ToolId;
+  data: DataMap;
+  currency: string;
+  drill: DrillState;
+  onDrill: (next: DrillState) => void;
+  onOpenTab: (tab: string) => void;
+  dashboardMetrics: ReturnType<typeof computeMetrics>;
+}) {
+  const operationsTool = ["bookkeeping", "inventory", "sales", "invoicing", "cash-flow", "wedding", "property", "nutrition", "projects", "habits", "content"].includes(toolId);
+  if (operationsTool) {
+    return <div className="flex flex-col gap-3">
+      <OperationsDashboard
+        title={operationsDashboardTitle(toolId)}
+        description="Live calculations from saved records · no unsupported history or integrations are assumed."
+        kpis={dashboardMetrics}
+        hero={<OperationsHero toolId={toolId} data={data} currency={currency} />}
+        pin={{ chartId: operationsWidgetId(toolId), title: operationsWidgetTitle(toolId), tool: toolId }}
+        action={<DashboardAction label={operationsActionLabel(toolId)} onClick={() => onOpenTab(operationsDefaultTab(toolId))} />}
+      />
+      <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} />
+    </div>;
+  }
+  return <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} />;
+}
+
+function operationsDashboardTitle(toolId: ToolId) {
+  return ({ bookkeeping: "Bookkeeping dashboard", inventory: "Inventory dashboard", sales: "Sales dashboard", invoicing: "Invoice and collections dashboard", "cash-flow": "Cash flow forecast", wedding: "Wedding command center", property: "Rental portfolio dashboard", nutrition: "Nutrition dashboard", projects: "Project dashboard", habits: "Habit dashboard", content: "Content planning dashboard" } as Partial<Record<ToolId, string>>)[toolId] ?? "Dashboard";
+}
+function operationsDefaultTab(toolId: ToolId) {
+  return ({ bookkeeping: "transactions", inventory: "products", sales: "sales", invoicing: "invoices", "cash-flow": "items", wedding: "expenses", property: "bookings", nutrition: "logs", projects: "tasks", habits: "completions", content: "posts" } as Partial<Record<ToolId, string>>)[toolId] ?? "transactions";
+}
+function operationsActionLabel(toolId: ToolId) {
+  return ({ bookkeeping: "Add transaction", inventory: "Add product", sales: "Record sale", invoicing: "Create invoice", "cash-flow": "Add forecast item", wedding: "Add expense", property: "Add booking", nutrition: "Log meal", projects: "Create task", habits: "Check in", content: "Create post" } as Partial<Record<ToolId, string>>)[toolId] ?? "Add record";
+}
+function operationsWidgetId(toolId: ToolId) {
+  return ({ bookkeeping: "bookkeeping.expenses", inventory: "inventory.value", sales: "sales.products", invoicing: "invoicing.outstanding", "cash-flow": "cash-flow.forecast", wedding: "wedding.budget", property: "property.expenses", nutrition: "nutrition.macros", projects: "projects.status", habits: "habits.today", content: "content.pipeline" } as Partial<Record<ToolId, string>>)[toolId] ?? "";
+}
+function operationsWidgetTitle(toolId: ToolId) {
+  return ({ bookkeeping: "Expenses by category", inventory: "Inventory value by category", sales: "Sales by product", invoicing: "Receivables status", "cash-flow": "Projected cash balance", wedding: "Wedding budget allocation", property: "Rental expenses by category", nutrition: "Daily macro balance", projects: "Task status", habits: "Today's habit check-ins", content: "Content pipeline" } as Partial<Record<ToolId, string>>)[toolId] ?? "Overview";
+}
+
+function OverviewContent({
   toolId,
   data,
   currency,
@@ -262,7 +317,7 @@ function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap;
     return <ChartContainer title="Stock on hand" subtitle="Units by product · weighted average inventory tracking" icon="package"><HorizontalRankingChart data={products.map((product) => ({ id: product.id, label: product.name, value: product.quantity }))} formatValue={(value) => `${Number(value ?? 0)} units`} maxItems={10} height={Math.max(170, Math.min(products.length, 10) * 32 + 30)} /></ChartContainer>;
   }
   if (toolId === "sales") {
-    const summary = salesSummary(rows<Sale>(data, "sales"), rows<SalesTarget>(data, "targets"));
+    const summary = salesSummary(rows<Sale>(data, "sales").filter((row) => (row.currency || "USD") === currency), rows<SalesTarget>(data, "targets").filter((row) => (row.currency || "USD") === currency));
     if (!summary.byMonth.length) return null;
     return <ChartContainer title="Sales revenue trend" subtitle="Net sales by month, after discounts and returns" icon="trending-up"><TrendChart data={summary.byMonth.map((item) => ({ label: monthLong(item.month), net: item.net }))} xKey="label" series={[{ key: "net", name: "Net sales" }]} formatValue={money} type="line" height={240} /></ChartContainer>;
   }
@@ -278,7 +333,8 @@ function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap;
     return <ChartContainer title="Wedding spend by category" subtitle="Committed budget compared with actual spend" icon="heart"><TrendChart data={expenses.map((expense) => ({ label: expense.category, committed: expense.committed, actual: expense.actual }))} xKey="label" series={[{ key: "committed", name: "Committed" }, { key: "actual", name: "Actual" }]} formatValue={money} type="line" height={Math.max(200, Math.min(expenses.length, 8) * 35 + 50)} /></ChartContainer>;
   }
   if (toolId === "property") {
-    const bookings = rows<PropertyBooking>(data, "bookings").filter((booking) => booking.status !== "cancelled");
+    const propertyIds = new Set(rows<Property>(data, "properties").filter((row) => !row.deleted && (row.currency || "USD") === currency).map((row) => row.id));
+    const bookings = rows<PropertyBooking>(data, "bookings").filter((booking) => booking.status !== "cancelled" && propertyIds.has(booking.propertyId));
     if (!bookings.length) return null;
     const monthly = new Map<string, { revenue: number; nights: number }>();
     for (const booking of bookings) {
@@ -719,18 +775,15 @@ function BudgetCalendar({
     const current = currentMonth();
     return current.startsWith(year) ? current : `${year}-01`;
   });
-  React.useEffect(() => {
-    setMonth((current) => current.startsWith(year) ? current : `${year}-01`);
-  }, [year]);
-
-  const [yyyy, mm] = month.split("-").map(Number);
+  const selectedMonth = month.startsWith(year) ? month : `${year}-01`;
+  const [yyyy, mm] = selectedMonth.split("-").map(Number);
   const first = new Date(yyyy, mm - 1, 1);
   const offset = first.getDay();
   const daysInMonth = new Date(yyyy, mm, 0).getDate();
-  const transactionDays = new Set(transactions.filter((transaction) => transaction.date.startsWith(month)).map((transaction) => transaction.date));
+  const transactionDays = new Set(transactions.filter((transaction) => transaction.date.startsWith(selectedMonth)).map((transaction) => transaction.date));
   const cells = Array.from({ length: Math.ceil((offset + daysInMonth) / 7) * 7 }, (_, index) => {
     const day = index - offset + 1;
-    return day < 1 || day > daysInMonth ? null : `${month}-${String(day).padStart(2, "0")}`;
+    return day < 1 || day > daysInMonth ? null : `${selectedMonth}-${String(day).padStart(2, "0")}`;
   });
   const moveMonth = (amount: number) => {
     const next = new Date(yyyy, mm - 1 + amount, 1);
@@ -742,9 +795,9 @@ function BudgetCalendar({
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-[12px] font-semibold">Transaction calendar</h3>
         <div className="flex items-center gap-1">
-          <button type="button" aria-label="Previous month" disabled={month === `${year}-01`} className="press grid h-7 w-7 place-items-center rounded-lg text-fg-muted hover:bg-[var(--surface-strong)] disabled:opacity-35" onClick={() => moveMonth(-1)}><AnimatedIcon name="chevronLeft" size={14} trigger="click" /></button>
-          <span className="min-w-[5.5rem] text-center text-[10.5px] text-fg-muted">{new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>
-          <button type="button" aria-label="Next month" disabled={month === `${year}-12`} className="press grid h-7 w-7 place-items-center rounded-lg text-fg-muted hover:bg-[var(--surface-strong)] disabled:opacity-35" onClick={() => moveMonth(1)}><AnimatedIcon name="chevronRight" size={14} trigger="click" /></button>
+          <button type="button" aria-label="Previous month" disabled={selectedMonth === `${year}-01`} className="press grid h-7 w-7 place-items-center rounded-lg text-fg-muted hover:bg-[var(--surface-strong)] disabled:opacity-35" onClick={() => moveMonth(-1)}><AnimatedIcon name="chevronLeft" size={14} trigger="click" /></button>
+          <span className="min-w-[5.5rem] text-center text-[10.5px] text-fg-muted">{new Date(`${selectedMonth}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>
+          <button type="button" aria-label="Next month" disabled={selectedMonth === `${year}-12`} className="press grid h-7 w-7 place-items-center rounded-lg text-fg-muted hover:bg-[var(--surface-strong)] disabled:opacity-35" onClick={() => moveMonth(1)}><AnimatedIcon name="chevronRight" size={14} trigger="click" /></button>
         </div>
       </div>
       <div className="grid grid-cols-7 text-center">
@@ -902,8 +955,9 @@ function NutritionDiary({ data }: { data: DataMap }) {
 }
 
 function InvoicingOverview({ data, currency }: { data: DataMap; currency: string }) {
-  const invoices = rows<Invoice>(data, "invoices");
-  const payments = rows<Payment>(data, "payments");
+  const invoices = rows<Invoice>(data, "invoices").filter((invoice) => (invoice.currency || "USD") === currency);
+  const invoiceIds = new Set(invoices.map((invoice) => invoice.id));
+  const payments = rows<Payment>(data, "payments").filter((payment) => invoiceIds.has(payment.invoiceId));
   if (!invoices.length) return null;
   const summary = invoicingSummary(invoices, payments);
   const aging = { Current: 0, "1–30 days": 0, "31–60 days": 0, "61+ days": 0 };
@@ -1027,39 +1081,60 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
       ];
     }
     case "bookkeeping": {
-      const s = bookkeepingSummary(rows<BusinessTransaction>(data, "transactions"), currentMonth());
+      const tx = rows<BusinessTransaction>(data, "transactions").filter((row) => !row.deleted);
+      const s = bookkeepingSummary(tx);
       return [
-        m("Cash revenue", formatMoney(s.cashRevenue, { currency }), "arrowUp"),
-        m("Operating expenses", formatMoney(s.operatingExpenses, { currency }), "arrowDown", undefined, "negative"),
-        m("Operating surplus", formatMoney(s.operatingSurplus, { currency, signed: true }), "wallet", undefined, s.operatingSurplus >= 0 ? "positive" : "negative"),
-        m("Expense ratio", formatPercent(s.expenseRatio), "percent"),
+        m("Total revenue", formatMoney(s.cashRevenue, { currency }), "arrowUp", "Cash basis · collected revenue", "positive"),
+        m("Total expenses", formatMoney(s.operatingExpenses, { currency }), "arrowDown", "Cash basis · recorded expenses", "negative"),
+        m("Net profit / loss", formatMoney(s.operatingSurplus, { currency, signed: true }), "wallet", "Revenue less operating expenses", s.operatingSurplus >= 0 ? "positive" : "negative"),
+        m("Profit margin", s.cashRevenue > 0 ? formatPercent(100 - (s.expenseRatio ?? 0)) : "—", "percent", "Unavailable with zero revenue"),
+        m("Uncategorized", String(tx.filter((row) => (row.type === "revenue" || row.type === "expense") && !row.categoryId).length), "tag", "Revenue and expense entries"),
+        m("Cash received", formatMoney(s.inflows, { currency }), "dollar", "Includes capital and loan proceeds"),
       ];
     }
     case "inventory": {
-      const s = inventorySummary(rows<BusinessProduct>(data, "products"), rows<InventoryMovement>(data, "movements"));
+      const products = rows<BusinessProduct>(data, "products").filter((row) => !row.deleted);
+      const movements = rows<InventoryMovement>(data, "movements").filter((row) => !row.deleted);
+      const s = inventorySummary(products, movements);
       return [
-        m("Inventory value", formatMoney(s.inventoryValue, { currency }), "package", "Weighted average cost"),
-        m("Retail value", formatMoney(s.retailValue, { currency }), "tag"),
-        m("Units on hand", String(s.totalUnits), "boxes"),
-        m("Low stock", String(s.lowStock.length), "alert", `${s.productCount} products`, s.lowStock.length ? "warning" : "neutral"),
+        m("Active SKUs", String(s.productCount), "package", "Non-deleted products"),
+        m("Units in stock", String(s.totalUnits), "boxes", "Current on-hand quantity"),
+        m("Inventory at cost", formatMoney(s.inventoryValue, { currency }), "wallet", "Moving weighted-average cost"),
+        m("Low stock", String(s.lowStock.length), "alert", "At or below reorder threshold", s.lowStock.length ? "warning" : "positive"),
+        m("Out of stock", String(products.filter((row) => row.quantity <= 0).length), "package", "Current quantity at or below zero"),
+        m("Stock movements", String(movements.length), "repeat", "Recorded movement history"),
       ];
     }
     case "sales": {
-      const s = salesSummary(rows<Sale>(data, "sales"), rows<SalesTarget>(data, "targets"), { period: currentMonth() });
+      const sales = rows<Sale>(data, "sales").filter((row) => !row.deleted && (row.currency || "USD") === currency);
+      const current = currentMonth();
+      const previousDate = new Date(current + "-01T00:00:00");
+      previousDate.setMonth(previousDate.getMonth() - 1);
+      const previous = previousDate.toISOString().slice(0, 7);
+      const s = salesSummary(sales, rows<SalesTarget>(data, "targets").filter((row) => (row.currency || "USD") === currency), { period: current, priorPeriod: previous });
       return [
-        m("Net sales", formatMoney(s.net, { currency }), "shopping-cart", `${s.orders} orders`),
-        m("Average order", s.averageOrderValue ? formatMoney(s.averageOrderValue, { currency }) : "—", "receipt"),
-        m("Target progress", formatPercent(s.targetProgress), "target", s.target ? `of ${formatMoney(s.target, { currency })}` : "No target"),
-        m("Collected", formatMoney(s.collectedRevenue, { currency }), "dollar", undefined, "positive"),
+        m("Sales revenue", formatMoney(s.net, { currency }), "shopping-cart", `${s.orders} sales this month`),
+        m("Number of sales", String(s.orders), "receipt", "This month"),
+        m("Average order", s.averageOrderValue ? formatMoney(s.averageOrderValue, { currency }) : "—", "receipt", "This month"),
+        m("Revenue growth", formatPercent(s.growth), "trendingUp", s.priorNet ? "Compared with previous month" : "No prior-month sales to compare"),
+        m("Units sold", String(s.unitsSold), "boxes", "This month"),
+        m("Returns", formatMoney(metricSum(sales.filter((row) => row.date.startsWith(current)).map((row) => row.returned)), { currency }), "rotateCcw", "Recorded this month"),
       ];
     }
     case "invoicing": {
-      const s = invoicingSummary(rows<Invoice>(data, "invoices"), rows<Payment>(data, "payments"));
+      const invoices = rows<Invoice>(data, "invoices").filter((row) => !row.deleted && (row.currency || "USD") === currency);
+      const invoiceIds = new Set(invoices.map((row) => row.id));
+      const s = invoicingSummary(invoices, rows<Payment>(data, "payments").filter((row) => invoiceIds.has(row.invoiceId)), todayISO());
+      const issuedRows = s.rows.filter((row) => row.invoice.status !== "draft" && row.invoice.status !== "void");
+      const invoiced = metricSum(issuedRows.map((row) => row.totals.total));
+      const paid = metricSum(issuedRows.map((row) => row.totals.paid));
       return [
-        m("Outstanding", formatMoney(s.outstanding, { currency }), "file-text", `${s.rows.length} invoices`),
-        m("Overdue", formatMoney(s.overdueAmount, { currency }), "alert", `${s.overdue.length} invoices`, s.overdueAmount > 0 ? "negative" : "neutral"),
-        m("Payments received", formatMoney(s.paidThisPeriod, { currency }), "dollar", undefined, "positive"),
-        m("Drafts", String(s.draftCount), "edit"),
+        m("Total invoiced", formatMoney(invoiced, { currency }), "file-text", "Sent or settled invoices"),
+        m("Payments collected", formatMoney(paid, { currency }), "dollar", "Linked invoice payments", "positive"),
+        m("Outstanding balance", formatMoney(s.outstanding, { currency }), "wallet", "Current amount due"),
+        m("Overdue balance", formatMoney(s.overdueAmount, { currency }), "alert", `${s.overdue.length} invoices`, s.overdueAmount > 0 ? "negative" : "positive"),
+        m("Unpaid invoices", String(issuedRows.filter((row) => row.totals.balanceDue > 0).length), "clock", "Includes partial balances"),
+        m("Collection rate", invoiced > 0 ? formatPercent(paid / invoiced * 100) : "—", "gauge", "Collected / total invoiced"),
       ];
     }
     case "cash-flow": {
@@ -1067,10 +1142,12 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
       if (!scenario) return [m("Opening cash", "Not set", "waves", "Set a scenario to project")];
       const f = forecastCashFlow(rows<CashForecastItem>(data, "items"), scenario, { weeks: 13 });
       return [
-        m("Closing cash (13w)", formatMoney(f.closingCash, { currency }), "waves", undefined, f.closingCash >= 0 ? "positive" : "negative"),
-        m("Net forecast flow", formatMoney(f.netFlow, { currency, signed: true }), "swap"),
-        m("Lowest cash", formatMoney(f.lowestCash, { currency }), "gauge", undefined, f.lowestCash < scenario.minimumCash ? "warning" : "neutral"),
-        m("Shortfall", formatMoney(f.shortfall, { currency }), "alert", undefined, f.shortfall > 0 ? "negative" : "neutral"),
+        m("Opening cash", formatMoney(scenario.openingCash, { currency }), "wallet", "Saved scenario balance"),
+        m("Forecast inflows", formatMoney(metricSum(f.weeks.map((week) => week.inflows)), { currency }), "arrowUp", "Certainty-weighted · 13 weeks"),
+        m("Forecast outflows", formatMoney(metricSum(f.weeks.map((week) => week.outflows)), { currency }), "arrowDown", "Certainty-weighted · 13 weeks"),
+        m("Projected closing", formatMoney(f.closingCash, { currency }), "waves", "After 13 forecast weeks", f.closingCash >= 0 ? "positive" : "negative"),
+        m("Lowest projected", formatMoney(f.lowestCash, { currency }), "gauge", "Across forecast weeks", f.lowestCash < scenario.minimumCash ? "warning" : "neutral"),
+        m("Cash shortfall", formatMoney(f.shortfall, { currency }), "alert", "Below configured minimum", f.shortfall > 0 ? "negative" : "positive"),
       ];
     }
     case "wedding": {
@@ -1089,21 +1166,30 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
         m("Budget remaining", formatMoney(s.budgetRemaining, { currency }), "wallet", `${formatMoney(s.committed, { currency })} committed`, s.overBudget ? "negative" : "neutral"),
         m("Guests accepted", `${s.guestSeatsAccepted}`, "users", `${formatPercent(s.acceptanceRate)} of invited`),
         m("Vendor balance", formatMoney(s.vendorOutstanding, { currency }), "briefcase"),
+        m("Guests awaiting", String(Math.max(0, s.guestSeatsInvited - s.guestSeatsAccepted - s.declined)), "users", "Invited or tentative"),
+        m("Tasks complete", `${rows<WeddingTask>(data, "tasks").filter((row) => !row.deleted && row.done).length}/${rows<WeddingTask>(data, "tasks").filter((row) => !row.deleted).length}`, "circle-check", "Recorded planning tasks"),
       ];
     }
     case "property": {
-      const bookings = rows<PropertyBooking>(data, "bookings");
+      const properties = rows<Property>(data, "properties").filter((row) => !row.deleted && (row.currency || "USD") === currency);
+      const propertyIds = new Set(properties.map((row) => row.id));
+      const bookings = rows<PropertyBooking>(data, "bookings").filter((row) => propertyIds.has(row.propertyId));
+      const yearStart = todayISO().slice(0, 4) + "-01-01";
+      const elapsedDays = Math.max(1, Math.floor((new Date(todayISO() + "T00:00:00").getTime() - new Date(yearStart + "T00:00:00").getTime()) / 86400000) + 1);
       const s = propertySummary({
         bookings,
-        expenses: rows<PropertyExpense>(data, "expenses"),
-        maintenance: rows<PropertyMaintenance>(data, "maintenance"),
-        availableNights: 365,
+        expenses: rows<PropertyExpense>(data, "expenses").filter((row) => propertyIds.has(row.propertyId)),
+        maintenance: rows<PropertyMaintenance>(data, "maintenance").filter((row) => propertyIds.has(row.propertyId)),
+        availableNights: elapsedDays * Math.max(properties.length, 1),
+        period: todayISO().slice(0, 4),
       });
       return [
         m("Accommodation revenue", formatMoney(s.accommodationRevenue, { currency }), "home"),
         m("Net operating income", formatMoney(s.netOperatingIncome, { currency }), "wallet", undefined, s.netOperatingIncome >= 0 ? "positive" : "negative"),
-        m("Occupancy", formatPercent(s.occupancyRate), "gauge", `${s.occupiedNights} nights`),
+        m("Occupancy", formatPercent(s.occupancyRate), "gauge", `${s.occupiedNights} nights this year · year-to-date availability`),
         m("ADR", s.adr ? formatMoney(s.adr, { currency }) : "—", "tag", s.revPan ? `RevPAN ${formatMoney(s.revPan, { currency })}` : undefined),
+        m("Properties", String(properties.length), "home", "In the selected currency"),
+        m("Operating expenses", formatMoney(s.operatingExpenses, { currency }), "receipt", "Fees, cleaning and logged costs"),
       ];
     }
     case "nutrition": {
@@ -1113,29 +1199,42 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
         m("Protein", `${totals.protein} g`, "zap"),
         m("Carbs", `${totals.carbs} g`, "coffee"),
         m("Fat", `${totals.fat} g`, "droplet"),
+        m("Fiber", `${rows<NutritionLog>(data, "logs").filter((row) => !row.deleted && row.date === todayISO()).reduce((sum, row) => sum + (row.fiber ?? 0), 0)} g`, "leaf", "From entries with saved fiber"),
+        m("Entries today", String(totals.entries), "receipt", "Logged meals and foods"),
       ];
     }
     case "projects": {
       const s = projectProgress(rows<Task>(data, "tasks"));
       return [
+        m("Active projects", String(rows<Project>(data, "projects").filter((row) => !row.deleted && row.status === "active").length), "kanban", "Current project status"),
+        m("Open tasks", String(s.remaining), "list", "Not marked complete"),
+        m("Completed tasks", String(s.completed), "circle-check", "Current completed status"),
+        m("Overdue", String(s.overdue), "alert", undefined, s.overdue ? "negative" : "positive"),
+        m("Due this week", String(rows<Task>(data, "tasks").filter((row) => !row.deleted && row.status !== "done" && row.dueDate && row.dueDate >= todayISO() && row.dueDate <= addDaysISO(todayISO(), 7)).length), "calendar-days", "Next 7 days"),
         m("Completion", formatPercent(s.completionPct), "kanban", `${s.completed}/${s.total} tasks`),
-        m("Overdue", String(s.overdue), "alert", undefined, s.overdue ? "negative" : "neutral"),
       ];
     }
     case "habits": {
       const s = habitsOverview(rows<Habit>(data, "habits"), rows<HabitCompletion>(data, "completions"));
       return [
-        m("Done today", `${s.doneToday}/${s.scheduledToday}`, "circle-check", "Scheduled habits only"),
-        m("Today's rate", formatPercent(s.todayRate), "gauge"),
+        m("Active habits", String(s.habits.length), "repeat", "Not archived"),
+        m("Done today", `${s.doneToday}/${s.scheduledToday}`, "circle-check", "Scheduled habits only", "positive"),
+        m("Weekly completion", s.habits.length ? formatPercent(metricSum(s.habits.map((item) => item.stats.weekCompleted)) / Math.max(1, metricSum(s.habits.map((item) => item.stats.weekScheduled))) * 100) : "—", "gauge", "Scheduled check-ins"),
+        m("Current streak", `${Math.max(0, ...s.habits.map((item) => item.stats.streak))}`, "zap", "Schedule-aware"),
         m("Best streak", `${s.bestStreak}`, "zap", "scheduled days"),
-        m("Active habits", String(s.habits.length), "repeat"),
+        m("Remaining today", String(Math.max(0, s.scheduledToday - s.doneToday)), "clock", "Future check-ins excluded"),
       ];
     }
     case "content": {
       const s = contentSummary(rows<ContentPost>(data, "posts"), currentMonth());
+      const posts = rows<ContentPost>(data, "posts").filter((row) => !row.deleted);
       return [
-        m("Publishing rate", formatPercent(s.publishingRate), "gauge"),
-        m("Engagement", formatPercent(s.engagementRate), "trendingUp", s.totalReach ? `${s.totalReach} reach` : "Manual metrics"),
+        m("Planned posts", String(posts.length), "calendar-days", "All saved content records"),
+        m("Scheduled", String(s.scheduled), "calendar-days", "Not yet marked published"),
+        m("Published", String(s.published), "circle-check", "User-confirmed status"),
+        m("Upcoming this week", String(posts.filter((row) => row.status === "scheduled" && row.scheduledDate && row.scheduledDate >= todayISO() && row.scheduledDate <= addDaysISO(todayISO(), 7)).length), "clock", "Scheduled date"),
+        m("Overdue content", String(posts.filter((row) => row.status !== "published" && row.scheduledDate && row.scheduledDate < todayISO()).length), "alert", "Past schedule; awaiting confirmation"),
+        m("Engagement", formatPercent(s.engagementRate), "trendingUp", s.totalReach ? `${s.totalReach} manually recorded reach` : "No metrics recorded"),
       ];
     }
     default:

@@ -36,7 +36,7 @@ export function CategoryBreakdownChart({
   const mounted = useMounted();
   if (!mounted) return <div style={{ height }} />;
   const total = data.reduce((s, d) => s + Math.max(0, d.value), 0);
-  if (!data.length || total <= 0) return <ChartEmptyState label="No spending to break down yet" />;
+  if (!data.length || total <= 0) return <ChartEmptyState label="No recorded values to display yet." />;
 
   const rows = data.map((d, i) => ({ ...d, fill: d.color ?? chartColor(i) }));
 
@@ -54,7 +54,11 @@ export function CategoryBreakdownChart({
               paddingAngle={rows.length > 1 ? 2 : 0}
               stroke="var(--surface)"
               strokeWidth={2}
-              onClick={(d: any) => onSliceClick?.(d?.payload?.id ?? d?.id)}
+              onClick={(entry: unknown) => {
+                const selected = entry as { payload?: { id?: string }; id?: string };
+                const id = selected.payload?.id ?? selected.id;
+                if (id) onSliceClick?.(id);
+              }}
               className="cursor-pointer"
             >
               {rows.map((r, i) => (
