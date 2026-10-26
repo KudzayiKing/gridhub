@@ -787,20 +787,21 @@ function BudgetCalendar({
 function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
   const debts = rows<Debt>(data, "debts");
   if (!debts.length) return null;
-  const totals = debtTotals(debts);
+  const activeDebts = debts.filter((debt) => !debt.deleted);
+  const totals = debtTotals(activeDebts);
 
-  const input = debts.map((d) => ({
+  const input = activeDebts.map((d) => ({
     id: d.id,
     name: d.name,
     balance: d.openingPrincipal,
     annualRate: d.annualRate,
     minimumPayment: d.minimumPayment,
   }));
-  const extra = round2(debts.reduce((a, d) => a + (d.extraPayment ?? 0), 0));
+  const extra = round2(activeDebts.reduce((a, d) => a + (d.extraPayment ?? 0), 0));
   const snowball = simulateDebt(input, extra, "snowball");
   const avalanche = simulateDebt(input, extra, "avalanche");
   const interestDiff = round2(snowball.totalInterest - avalanche.totalInterest);
-  const openingBalance = debts.reduce((total, debt) => total + debt.openingPrincipal, 0);
+  const openingBalance = activeDebts.reduce((total, debt) => total + debt.openingPrincipal, 0);
   const balanceByMonth = new Map<number, Map<string, number>>();
   for (const row of snowball.rows) {
     if (!balanceByMonth.has(row.month)) balanceByMonth.set(row.month, new Map());
@@ -813,12 +814,45 @@ function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
       balance: [...balances.values()].reduce((total, value) => total + value, 0),
     })),
   ];
+  const debtSlices = activeDebts
+    .filter((debt) => debt.openingPrincipal > 0)
+    .map((debt) => ({ id: debt.id, name: debt.name, value: debt.openingPrincipal }));
 
   return (
     <div className="flex flex-col gap-3">
-    <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:max-w-md">
-      <MetricCard label="Total debt" value={formatMoney(totals.balance, { currency })} icon="trending-down" hint={`${totals.count} accounts`} />
-      <MetricCard label="Minimum payments" value={formatMoney(totals.minimums, { currency })} icon="receipt" />
+    <div className="grid items-stretch gap-3 xl:grid-cols-2">
+      <ChartContainer title="Debt balance by account" subtitle="Share of total recorded debt" icon="pie-chart">
+        {debtSlices.length ? (
+          <CategoryBreakdownChart
+            data={debtSlices}
+            formatValue={(value) => formatMoney(Number(value ?? 0), { currency })}
+            centerLabel="Total debt"
+            centerValue={formatMoney(totals.balance, { currency })}
+            height={280}
+          />
+        ) : (
+          <ChartEmptyState label="Add a debt balance to see the breakdown" />
+        )}
+      </ChartContainer>
+      <section className="rounded-2xl border border-line bg-[var(--surface)] p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-[12px] font-semibold">Debt summary</h3>
+          <span className="text-[11px] text-fg-subtle">{totals.count} {totals.count === 1 ? "account" : "accounts"}</span>
+        </div>
+        <div className="grid auto-rows-fr grid-cols-2 gap-2">
+          <CompactMetric label="Total debt" value={formatMoney(totals.balance, { currency })} tone="negative" />
+          <CompactMetric label="Weighted average APR" value={formatPercent(totals.avgRate, 1)} />
+          <CompactMetric label="Minimum payments" value={formatMoney(totals.minimums, { currency })} hint="per month" />
+          <CompactMetric label="Snowball payoff" value={snowball.nonAmortizing ? "Payment too low" : snowball.payoffDate} hint={snowball.nonAmortizing ? "Does not cover monthly interest" : `${snowball.months} months`} />
+          <CompactMetric label="Avalanche payoff" value={avalanche.nonAmortizing ? "Payment too low" : avalanche.payoffDate} hint={avalanche.nonAmortizing ? "Does not cover monthly interest" : `${avalanche.months} months`} />
+          <CompactMetric
+            label={interestDiff >= 0 ? "Avalanche interest saved" : "Snowball interest saved"}
+            value={formatMoney(Math.abs(interestDiff), { currency })}
+            tone={interestDiff !== 0 ? "positive" : "neutral"}
+            hint="strategy comparison"
+          />
+        </div>
+      </section>
     </div>
     <div className="grid gap-3 lg:grid-cols-2">
       <Panel title="Payoff projection" description="Estimates only — your lender's calculation governs." icon="trending-down">
@@ -853,9 +887,9 @@ function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
           </div>
         </div>
       </Panel>
-      <Panel title="Balance by debt" description="Highest rate first is usually cheapest" icon="bank">
+      <Panel title="Balances by debt" description="Highest balance first" icon="bank">
         <BarList
-          items={[...debts]
+          items={[...activeDebts]
             .sort((a, b) => b.openingPrincipal - a.openingPrincipal)
             .map((d) => ({ label: `${d.name} · ${d.annualRate}%`, value: d.openingPrincipal }))}
           format={(n) => formatMoney(n, { currency, maximumFractionDigits: 0 })}
