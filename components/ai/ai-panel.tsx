@@ -125,14 +125,12 @@ export function GridhubAIPanel() {
                     <p className="eyebrow text-[10px]">Try</p>
                     <div className="flex flex-wrap gap-1.5">
                       {ai.examples.map((example) => (
-                        <button
+                        <span
                           key={example}
-                          type="button"
-                          onClick={() => void ai.submit(example)}
-                          className="press rounded-full border border-line bg-[var(--surface-strong)] px-2.5 py-1 text-left text-[11.5px] text-fg-muted hover:text-fg"
+                          className="rounded-full border border-line bg-[var(--surface-strong)] px-2.5 py-1 text-left text-[11.5px] text-fg-muted"
                         >
                           {example}
-                        </button>
+                        </span>
                       ))}
                     </div>
                   </div>

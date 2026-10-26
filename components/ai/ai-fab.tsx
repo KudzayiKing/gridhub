@@ -1,23 +1,20 @@
 "use client";
 
 /**
- * GridHub Quick add — a fast entry point for records from anywhere in the app.
+ * GridHub AI — a text-command entry point available from anywhere in the app.
  *
  * Present on every authenticated route. On a phone it sits above the bottom navigation and the
  * safe area; on desktop it sits in the bottom-right corner.
  */
 
-import * as React from "react";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { useGridhubAI } from "./ai-provider";
-import { QuickAddDialog } from "./quick-add-dialog";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 export function GridhubAIFab() {
   const { ai } = useGridhubAI();
   const { t } = useI18n();
-  const [quickAddOpen, setQuickAddOpen] = React.useState(false);
 
   return (
     <>
@@ -25,11 +22,11 @@ export function GridhubAIFab() {
         <div className="pointer-events-auto relative">
           <button
             type="button"
-            onClick={() => setQuickAddOpen(true)}
-            aria-label={t("Quick add")}
+            onClick={() => ai.openPanel()}
+            aria-label={t("Ask Gridhub AI")}
             aria-haspopup="dialog"
-            aria-expanded={quickAddOpen}
-            title={t("Quick add")}
+            aria-expanded={ai.open}
+            title={t("Ask Gridhub AI")}
             className={cn(
               "press group relative grid h-14 w-14 place-items-center rounded-full",
               "bg-[var(--brand)] text-[#06231a]",
@@ -46,18 +43,10 @@ export function GridhubAIFab() {
           aria-hidden="true"
           className="pointer-events-none absolute right-full top-1/2 mr-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-line bg-[var(--surface-strong)] px-2 py-1 text-[11px] text-fg-muted opacity-0 shadow-sm transition-opacity group-hover:opacity-100 lg:block"
         >
-            {t("Quick add")} · {t("Ask Gridhub AI")} <kbd className="ml-1 text-fg-subtle">⌘J</kbd>
+            {t("Ask Gridhub AI")} <kbd className="ml-1 text-fg-subtle">⌘J</kbd>
           </span>
         </div>
       </div>
-      <QuickAddDialog
-        open={quickAddOpen}
-        onOpenChange={setQuickAddOpen}
-        onAskAI={() => {
-          setQuickAddOpen(false);
-          ai.openPanel();
-        }}
-      />
     </>
   );
 }
