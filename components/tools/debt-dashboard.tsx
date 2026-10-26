@@ -10,7 +10,6 @@ import { useCollection } from "@/lib/store";
 import { debtDueOccurrences, debtPaymentHistory, estimatedDebtProgress, localISODate, paymentSplitIsValid, reminderMatches, type DebtPayStrategy, type DebtDueOccurrence } from "@/lib/reporting/debt-tracker";
 import { debtTotals, simulateDebt } from "@/lib/calc/money";
 import { formatMoney, formatPercent, round2 } from "@/lib/money";
-import { PinChartButton } from "@/lib/chart-widgets";
 import type { Debt, DebtPayment, Paycheck } from "@/lib/types";
 
 type Section = "overview" | "calendar" | "strategies" | "insights";
@@ -227,32 +226,32 @@ export function DebtDashboard({ currency }: { currency: string }) {
       {paymentSuccess ? <p role="status" className="rounded-xl border border-[var(--positive)]/30 bg-[var(--positive)]/10 px-3 py-2 text-[11px] text-[var(--positive)]">{paymentSuccess}<button className="ml-2 underline" onClick={() => setPaymentSuccess("")}>Dismiss</button></p> : null}
       {section === "overview" ? <>
         <div className="grid items-stretch gap-3 xl:grid-cols-2">
-          <ChartContainer title="Outstanding debt" subtitle="Current tracked balance by account" icon="tag" action={<PinChartButton chartId="debt.payoff" title="Debt balances" tool="debt" />}>
+          <ChartContainer title="Outstanding debt" subtitle="Current tracked balance by account" icon="tag">
             {debtSlices.length ? <CategoryBreakdownChart data={debtSlices} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} centerLabel="Total debt" centerValue={formatMoney(totals.balance, { currency })} onSliceClick={(id) => setTargetDebt(id)} height={280} /> : <ChartEmptyState label="Add a positive debt balance to see the breakdown" />}
             {targetDebt ? <p className="mt-1 text-[10px] text-fg-muted">Selected: {debts.find((debt) => debt.id === targetDebt)?.name ?? "Debt"}<button className="ml-2 underline" onClick={() => setTargetDebt("")}>Clear</button></p> : null}
           </ChartContainer>
           <section className="rounded-2xl border border-line bg-[var(--surface)] p-3">
             <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[12px] font-semibold">Debt summary</h3><span className="text-[11px] text-fg-subtle capitalize">{strategy} strategy</span></div>
             <div className="grid auto-rows-fr grid-cols-2 gap-2">
-              <div className="relative"><PinChartButton chartId="debt.total" title="Total Debt Remaining" tool="debt" /><CompactMetric label="Total debt remaining" value={formatMoney(totals.balance, { currency })} hint={totals.count + " active debts"} tone="negative" /></div>
-              <CompactMetric label="Monthly payment plan" value={formatMoney(plannedThisMonth, { currency })} hint="Minimums + saved extra amounts" />
-              <div className="relative"><PinChartButton chartId="debt.payoff-date" title="Estimated Debt-Free Date" tool="debt" /><CompactMetric label="Estimated debt-free date" value={!totals.balance ? "Debt free" : selectedStrategy.nonAmortizing ? "Payment too low" : selectedStrategy.payoffDate.slice(0, 7)} hint={!totals.balance ? "No outstanding balance" : selectedStrategy.nonAmortizing ? "Does not cover estimated interest" : selectedStrategy.months + " months · " + strategy} /></div>
-              <CompactMetric label="Projected interest" value={formatMoney(selectedStrategy.totalInterest, { currency })} hint="Projection · monthly APR/12" />
-              <div className="relative"><PinChartButton chartId="debt.next-payment" title="Next Debt Payment" tool="debt" /><CompactMetric label="Next payment" value={nextEvent ? formatMoney(nextEvent.amount, { currency }) : "Date not set"} hint={nextEvent ? nextEvent.debtName + " · " + dateLabel(nextEvent.date) : "Add contractual due date"} tone={nextEvent?.status === "overdue" ? "negative" : nextEvent?.status === "due-soon" ? "negative" : "neutral"} /></div>
-              <CompactMetric label="Debts paid off" value={paidOffCount + " / " + debts.length} hint={debts.length ? formatPercent(paidOffCount / debts.length * 100, 0) + " of tracked accounts" : "No debts tracked"} tone={paidOffCount > 0 ? "positive" : "neutral"} />
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Total debt remaining" value={formatMoney(totals.balance, { currency })} hint={totals.count + " active debts"} tone="negative" /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Monthly payment plan" value={formatMoney(plannedThisMonth, { currency })} hint="Minimums + saved extra amounts" /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Estimated debt-free date" value={!totals.balance ? "Debt free" : selectedStrategy.nonAmortizing ? "Payment too low" : selectedStrategy.payoffDate.slice(0, 7)} hint={!totals.balance ? "No outstanding balance" : selectedStrategy.nonAmortizing ? "Does not cover estimated interest" : selectedStrategy.months + " months · " + strategy} /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Projected interest" value={formatMoney(selectedStrategy.totalInterest, { currency })} hint="Projection · monthly APR/12" /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Next payment" value={nextEvent ? formatMoney(nextEvent.amount, { currency }) : "Date not set"} hint={nextEvent ? nextEvent.debtName + " · " + dateLabel(nextEvent.date) : "Add contractual due date"} tone={nextEvent?.status === "overdue" ? "negative" : nextEvent?.status === "due-soon" ? "negative" : "neutral"} /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Debts paid off" value={paidOffCount + " / " + debts.length} hint={debts.length ? formatPercent(paidOffCount / debts.length * 100, 0) + " of tracked accounts" : "No debts tracked"} tone={paidOffCount > 0 ? "positive" : "neutral"} /></div>
             </div>
           </section>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          <ChartContainer title="Projected debt balance" subtitle={strategy + " · estimated monthly APR/12 interest"} icon="trending-down" action={<PinChartButton chartId="debt.projection" title="Debt Balance Projection" tool="debt" />}>
+          <ChartContainer title="Projected debt balance" subtitle={strategy + " · estimated monthly APR/12 interest"} icon="trending-down">
             {selectedStrategy.nonAmortizing ? <InlineAlert tone="negative" title="This plan does not amortise">Increase the payment plan; minimums and extras do not reduce estimated interest.</InlineAlert> : debts.length ? <TrendChart data={payoffSeries.map((point) => ({ label: point.month === 0 ? "Now" : "M" + point.month, value: point.balance }))} xKey="label" series={[{ key: "value", name: "Projected balance" }]} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} type="line" height={220} /> : <ChartEmptyState label="Add debt balances to project payoff" />}
           </ChartContainer>
-          <ChartContainer title="Debt-free progress" subtitle="Estimated from explicitly recorded principal portions" icon="gauge" action={<PinChartButton chartId="debt.progress" title="Debt-Free Progress" tool="debt" />}>
+          <ChartContainer title="Debt-free progress" subtitle="Estimated from explicitly recorded principal portions" icon="gauge">
             <ProgressChart items={[{ id: "overall", label: "Overall principal repaid", value: principalPaid, target: originalTracked, formatValue: (value) => formatMoney(Number(value ?? 0), { currency }), caption: principalPaid > 0 ? "Estimate assumes no new borrowing or balance corrections" : "Record principal portions to build tracked progress" }]} />
             <p className="mt-1 text-center text-[11px] text-fg-muted">{formatPercent(overallProgress, 0)} tracked progress · {formatMoney(totals.balance, { currency })} remaining</p>
           </ChartContainer>
         </div>
-        <ChartContainer title="Upcoming payments" subtitle="Only user-entered contractual dates are scheduled" icon="calendar-days" action={<><PinChartButton chartId="debt.upcoming" title="Upcoming Debt Payments" tool="debt" /><Button size="sm" variant="secondary" onClick={() => setSection("calendar")}>Open calendar</Button></>}>
+        <ChartContainer title="Upcoming payments" subtitle="Only user-entered contractual dates are scheduled" icon="calendar-days" action={<Button size="sm" variant="secondary" onClick={() => setSection("calendar")}>Open calendar</Button>}>
           {nextEvents.length ? <div className="flex flex-col gap-1.5">{nextEvents.slice(0, 5).map((event) => <div key={event.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2"><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-medium">{event.debtName}</p><p className="text-[10px] text-fg-subtle">{dateLabel(event.date)} · {event.status}</p></div><span className="tnum text-[12px]">{formatMoney(event.amount, { currency })}</span><Button size="sm" variant="ghost" onClick={() => openPayment(event)}>Record</Button></div>)}</div> : <ChartEmptyState label="Set a due day or next payment date on a debt to create an upcoming payment" />}
         </ChartContainer>
       </> : null}
