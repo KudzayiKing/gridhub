@@ -34,6 +34,22 @@ export async function createEngine(options: CreateEngineOptions): Promise<Engine
   const litert = await import("@litert-lm/core");
   options.onStatus?.("loading-runtime");
 
+  // LiteRT's generated WASM loader normally derives the .wasm URL from the injected JS script.
+  // In a dedicated worker, that script is loaded with importScripts(), so currentScript is absent
+  // and LiteRT incorrectly resolves the binary beside the worker bundle under /_next/static/.
+  // Supplying locateFile makes both worker and inline initialization load the binary from /ai/wasm.
+  const wasmBaseUrl = new URL(
+    LITERT_WASM_PATH.endsWith("/") ? LITERT_WASM_PATH : `${LITERT_WASM_PATH}/`,
+    globalThis.location.href,
+  );
+  const runtimeGlobal = globalThis as typeof globalThis & {
+    Module?: { locateFile?: (file: string) => string; [key: string]: unknown };
+  };
+  runtimeGlobal.Module = {
+    ...runtimeGlobal.Module,
+    locateFile: (file) => new URL(file, wasmBaseUrl).href,
+  };
+
   await litert.getOrLoadGlobalLiteRtLm(LITERT_WASM_PATH);
 
   options.onStatus?.("loading-model");
