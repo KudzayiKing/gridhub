@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { LedgerTool, Panel } from "./ledger-tool";
-import { MetricCard, Badge, EmptyState, InlineAlert } from "@/components/ui/card";
+import { CompactMetric, MetricCard, Badge, EmptyState, InlineAlert } from "@/components/ui/card";
 import { BarList, ProgressRing } from "@/components/charts/trend";
 import {
   ChartContainer,
@@ -704,27 +704,6 @@ function Insight({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-line bg-[var(--bg-subtle)]/40 p-2.5">
       <p className="text-[11px] uppercase tracking-wide text-fg-subtle">{label}</p>
       <p className="tnum text-[15px] font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function CompactMetric({
-  label,
-  value,
-  hint,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "neutral" | "positive" | "negative";
-}) {
-  const color = tone === "positive" ? "var(--positive)" : tone === "negative" ? "var(--negative)" : "var(--fg)";
-  return (
-    <div className="flex min-h-[82px] min-w-0 flex-col rounded-xl border border-line bg-[var(--bg-subtle)]/50 px-2.5 py-2">
-      <p className="truncate text-[10px] uppercase tracking-wide text-fg-subtle">{label}</p>
-      <p className="tnum truncate text-[13px] font-semibold leading-5" style={{ color }}>{value}</p>
-      <p className="min-h-[14px] truncate text-[10px] leading-[14px] text-fg-subtle">{hint || " "}</p>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CartesianGrid, LineChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { MetricCard, Badge } from "@/components/ui/card";
+import { CompactMetric, Badge } from "@/components/ui/card";
 import { ChartContainer, ChartEmptyState, ChartPeriodSelector, MonthlyComparisonChart, BudgetVsActualChart, CategoryBreakdownChart, ProgressChart, StackedBarChart } from "@/components/charts";
 import { useCollection } from "@/lib/store";
 import { usePrefs } from "@/components/providers";
@@ -177,26 +177,34 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
         </div>
       </div>
 
-      <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 2xl:grid-cols-6">
-        <MetricCard label="Monthly income" value={fmt(monthly.income)} icon="arrowUp" tone="positive" hint={`${moneyRows.filter((t) => !t.deleted && t.status === "posted" && t.type === "income" && t.date.startsWith(month)).length} posted income transactions`} />
-        <MetricCard label="Next paycheck" value={nextPayAmount == null ? "Not scheduled" : fmt(nextPayAmount)} icon="calendar-days" hint={nextPayDateValue ? `${dateLabel(nextPayDateValue)} · ${daysToPay} days${nextPaySource ? ` · ${nextPaySource}` : ""} · expected` : "Add a pay schedule with its next payday"} action={<PinChartButton chartId="paycheck.next-paycheck" title="Next Paycheck" tool="paycheck" />} />
-        <MetricCard label="Bills still due" value={fmt(displayedBillsTotal)} icon="receipt" tone={displayedBillsCount ? "warning" : "positive"} hint={displayedBillsHint} action={<PinChartButton chartId="paycheck.bills" title="Bills Still Due" tool="paycheck" />} />
-        <MetricCard label="Available to spend" value={estimatedSpendable == null ? "Set up data" : fmt(estimatedSpendable)} icon="wallet" tone={estimatedSpendable != null && estimatedSpendable < 0 ? "negative" : "neutral"} hint={availableHint} action={<PinChartButton chartId="paycheck.available-spend" title="Available to Spend" tool="paycheck" />} />
-        <MetricCard label="Budget remaining" value={fmt(monthly.budgetRemaining)} icon="target" tone={monthly.budgetRemaining < 0 ? "negative" : "neutral"} hint={monthly.budgetAllocation ? `${formatPercent(monthly.expenses / monthly.budgetAllocation * 100, 0)} used` : "No monthly category budget set"} />
-        <MetricCard label="Savings progress" value={savingsTarget > 0 ? formatPercent(savingsProgress, 0) : "No target"} icon="piggy-bank" hint={savingsTarget > 0 ? `${fmt(actualSavings)} of ${fmt(savingsTarget)} planned · ${fmt(Math.max(0, savingsTarget - actualSavings))} to go` : `${fmt(actualSavings)} contributed · add savings allocations to set a target`} />
+      <div className="grid items-stretch gap-3 xl:grid-cols-2">
+        <ChartContainer title="Paycheck allocation" subtitle={selectedPaycheckLabel} icon="wallet" action={<PinChartButton chartId="paycheck.allocation" title="Paycheck allocation" tool="paycheck" />}>
+          {allocation ? <>
+            {allocation.overallocated > 0 ? <p className="mb-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-2.5 py-2 text-[11px] text-[var(--warning)]">Allocations exceed this paycheck by {fmt(allocation.overallocated)}. Values are shown as planned; no negative donut slice is drawn.</p> : null}
+            <CategoryBreakdownChart data={allocation.slices.map((slice) => ({ ...slice }))} formatValue={fmt} centerLabel={paycheck?.actualAmount == null ? "Expected" : "Received"} centerValue={fmt(allocation.amount)} onSliceClick={setSelectedAllocation} height={280} />
+            {selectedAllocation ? <div className="mt-2 rounded-xl border border-line p-2 text-[11px]">{selectedAllocation === "unallocated" ? <p className="py-1 text-fg-muted">No assigned records · {fmt(allocation.unallocated)} remains available to allocate.</p> : selectedAllocations.filter((row) => row.kind === selectedAllocation).map((row) => <p key={row.id} className="flex justify-between gap-2 border-b border-line py-1 last:border-0"><span>{row.label}</span><span className="tnum">{fmt(row.amount)}</span></p>)}</div> : null}
+          </> : <ChartEmptyState label="Add or select a paycheck to see its allocation" />}
+        </ChartContainer>
+
+        <section className="rounded-2xl border border-line bg-[var(--surface)] p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="text-[12px] font-semibold">Paycheck summary</h3>
+            <span className="text-[11px] text-fg-subtle">{month}</span>
+          </div>
+          <div className="grid auto-rows-fr grid-cols-2 gap-2">
+            <CompactMetric label="Monthly income" value={fmt(monthly.income)} hint={`${moneyRows.filter((t) => !t.deleted && t.status === "posted" && t.type === "income" && t.date.startsWith(month)).length} posted transactions`} tone="positive" />
+            <CompactMetric label="Next paycheck" value={nextPayAmount == null ? "Not scheduled" : fmt(nextPayAmount)} hint={nextPayDateValue ? `${dateLabel(nextPayDateValue)} · ${daysToPay} days${nextPaySource ? ` · ${nextPaySource}` : ""} · expected` : "Add a pay schedule with its next payday"} />
+            <CompactMetric label="Bills still due" value={fmt(displayedBillsTotal)} hint={displayedBillsHint} tone={displayedBillsCount ? "negative" : "positive"} />
+            <CompactMetric label="Available to spend" value={estimatedSpendable == null ? "Set up data" : fmt(estimatedSpendable)} hint={availableHint} tone={estimatedSpendable != null && estimatedSpendable < 0 ? "negative" : "neutral"} />
+            <CompactMetric label="Budget remaining" value={fmt(monthly.budgetRemaining)} hint={monthly.budgetAllocation ? `${formatPercent(monthly.expenses / monthly.budgetAllocation * 100, 0)} used` : "No monthly category budget set"} tone={monthly.budgetRemaining < 0 ? "negative" : "neutral"} />
+            <CompactMetric label="Savings progress" value={savingsTarget > 0 ? formatPercent(savingsProgress, 0) : "No target"} hint={savingsTarget > 0 ? `${fmt(actualSavings)} of ${fmt(savingsTarget)} planned · ${fmt(Math.max(0, savingsTarget - actualSavings))} to go` : `${fmt(actualSavings)} contributed · add savings allocations to set a target`} />
+          </div>
+        </section>
       </div>
 
       {mode === "paycheck" && monthPaychecks.length > 0 ? <p className="text-[11px] text-fg-muted">Selected paycheck: {selectedPaycheckLabel}. Amounts marked Expected are plans, not received income.</p> : null}
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <ChartContainer title="Paycheck allocation" subtitle={selectedPaycheckLabel} icon="wallet" action={<PinChartButton chartId="paycheck.allocation" title="Paycheck allocation" tool="paycheck" />}>
-          {allocation ? <>
-            {allocation.overallocated > 0 ? <p className="mb-2 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-2.5 py-2 text-[11px] text-[var(--warning)]">Allocations exceed this paycheck by {fmt(allocation.overallocated)}. Values are shown as planned; no negative donut slice is drawn.</p> : null}
-            <CategoryBreakdownChart data={allocation.slices.map((slice) => ({ ...slice }))} formatValue={fmt} centerLabel={paycheck?.actualAmount == null ? "Expected" : "Received"} centerValue={fmt(allocation.amount)} onSliceClick={setSelectedAllocation} height={230} />
-            {selectedAllocation ? <div className="mt-2 rounded-xl border border-line p-2 text-[11px]">{selectedAllocation === "unallocated" ? <p className="py-1 text-fg-muted">No assigned records · {fmt(allocation.unallocated)} remains available to allocate.</p> : selectedAllocations.filter((row) => row.kind === selectedAllocation).map((row) => <p key={row.id} className="flex justify-between gap-2 border-b border-line py-1 last:border-0"><span>{row.label}</span><span className="tnum">{fmt(row.amount)}</span></p>)}</div> : null}
-          </> : <ChartEmptyState label="Add or select a paycheck to see its allocation" />}
-        </ChartContainer>
-
         <ChartContainer title="Budget vs actual" subtitle={`${month} · tap a category to filter spending`} icon="target" action={<PinChartButton chartId="paycheck.budget-actual" title="Budget vs actual" tool="paycheck" />}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <label className="sr-only" htmlFor="paycheck-category">Filter by category</label>
