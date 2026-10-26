@@ -12,6 +12,7 @@ import {
   CategoryBreakdownChart,
   BudgetVsActualChart,
   TrendChart,
+  HorizontalRankingChart,
 } from "@/components/charts";
 import { Button } from "@/components/ui/button";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
@@ -106,6 +107,7 @@ function monthLong(period: string): string {
  *  open October and then filter its transactions to a single category. */
 export interface DrillState {
   month?: string;
+  day?: string;
   categoryId?: string;
   categoryName?: string;
 }
@@ -114,9 +116,10 @@ export interface DrillState {
  *  reflects exactly what the chart is showing (spec #21). Other tools are untouched. */
 function applyDrill(tabs: ReturnType<typeof buildTabs>, drill: DrillState, toolId: ToolId) {
   if (toolId !== "budget") return tabs;
-  if (!drill.month && !drill.categoryId) return tabs;
+  if (!drill.month && !drill.day && !drill.categoryId) return tabs;
   const label = [
     drill.month ? monthLong(drill.month) : null,
+    drill.day ? new Date(`${drill.day}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null,
     drill.categoryId && drill.categoryId !== "__other__" ? `Category: ${drill.categoryName ?? "—"}` : null,
   ]
     .filter(Boolean)
@@ -126,6 +129,7 @@ function applyDrill(tabs: ReturnType<typeof buildTabs>, drill: DrillState, toolI
     if (t.id !== "transactions") return t;
     const filter = (row: BaseRecord) => {
       if (drill.month && !String((row as { date?: string }).date ?? "").startsWith(drill.month)) return false;
+      if (drill.day && String((row as { date?: string }).date ?? "") !== drill.day) return false;
       if (drill.categoryId && drill.categoryId !== "__other__" && (row as { categoryId?: string }).categoryId !== drill.categoryId)
         return false;
       return true;
@@ -142,7 +146,12 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
   const [drill, setDrill] = React.useState<DrillState>({});
 
   const tabs = React.useMemo(() => buildTabs(toolId, data), [toolId, data]);
-  const metrics = React.useMemo(() => computeMetrics(toolId, data, currency), [toolId, data, currency]);
+  // These overviews already contain the complete summary, so showing LedgerTool's
+  // headline cards above them repeats the same figures with a second time period.
+  const metrics = React.useMemo(
+    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" ? [] : computeMetrics(toolId, data, currency)),
+    [toolId, data, currency],
+  );
   const displayTabs = React.useMemo(() => applyDrill(tabs, drill, toolId), [tabs, drill, toolId]);
 
   if (loading) {
@@ -169,7 +178,7 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
       overview={
         <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} />
       }
-      defaultTab={drill.month || drill.categoryId ? "transactions" : undefined}
+      defaultTab={drill.month || drill.day || drill.categoryId ? "transactions" : undefined}
       onClearFilter={() => setDrill({})}
     />
   );
@@ -207,9 +216,94 @@ function Overview({
       return <NutritionDiary data={data} />;
     case "invoicing":
       return <InvoicingOverview data={data} currency={currency} />;
+    case "paycheck":
+    case "net-worth":
+    case "bookkeeping":
+    case "inventory":
+    case "sales":
+    case "cash-flow":
+    case "wedding":
+    case "property":
+    case "content":
+      return <ToolCharts toolId={toolId} data={data} currency={currency} />;
     default:
       return null;
   }
+}
+
+function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap; currency: string }) {
+  const money = (value: number | string | undefined) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 });
+  if (toolId === "net-worth") {
+    const snapshots = rows<ValuationSnapshot>(data, "snapshots").sort((a, b) => a.date.localeCompare(b.date));
+    if (snapshots.length < 2) return null;
+    return <ChartContainer title="Net worth history" subtitle="Recorded asset and liability snapshots" icon="line-chart"><TrendChart data={snapshots.map((item) => ({ label: item.date, assets: item.totalAssets, liabilities: item.totalLiabilities, net: item.totalAssets - item.totalLiabilities }))} xKey="label" series={[{ key: "assets", name: "Assets" }, { key: "liabilities", name: "Liabilities" }, { key: "net", name: "Net worth" }]} formatValue={money} type="line" height={240} /></ChartContainer>;
+  }
+  if (toolId === "bookkeeping") {
+    const transactions = rows<BusinessTransaction>(data, "transactions");
+    if (!transactions.length) return null;
+    const grouped = new Map<string, { income: number; expenses: number }>();
+    for (const transaction of transactions) {
+      if (!transaction.date) continue;
+      const period = transaction.date.slice(0, 7);
+      const current = grouped.get(period) ?? { income: 0, expenses: 0 };
+      if (transaction.type === "revenue") current.income += transaction.amount;
+      if (transaction.type === "expense") current.expenses += transaction.amount;
+      grouped.set(period, current);
+    }
+    const trend = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, values]) => ({ label: monthLong(period), ...values }));
+    return <ChartContainer title="Business income and expenses" subtitle="Recorded revenue and operating expenses by month" icon="chart-column"><TrendChart data={trend} xKey="label" series={[{ key: "income", name: "Revenue" }, { key: "expenses", name: "Expenses" }]} formatValue={money} type="line" height={240} /></ChartContainer>;
+  }
+  if (toolId === "inventory") {
+    const products = rows<BusinessProduct>(data, "products");
+    if (!products.length) return null;
+    return <ChartContainer title="Stock on hand" subtitle="Units by product · weighted average inventory tracking" icon="package"><HorizontalRankingChart data={products.map((product) => ({ id: product.id, label: product.name, value: product.quantity }))} formatValue={(value) => `${Number(value ?? 0)} units`} maxItems={10} height={Math.max(170, Math.min(products.length, 10) * 32 + 30)} /></ChartContainer>;
+  }
+  if (toolId === "sales") {
+    const summary = salesSummary(rows<Sale>(data, "sales"), rows<SalesTarget>(data, "targets"));
+    if (!summary.byMonth.length) return null;
+    return <ChartContainer title="Sales revenue trend" subtitle="Net sales by month, after discounts and returns" icon="trending-up"><TrendChart data={summary.byMonth.map((item) => ({ label: monthLong(item.month), net: item.net }))} xKey="label" series={[{ key: "net", name: "Net sales" }]} formatValue={money} type="line" height={240} /></ChartContainer>;
+  }
+  if (toolId === "cash-flow") {
+    const scenario = rows<CashScenario>(data, "scenarios")[0];
+    if (!scenario) return null;
+    const forecast = forecastCashFlow(rows<CashForecastItem>(data, "items"), scenario, { weeks: 13 });
+    return <ChartContainer title="13-week cash forecast" subtitle="Projected closing balance with weekly inflows and outflows" icon="waves"><TrendChart data={forecast.weeks.map((week) => ({ label: new Date(`${week.label}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }), closing: week.closing, minimum: scenario.minimumCash }))} xKey="label" series={[{ key: "closing", name: "Closing cash" }, { key: "minimum", name: "Minimum cash" }]} formatValue={money} type="area" height={240} /></ChartContainer>;
+  }
+  if (toolId === "wedding") {
+    const expenses = rows<WeddingExpense>(data, "expenses");
+    if (!expenses.length) return null;
+    return <ChartContainer title="Wedding spend by category" subtitle="Committed budget compared with actual spend" icon="heart"><TrendChart data={expenses.map((expense) => ({ label: expense.category, committed: expense.committed, actual: expense.actual }))} xKey="label" series={[{ key: "committed", name: "Committed" }, { key: "actual", name: "Actual" }]} formatValue={money} type="line" height={Math.max(200, Math.min(expenses.length, 8) * 35 + 50)} /></ChartContainer>;
+  }
+  if (toolId === "property") {
+    const bookings = rows<PropertyBooking>(data, "bookings").filter((booking) => booking.status !== "cancelled");
+    if (!bookings.length) return null;
+    const monthly = new Map<string, { revenue: number; nights: number }>();
+    for (const booking of bookings) {
+      if (!booking.checkIn) continue;
+      const period = booking.checkIn.slice(0, 7);
+      const totals = monthly.get(period) ?? { revenue: 0, nights: 0 };
+      totals.revenue += booking.accommodation;
+      totals.nights += booking.nights;
+      monthly.set(period, totals);
+    }
+    return <ChartContainer title="Property booking revenue" subtitle="Accommodation revenue by check-in month" icon="home"><TrendChart data={[...monthly.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, values]) => ({ label: monthLong(period), revenue: values.revenue }))} xKey="label" series={[{ key: "revenue", name: "Revenue" }]} formatValue={money} type="line" height={240} /></ChartContainer>;
+  }
+  if (toolId === "content") {
+    const posts = rows<ContentPost>(data, "posts");
+    if (!posts.length) return null;
+    const statusOrder = ["idea", "draft", "scheduled", "published"] as const;
+    const counts = statusOrder.map((status) => ({ id: status, label: status[0].toUpperCase() + status.slice(1), value: posts.filter((post) => post.status === status).length }));
+    return <ChartContainer title="Publishing pipeline" subtitle="Content count by current status" icon="calendar-range"><HorizontalRankingChart data={counts} formatValue={(value) => `${Number(value ?? 0)} posts`} height={175} /></ChartContainer>;
+  }
+  if (toolId === "paycheck") {
+    const checks = rows<Paycheck>(data, "paychecks").sort((a, b) => b.date.localeCompare(a.date));
+    const latest = checks[0];
+    if (!latest) return null;
+    const allocations = rows<PaycheckAllocation>(data, "allocations").filter((item) => item.paycheckId === latest.id);
+    if (!allocations.length) return null;
+    return <ChartContainer title="Latest paycheck allocation" subtitle={`How the ${latest.date} paycheck is planned`} icon="wallet"><HorizontalRankingChart data={allocations.map((item) => ({ id: item.id, label: item.label, value: item.amount }))} formatValue={money} height={Math.max(170, Math.min(allocations.length, 8) * 32 + 30)} /></ChartContainer>;
+  }
+  return null;
 }
 
 function BudgetOverview({
@@ -260,6 +354,29 @@ function BudgetOverview({
   );
   const slices = React.useMemo(() => categorySlices(summary.byCategory), [summary]);
   const trend = React.useMemo(() => cashFlowTrend(summary), [summary]);
+  const chartFmt = (v: number | string | undefined) =>
+    formatMoney(Number(v ?? 0), { currency, maximumFractionDigits: 0 });
+  const categoryDonut = (
+    <ChartContainer
+      title="Spending by category"
+      subtitle="Donut · tap a slice to filter"
+      icon="tag"
+      action={<PinChartButton chartId="budget.categories" title="Spending by category" tool="budget" />}
+    >
+      <CategoryBreakdownChart
+        data={slices}
+        formatValue={chartFmt}
+        centerLabel="Spent"
+        centerValue={chartFmt(summary.expenses)}
+        height={242}
+        onSliceClick={(id) => {
+          if (id === "__other__") return;
+          const name = slices.find((slice) => slice.id === id)?.name ?? "—";
+          onDrill({ categoryId: id, categoryName: name });
+        }}
+      />
+    </ChartContainer>
+  );
 
   if (!summary.transactionCount) {
     return (
@@ -350,9 +467,6 @@ function BudgetOverview({
       </div>
     ) : null;
 
-  const chartFmt = (v: number | string | undefined) =>
-    formatMoney(Number(v ?? 0), { currency, maximumFractionDigits: 0 });
-
   const exportCSV = () => {
     const csv = budgetReportCSV(summary, { periodLabel: year, currency });
     downloadFile(`gridhub-budget-${year}.csv`, csv, "text/csv");
@@ -377,32 +491,27 @@ function BudgetOverview({
 
       {categoryBanner}
 
-      {/* Annual KPI cards (spec #4) */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
-        <MetricCard label="Total income" value={formatMoney(summary.income, { currency })} icon="arrowUp" />
-        <MetricCard label="Total expenses" value={formatMoney(summary.expenses, { currency })} icon="arrowDown" tone="negative" />
-        <MetricCard
-          label="Net cash flow"
-          value={formatMoney(summary.netCashFlow, { currency, signed: true })}
-          icon="wallet"
-          tone={summary.netCashFlow >= 0 ? "positive" : "negative"}
-        />
-        <MetricCard
-          label="Budget remaining"
-          value={formatMoney(budgetRemaining, { currency, signed: true })}
-          icon="target"
-          hint={annualBudget ? `of ${formatMoney(annualBudget, { currency })} budgeted` : "No annual budget set"}
-          tone={budgetRemaining >= 0 ? "neutral" : "warning"}
-        />
-        <MetricCard
-          label="Savings rate"
-          value={formatPercent(summary.savingsRate)}
-          icon="piggy-bank"
-          hint={summary.savingsRate === null ? "No income yet" : undefined}
-        />
+      {/* At-a-glance layout: date picker, category mix, and one consistent annual summary. */}
+      <div className="grid items-stretch gap-3 xl:grid-cols-12">
+        <BudgetCalendar transactions={transactions} year={year} onSelect={(date) => onDrill({ month: date.slice(0, 7), day: date })} />
+        <div className="xl:col-span-5">{categoryDonut}</div>
+        <section className="rounded-2xl border border-line bg-[var(--surface)] p-3 xl:col-span-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="text-[12px] font-semibold">Year summary</h3>
+            <span className="text-[11px] text-fg-subtle">{year}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <CompactMetric label="Income" value={formatMoney(summary.income, { currency })} tone="positive" />
+            <CompactMetric label="Expenses" value={formatMoney(summary.expenses, { currency })} tone="negative" />
+            <CompactMetric label="Net cash flow" value={formatMoney(summary.netCashFlow, { currency, signed: true })} tone={summary.netCashFlow >= 0 ? "positive" : "negative"} />
+            <CompactMetric label="Budget remaining" value={formatMoney(budgetRemaining, { currency, signed: true })} hint={annualBudget ? `of ${formatMoney(annualBudget, { currency })}` : "No annual budget"} tone={budgetRemaining >= 0 ? "neutral" : "negative"} />
+            <CompactMetric label="Savings rate" value={formatPercent(summary.savingsRate)} hint={summary.savingsRate === null ? "No income yet" : undefined} />
+            <CompactMetric label="Transactions" value={String(summary.transactionCount)} />
+          </div>
+        </section>
       </div>
 
-      {/* Charts A – D */}
+      {/* Trends and budget comparisons sit below the at-a-glance row. */}
       <div className="grid gap-3 lg:grid-cols-2">
         <ChartContainer
           title="Income vs expenses"
@@ -421,28 +530,6 @@ function BudgetOverview({
             onMonthClick={(m) => onDrill({ month: m })}
             selectedMonth={drill.month}
             height={260}
-          />
-        </ChartContainer>
-
-        <ChartContainer
-          title="Spending by category"
-          subtitle="Donut · tap a slice to filter"
-          icon="tag"
-          action={
-            <PinChartButton chartId="budget.categories" title="Spending by category" tool="budget" />
-          }
-        >
-          <CategoryBreakdownChart
-            data={slices}
-            formatValue={chartFmt}
-            centerLabel="Spent"
-            centerValue={chartFmt(summary.expenses)}
-            height={260}
-            onSliceClick={(id) => {
-              if (id === "__other__") return;
-              const name = slices.find((s) => s.id === id)?.name ?? "—";
-              onDrill({ categoryId: id, categoryName: name });
-            }}
           />
         </ChartContainer>
 
@@ -624,9 +711,86 @@ function Insight({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CompactMetric({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "neutral" | "positive" | "negative";
+}) {
+  const color = tone === "positive" ? "var(--positive)" : tone === "negative" ? "var(--negative)" : "var(--fg)";
+  return (
+    <div className="min-w-0 rounded-xl border border-line bg-[var(--bg-subtle)]/50 px-2.5 py-2">
+      <p className="truncate text-[10px] uppercase tracking-wide text-fg-subtle">{label}</p>
+      <p className="tnum truncate text-[13px] font-semibold" style={{ color }}>{value}</p>
+      {hint ? <p className="truncate text-[10px] text-fg-subtle">{hint}</p> : null}
+    </div>
+  );
+}
+
+function BudgetCalendar({
+  transactions,
+  year,
+  onSelect,
+}: {
+  transactions: MoneyTransaction[];
+  year: string;
+  onSelect: (date: string) => void;
+}) {
+  const [month, setMonth] = React.useState(() => {
+    const current = currentMonth();
+    return current.startsWith(year) ? current : `${year}-01`;
+  });
+  React.useEffect(() => {
+    setMonth((current) => current.startsWith(year) ? current : `${year}-01`);
+  }, [year]);
+
+  const [yyyy, mm] = month.split("-").map(Number);
+  const first = new Date(yyyy, mm - 1, 1);
+  const offset = first.getDay();
+  const daysInMonth = new Date(yyyy, mm, 0).getDate();
+  const transactionDays = new Set(transactions.filter((transaction) => transaction.date.startsWith(month)).map((transaction) => transaction.date));
+  const cells = Array.from({ length: Math.ceil((offset + daysInMonth) / 7) * 7 }, (_, index) => {
+    const day = index - offset + 1;
+    return day < 1 || day > daysInMonth ? null : `${month}-${String(day).padStart(2, "0")}`;
+  });
+  const moveMonth = (amount: number) => {
+    const next = new Date(yyyy, mm - 1 + amount, 1);
+    setMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  return (
+    <section className="rounded-2xl border border-line bg-[var(--surface)] p-3 xl:col-span-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-[12px] font-semibold">Transaction calendar</h3>
+        <div className="flex items-center gap-1">
+          <button type="button" aria-label="Previous month" disabled={month === `${year}-01`} className="press grid h-7 w-7 place-items-center rounded-lg text-fg-muted hover:bg-[var(--surface-strong)] disabled:opacity-35" onClick={() => moveMonth(-1)}><AnimatedIcon name="chevronLeft" size={14} trigger="click" /></button>
+          <span className="min-w-[5.5rem] text-center text-[10.5px] text-fg-muted">{new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>
+          <button type="button" aria-label="Next month" disabled={month === `${year}-12`} className="press grid h-7 w-7 place-items-center rounded-lg text-fg-muted hover:bg-[var(--surface-strong)] disabled:opacity-35" onClick={() => moveMonth(1)}><AnimatedIcon name="chevronRight" size={14} trigger="click" /></button>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 text-center">
+        {Array.from({ length: 7 }, (_, day) => <span key={day} className="py-1 text-[9px] font-medium text-fg-subtle">{new Date(2024, 0, 7 + day).toLocaleDateString(undefined, { weekday: "narrow" })}</span>)}
+        {cells.map((date, index) => date ? (
+          <button key={date} type="button" onClick={() => onSelect(date)} title={transactionDays.has(date) ? `${date} · transactions` : date} className={`relative mx-auto grid h-7 w-7 place-items-center rounded-full text-[10.5px] hover:bg-[var(--surface-strong)] ${date === todayISO() ? "bg-[var(--accent)] font-semibold text-[var(--accent-fg)]" : "text-fg"}`}>
+            {Number(date.slice(-2))}
+            {transactionDays.has(date) ? <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[var(--accent)]" /> : null}
+          </button>
+        ) : <span key={`empty-${index}`} className="h-7" />)}
+      </div>
+      <p className="mt-1 text-[9.5px] text-fg-subtle">Dots mark activity · select a day to filter the ledger</p>
+    </section>
+  );
+}
+
 function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
   const debts = rows<Debt>(data, "debts");
   if (!debts.length) return null;
+  const totals = debtTotals(debts);
 
   const input = debts.map((d) => ({
     id: d.id,
@@ -639,8 +803,26 @@ function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
   const snowball = simulateDebt(input, extra, "snowball");
   const avalanche = simulateDebt(input, extra, "avalanche");
   const interestDiff = round2(snowball.totalInterest - avalanche.totalInterest);
+  const openingBalance = debts.reduce((total, debt) => total + debt.openingPrincipal, 0);
+  const balanceByMonth = new Map<number, Map<string, number>>();
+  for (const row of snowball.rows) {
+    if (!balanceByMonth.has(row.month)) balanceByMonth.set(row.month, new Map());
+    balanceByMonth.get(row.month)!.set(row.debtId, row.balance);
+  }
+  const payoffTrend = [
+    { label: "Now", balance: openingBalance },
+    ...[...balanceByMonth.entries()].sort(([a], [b]) => a - b).map(([month, balances]) => ({
+      label: `M${month}`,
+      balance: [...balances.values()].reduce((total, value) => total + value, 0),
+    })),
+  ];
 
   return (
+    <div className="flex flex-col gap-3">
+    <div className="grid grid-cols-2 gap-2.5 sm:max-w-md">
+      <MetricCard label="Total debt" value={formatMoney(totals.balance, { currency })} icon="trending-down" hint={`${totals.count} accounts`} />
+      <MetricCard label="Minimum payments" value={formatMoney(totals.minimums, { currency })} icon="receipt" />
+    </div>
     <div className="grid gap-3 lg:grid-cols-2">
       <Panel title="Payoff projection" description="Estimates only — your lender's calculation governs." icon="trending-down">
         {snowball.nonAmortizing ? (
@@ -682,6 +864,12 @@ function DebtOverview({ data, currency }: { data: DataMap; currency: string }) {
           format={(n) => formatMoney(n, { currency, maximumFractionDigits: 0 })}
         />
       </Panel>
+      <div className="lg:col-span-2">
+        <ChartContainer title="Projected debt payoff" subtitle="Estimated remaining balance using your snowball payment plan" icon="trending-down">
+          <TrendChart data={payoffTrend} xKey="label" series={[{ key: "balance", name: "Debt balance" }]} formatValue={(value) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 })} type="line" height={220} />
+        </ChartContainer>
+      </div>
+    </div>
     </div>
   );
 }
@@ -692,8 +880,19 @@ function SavingsOverview({ data, currency }: { data: DataMap; currency: string }
   if (!goals.length) return null;
 
   const summaries = goals.map((g) => goalSummary(g, movements));
+  const monthlyMovements = new Map<string, number>();
+  for (const movement of movements) {
+    const period = movement.date.slice(0, 7);
+    if (period) monthlyMovements.set(period, (monthlyMovements.get(period) ?? 0) + (movement.kind === "withdrawal" ? -movement.amount : movement.amount));
+  }
+  let balance = goals.reduce((total, goal) => total + goal.openingBalance, 0);
+  const balanceTrend = [...monthlyMovements.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([period, change]) => {
+    balance += change;
+    return { label: monthLong(period), balance: Math.max(0, balance) };
+  });
 
   return (
+    <div className="grid gap-3 lg:grid-cols-2">
     <Panel title="Goal progress" description="Contributions minus withdrawals, against each target" icon="piggy-bank">
       <div className="flex flex-col gap-3">
         {summaries.map((s) => (
@@ -720,6 +919,10 @@ function SavingsOverview({ data, currency }: { data: DataMap; currency: string }
         ))}
       </div>
     </Panel>
+    <ChartContainer title="Savings balance over time" subtitle="Opening balances plus recorded contributions and withdrawals" icon="trending-up">
+      <TrendChart data={balanceTrend} xKey="label" series={[{ key: "balance", name: "Total savings" }]} formatValue={(value) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 })} type="area" height={220} />
+    </ChartContainer>
+    </div>
   );
 }
 
@@ -847,6 +1050,18 @@ function NutritionDiary({ data }: { data: DataMap }) {
       {totals.entries === 0 ? (
         <p className="mt-3 text-[12px] text-fg-subtle">Nothing logged today yet.</p>
       ) : null}
+      <div className="mt-3 border-t border-line pt-3">
+        <h3 className="mb-1 text-[11px] font-medium text-fg-muted">Macros by grams</h3>
+        <HorizontalRankingChart
+          data={[
+            { id: "protein", label: "Protein", value: totals.protein },
+            { id: "carbs", label: "Carbs", value: totals.carbs },
+            { id: "fat", label: "Fat", value: totals.fat },
+          ]}
+          formatValue={(value) => `${Math.round(Number(value ?? 0))} g`}
+          height={150}
+        />
+      </div>
     </Panel>
   );
 }
@@ -856,11 +1071,21 @@ function InvoicingOverview({ data, currency }: { data: DataMap; currency: string
   const payments = rows<Payment>(data, "payments");
   if (!invoices.length) return null;
   const summary = invoicingSummary(invoices, payments);
+  const aging = { Current: 0, "1–30 days": 0, "31–60 days": 0, "61+ days": 0 };
+  const today = new Date(`${todayISO()}T00:00:00`).getTime();
+  for (const row of summary.rows) {
+    if (row.totals.balanceDue <= 0) continue;
+    const due = new Date(`${row.invoice.dueDate}T00:00:00`).getTime();
+    const daysLate = Number.isFinite(due) ? Math.max(0, Math.floor((today - due) / 86_400_000)) : 0;
+    const bucket = daysLate === 0 ? "Current" : daysLate <= 30 ? "1–30 days" : daysLate <= 60 ? "31–60 days" : "61+ days";
+    aging[bucket] += row.totals.balanceDue;
+  }
 
   return (
+    <div className="grid gap-3 lg:grid-cols-2">
     <Panel title="Receivables" description="Balance due per invoice, computed with decimal-safe rounding" icon="file-text">
       <div className="flex flex-col gap-2">
-        {summary.rows.slice(0, 6).map((row) => (
+        {summary.rows.filter((row) => row.totals.balanceDue > 0).slice(0, 6).map((row) => (
           <div key={row.invoice.id} className="flex items-center justify-between gap-2 border-b border-line pb-2 last:border-0 last:pb-0">
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium">{row.invoice.number}</p>
@@ -879,6 +1104,10 @@ function InvoicingOverview({ data, currency }: { data: DataMap; currency: string
         ))}
       </div>
     </Panel>
+    <ChartContainer title="Receivables aging" subtitle="Outstanding balances by days past due" icon="clock">
+      <HorizontalRankingChart data={Object.entries(aging).map(([label, value]) => ({ id: label, label, value }))} formatValue={(value) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 })} height={190} />
+    </ChartContainer>
+    </div>
   );
 }
 
@@ -1054,9 +1283,7 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
       const s = projectProgress(rows<Task>(data, "tasks"));
       return [
         m("Completion", formatPercent(s.completionPct), "kanban", `${s.completed}/${s.total} tasks`),
-        m("Remaining", String(s.remaining), "list"),
         m("Overdue", String(s.overdue), "alert", undefined, s.overdue ? "negative" : "neutral"),
-        m("In progress", String(s.inProgress), "play"),
       ];
     }
     case "habits": {
@@ -1071,8 +1298,6 @@ function computeMetrics(toolId: ToolId, data: DataMap, currency: string) {
     case "content": {
       const s = contentSummary(rows<ContentPost>(data, "posts"), currentMonth());
       return [
-        m("Scheduled", String(s.scheduled), "calendar-range"),
-        m("Published", String(s.published), "check", undefined, "positive"),
         m("Publishing rate", formatPercent(s.publishingRate), "gauge"),
         m("Engagement", formatPercent(s.engagementRate), "trendingUp", s.totalReach ? `${s.totalReach} reach` : "Manual metrics"),
       ];
