@@ -16,7 +16,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // The light nav surface is the default; the app updates the browser theme-color meta tag
     // after loading to follow the selected in-app theme.
     background_color: "#F7F7F2",
-    theme_color: "#FDFDFA",
+    theme_color: "#F7F7F2",
     categories: ["productivity", "finance", "business"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

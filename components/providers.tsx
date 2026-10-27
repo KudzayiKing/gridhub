@@ -71,12 +71,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
-  // Keep the browser/PWA system bar (including the gesture area) in sync with the app theme
-  // and the surface used by the fixed mobile navigation.
+  // Keep browser and installed-PWA chrome aligned with the page background in the active theme.
   React.useEffect(() => {
     const root = document.documentElement;
     const syncThemeColor = () => {
-      const color = getComputedStyle(root).getPropertyValue("--bottom-nav-bg").trim();
+      const color = getComputedStyle(root).getPropertyValue("--bg").trim();
       if (!color) return;
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
         meta.content = color;
