@@ -361,24 +361,24 @@ html[dir="rtl"] input[inputmode="numeric"] {
     --lb-fill:
       radial-gradient(
         farthest-corner at 0% 0%,
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(255, 255, 255, 0.55) 6%,
+        rgba(255, 255, 255, 0.72) 0%,
+        rgba(255, 255, 255, 0.34) 6%,
         rgba(255, 255, 255, 0) 20%
       ),
       radial-gradient(
         farthest-corner at 100% 100%,
-        rgba(255, 255, 255, 0.8) 0%,
-        rgba(255, 255, 255, 0.45) 6%,
+        rgba(255, 255, 255, 0.62) 0%,
+        rgba(255, 255, 255, 0.3) 6%,
         rgba(255, 255, 255, 0) 20%
       ),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.07));
     /* Rim base runs corner to corner, so it is lit where the speculars are lit. */
     --lb-arc-base: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(23, 26, 24, 0.12) 26%,
-      rgba(23, 26, 24, 0.12) 74%,
-      rgba(255, 255, 255, 0.9) 100%
+      rgba(255, 255, 255, 0.7) 0%,
+      rgba(23, 26, 24, 0.1) 26%,
+      rgba(23, 26, 24, 0.1) 74%,
+      rgba(255, 255, 255, 0.66) 100%
     );
     --lb-arc: rgba(0, 0, 0, 0.5);
     --lb-arc-inset: rgba(255, 255, 255, 0.5);
@@ -413,27 +413,27 @@ html[dir="rtl"] input[inputmode="numeric"] {
     --lb-fill:
       radial-gradient(
         farthest-corner at 0% 0%,
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(255, 255, 255, 0.55) 6%,
+        rgba(255, 255, 255, 0.68) 0%,
+        rgba(255, 255, 255, 0.3) 6%,
         rgba(255, 255, 255, 0) 20%
       ),
       radial-gradient(
         farthest-corner at 100% 100%,
-        rgba(255, 255, 255, 0.8) 0%,
-        rgba(255, 255, 255, 0.45) 6%,
+        rgba(255, 255, 255, 0.58) 0%,
+        rgba(255, 255, 255, 0.28) 6%,
         rgba(255, 255, 255, 0) 20%
       ),
       linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
-    --lb-arc: rgba(255, 255, 255, 0.62);
+    --lb-arc: rgba(255, 255, 255, 0.48);
     --lb-arc-0: rgba(255, 255, 255, 0);
     --lb-arc-base: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.6) 0%,
-      rgba(255, 255, 255, 0.07) 28%,
-      rgba(255, 255, 255, 0.07) 72%,
-      rgba(255, 255, 255, 0.5) 100%
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.055) 28%,
+      rgba(255, 255, 255, 0.055) 72%,
+      rgba(255, 255, 255, 0.36) 100%
     );
-    --lb-arc-inset: rgba(255, 255, 255, 0.1);
+    --lb-arc-inset: rgba(255, 255, 255, 0.075);
     --lb-text: #f3f3f5;
     --lb-text-shadow: 0 0.06em 0.06em rgba(0, 0, 0, 0.5);
     --lb-text-shadow-hover: 0 0.03em 0.03em rgba(0, 0, 0, 0.45);
@@ -712,29 +712,6 @@ html[dir="rtl"] input[inputmode="numeric"] {
        very green cast this palette was changed to remove. Depth in dark mode comes from
        surface elevation and hairline borders instead. */
     background: none;
-  }
-
-  /* A localized color field lets translucent dashboard surfaces and liquid buttons read as glass. */
-  .dashboard-home::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    pointer-events: none;
-    inset-block-start: -1.5rem;
-    inset-inline: -2rem;
-    height: min(44rem, 78vh);
-    background:
-      radial-gradient(ellipse 34rem 24rem at 78% 17%, rgba(0, 213, 135, 0.13), transparent 72%),
-      radial-gradient(ellipse 38rem 28rem at 20% 5%, rgba(192, 212, 188, 0.36), transparent 72%),
-      radial-gradient(ellipse 26rem 22rem at 92% 76%, rgba(105, 168, 190, 0.14), transparent 74%);
-    filter: blur(10px);
-  }
-
-  .dark .dashboard-home::before {
-    background:
-      radial-gradient(ellipse 34rem 24rem at 78% 17%, rgba(0, 213, 135, 0.13), transparent 72%),
-      radial-gradient(ellipse 38rem 28rem at 20% 5%, rgba(94, 125, 105, 0.17), transparent 72%),
-      radial-gradient(ellipse 26rem 22rem at 92% 76%, rgba(93, 111, 157, 0.13), transparent 74%);
   }
 
   /* ---------- Typography helpers ---------- */

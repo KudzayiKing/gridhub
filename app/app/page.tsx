@@ -99,7 +99,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex items-start gap-5">
-    <main className={`dashboard-home relative isolate flex min-w-0 flex-1 flex-col gap-5 transition-[margin] duration-300 ${customizeOpen ? "xl:mr-[380px]" : ""}`}>
+    <main className={`flex min-w-0 flex-1 flex-col gap-5 transition-[margin] duration-300 ${customizeOpen ? "xl:mr-[380px]" : ""}`}>
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
