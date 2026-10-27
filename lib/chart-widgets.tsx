@@ -684,7 +684,7 @@ function DashboardWidgetCatalog({ onClose, kpis, selectedKpis, onToggleKpi, onMo
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 w-full max-w-full flex-col overflow-hidden">
       <div className="mb-4 flex min-w-0 items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold">{t("Customize Dashboard")}</h2>
