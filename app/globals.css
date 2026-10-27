@@ -299,6 +299,27 @@ html[dir="rtl"] input[inputmode="numeric"] {
     );
   }
 
+  /* Home KPIs keep their solid face, with just a restrained glass edge and hover lift. */
+  .home-key-metrics .glass-sheen::before {
+    opacity: 0.3;
+  }
+  .home-kpi-link .gp-card {
+    transition:
+      transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+  .home-kpi-link:hover .gp-card,
+  .home-kpi-link:focus-visible .gp-card {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--border) 72%, var(--fg) 28%);
+    box-shadow: var(--shadow-lift);
+  }
+  .home-kpi-link:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
   .gp-card {
     border-radius: var(--gp-card-radius);
     background: var(--surface);
