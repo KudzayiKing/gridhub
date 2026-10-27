@@ -222,7 +222,7 @@ export default function DashboardPage() {
           </Card>
         ) : null}
 
-        <Card className="p-4">
+        <Card className="dashboard-recent-activity min-w-0 p-4">
           <h2 className="mb-3 text-[14px] font-semibold">{t("Recent activity")}</h2>
           {data.recent.length ? (
             <ul className="flex flex-col gap-2">

@@ -308,6 +308,18 @@ html[dir="rtl"] input[inputmode="numeric"] {
     box-shadow: var(--shadow-soft);
   }
 
+  /* Mobile Chromium can defer repainting blurred cards in long scrolling dashboards until a
+     touch invalidates the layer. Keep Recent activity on a stable, directly painted surface. */
+  @media (hover: none) and (pointer: coarse) {
+    .dashboard-recent-activity {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+  }
+
   /* ---------- Liquid button ---------- */
   /*
    * Ported from the supplied reference. The anatomy is three layers, and each does one job:
