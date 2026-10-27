@@ -27,6 +27,7 @@ import { projectProgress } from "@/lib/calc/work";
 import { inventorySummary, salesSummary, invoicingSummary, forecastCashFlow } from "@/lib/calc/business";
 import { habitsOverview, contentSummary } from "@/lib/calc/work";
 import { ChartContainer } from "@/components/charts/chart-container";
+import { monthLabel } from "@/components/charts/chart-kit";
 import { MonthlyComparisonChart } from "@/components/charts/monthly-comparison-chart";
 import { CategoryBreakdownChart } from "@/components/charts/category-breakdown-chart";
 import { ProgressChart } from "@/components/charts/progress-chart";
@@ -155,12 +156,14 @@ function SavingsGoalsWidget({ currency }: { currency: string }) {
 }
 
 function SavingsBalanceWidget({ currency }: { currency: string }) {
+  const { prefs } = usePrefs();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const today = localISODate(new Date());
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const history = savingsBalanceTrend(eligibleGoals, movements.rows, 12, today);
-  return history.length ? <TrendChart data={history} xKey="month" series={[{ key: "balance", name: "Savings balance" }]} formatValue={fmtFactory(currency)} type="area" height={190} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">No dated savings activity</p>;
+  const localizedHistory = history.map((row) => ({ ...row, month: monthLabel(row.key, prefs.uiLanguage) }));
+  return history.length ? <TrendChart data={localizedHistory} xKey="month" series={[{ key: "balance", name: "Savings balance" }]} formatValue={fmtFactory(currency)} type="area" height={190} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">No dated savings activity</p>;
 }
 
 function SavingsEmergencyWidget({ currency }: { currency: string }) {

@@ -452,14 +452,14 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
               >
                 <ToolIcon toolId={tool.id as ToolId} size={16} tinted={false} trigger="none" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-fg">{tool.name}</span>
-                  <span className="block truncate text-[11.5px] text-fg-subtle">{tool.tagline}</span>
+                  <span className="block truncate text-[13px] font-medium text-fg">{t(tool.name)}</span>
+                  <span className="block truncate text-[11.5px] text-fg-subtle">{t(tool.tagline)}</span>
                 </span>
                 {!active.includes(tool.id) ? <Badge tone="neutral">Inactive</Badge> : null}
               </button>
             ))}
             {!results.length ? (
-              <p className="px-2 py-6 text-center text-[13px] text-fg-subtle">No tools match “{query}”.</p>
+              <p className="px-2 py-6 text-center text-[13px] text-fg-subtle">{t("No tools match “{query}”.", { query })}</p>
             ) : null}
           </div>
         </DialogContent>

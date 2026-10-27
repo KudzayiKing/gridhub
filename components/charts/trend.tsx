@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export interface Point {
   label: string;
@@ -27,6 +28,7 @@ export function AreaTrend({
   className?: string;
   ariaLabel?: string;
 }) {
+  const { t } = useI18n();
   const [hover, setHover] = React.useState<number | null>(null);
   // Hooks must run unconditionally, so the gradient id is resolved before the empty-state
   // early return below. Calling useId() after it would break the hook order.
@@ -40,7 +42,7 @@ export function AreaTrend({
         className={cn("flex items-center justify-center rounded-xl border border-dashed border-line-strong text-[12px] text-fg-subtle", className)}
         style={{ height }}
       >
-        No data for this period yet
+        {t("No data for this period yet")}
       </div>
     );
   }
@@ -68,7 +70,7 @@ export function AreaTrend({
         width="100%"
         height={height}
         role="img"
-        aria-label={ariaLabel}
+        aria-label={t(ariaLabel)}
         preserveAspectRatio="none"
         onMouseLeave={() => setHover(null)}
       >
@@ -141,8 +143,9 @@ export function BarList({
   max?: number;
   emptyLabel?: string;
 }) {
+  const { t } = useI18n();
   if (!items.length) {
-    return <p className="py-4 text-center text-[12px] text-fg-subtle">{emptyLabel}</p>;
+    return <p className="py-4 text-center text-[12px] text-fg-subtle">{t(emptyLabel)}</p>;
   }
   const max = maxProp ?? Math.max(...items.map((i) => i.value), 1);
 
@@ -155,7 +158,7 @@ export function BarList({
         return (
           <div key={item.label}>
             <div className="mb-1 flex items-baseline justify-between gap-2">
-              <span className="truncate text-[12px] text-fg-muted">{item.label}</span>
+              <span className="truncate text-[12px] text-fg-muted">{t(item.label)}</span>
               <span className="tnum shrink-0 text-[12px] font-medium text-fg">{format(item.value)}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]">

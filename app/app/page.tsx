@@ -14,8 +14,8 @@ import { CHART_WIDGETS, PinnedCharts, DashboardCustomizePanel } from "@/lib/char
 import { PanelLeftOpenIcon, PanelRightOpenIcon } from "@/components/icons/panel-toggle-icons";
 import { formatMoney, formatPercent } from "@/lib/money";
 import { TOOL_MAP } from "@/lib/catalog";
-import { formatDate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { monthLabel } from "@/components/charts/chart-kit";
 
 /*
  * One list, two presentations. On phones these are a scrollable strip under the header — the
@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const { active, loading: toolsLoading } = useActiveTools();
   const data = useDashboardData();
   const currency = prefs.currency || "USD";
+  const dateLocale = ({ es: "es-ES", "zh-CN": "zh-CN", "pt-BR": "pt-BR", fr: "fr-FR", ar: "ar", ru: "ru-RU" } as const)[prefs.uiLanguage as "es" | "zh-CN" | "pt-BR" | "fr" | "ar" | "ru"] ?? "en-US";
   const [customizeOpen, setCustomizeOpen] = React.useState(false);
   const [showAllTools, setShowAllTools] = React.useState(false);
 
@@ -101,7 +102,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <p className="eyebrow mb-1">{new Date().toLocaleDateString(prefs.uiLanguage === "zh-CN" ? "zh-CN" : prefs.uiLanguage === "pt-BR" ? "pt-BR" : prefs.uiLanguage === "es" ? "es" : prefs.uiLanguage === "fr" ? "fr" : prefs.uiLanguage === "ar" ? "ar" : prefs.uiLanguage === "ru" ? "ru" : "en-US", { weekday: "long", day: "numeric", month: "long" })}</p>
+            <p className="eyebrow mb-1">{new Date().toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long" })}</p>
           <h1 className="display-xl text-[26px] sm:text-[32px]">{t(greeting)}.</h1>
           <p className="mt-1 text-[13px] text-fg-muted">
             {activeTools.length} {t("tools in your workspace · everything organized.")}
@@ -172,17 +173,17 @@ export default function DashboardPage() {
         <div className="grid gap-3 lg:grid-cols-3">
           <Card className="p-4 lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[14px] font-semibold">Spending trend</h2>
-              <span className="text-[11px] text-fg-subtle">This year · posted only</span>
+              <h2 className="text-[14px] font-semibold">{t("Spending trend")}</h2>
+              <span className="text-[11px] text-fg-subtle">{t("This year · posted only")}</span>
             </div>
             <AreaTrend
-              data={data.annual.monthly.map((m) => ({ label: m.month.slice(5), value: m.expenses }))}
+              data={data.annual.monthly.map((m) => ({ label: monthLabel(m.month, prefs.uiLanguage), value: m.expenses }))}
               format={(n) => formatMoney(n, { currency })}
               ariaLabel="Monthly expenses"
             />
           </Card>
           <Card className="p-4">
-            <h2 className="mb-3 text-[14px] font-semibold">Top categories</h2>
+            <h2 className="mb-3 text-[14px] font-semibold">{t("Top categories")}</h2>
             <BarList
               items={data.budget.byCategory
                 .filter((c) => c.kind === "expense")
@@ -198,7 +199,7 @@ export default function DashboardPage() {
       <div className="grid gap-3 lg:grid-cols-2">
         {data.has("savings") && data.savings.goals.length ? (
           <Card className="p-4">
-            <h2 className="mb-3 text-[14px] font-semibold">Savings goals</h2>
+            <h2 className="mb-3 text-[14px] font-semibold">{t("Savings goals")}</h2>
             <div className="flex flex-col gap-3">
               {data.savings.goals.slice(0, 3).map((goal) => (
                 <div key={goal.id} className="flex items-center gap-3">
@@ -222,15 +223,15 @@ export default function DashboardPage() {
         ) : null}
 
         <Card className="p-4">
-          <h2 className="mb-3 text-[14px] font-semibold">Recent activity</h2>
+          <h2 className="mb-3 text-[14px] font-semibold">{t("Recent activity")}</h2>
           {data.recent.length ? (
             <ul className="flex flex-col gap-2">
               {data.recent.map((item) => (
                 <li key={item.id}>
                   <Link href={item.href} className="press flex items-center gap-2.5 rounded-lg py-1 text-[12.5px] hover:bg-[var(--surface-hover)]">
                   <AnimatedIcon name={item.icon} size={14} className="text-fg-subtle" trigger="none" />
-                  <span className="min-w-0 flex-1 truncate"><span className="block truncate">{item.title}</span><span className="block truncate text-[10.5px] text-fg-subtle">{t(item.meta)}</span></span>
-                  <span className="shrink-0 text-[11px] text-fg-subtle">{formatDate(item.at)}</span>
+                  <span className="min-w-0 flex-1 truncate"><span className="block truncate">{item.title}</span><span className="block truncate text-[10.5px] text-fg-subtle">{(() => { const [kind, amount] = item.meta.split(" · "); return amount ? `${t(kind)} · ${formatMoney(Number(amount), { currency })}` : t(kind); })()}</span></span>
+                  <span className="shrink-0 text-[11px] text-fg-subtle">{new Date(`${item.at}T12:00:00`).toLocaleDateString(dateLocale, { year: "numeric", month: "short", day: "numeric" })}</span>
                   </Link>
                 </li>
               ))}
@@ -246,7 +247,7 @@ export default function DashboardPage() {
       {/* Compact tool launcher stays below dashboard insights. */}
       <div>
         <SectionHeading eyebrow="Your workspace" title="My tools" action={<div className="flex items-center gap-1"><Button variant="ghost" size="sm" onClick={() => setShowAllTools((value) => !value)}>{t(showAllTools ? "Show less" : "Show all")}</Button><Button variant="ghost" size="sm" iconRight="arrowRight" asChild><Link href="/app/tools">Manage</Link></Button></div>} />
-        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">{(showAllTools ? activeTools : activeTools.slice(0, 4)).map((tool) => <Link key={tool.id} href={tool.route} className="gp-card glass-sheen lift flex flex-col gap-2 p-3.5"><div className="flex items-start justify-between"><ToolIcon toolId={tool.id} size={18} trigger="hover" /><AnimatedIcon name="arrowUp" size={14} className="text-fg-subtle" trigger="none" /></div><div><p className="text-[13px] font-medium leading-tight">{tool.shortName}</p><p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-fg-subtle">{tool.tagline}</p></div></Link>)}</div>
+        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">{(showAllTools ? activeTools : activeTools.slice(0, 4)).map((tool) => <Link key={tool.id} href={tool.route} className="gp-card glass-sheen lift flex flex-col gap-2 p-3.5"><div className="flex items-start justify-between"><ToolIcon toolId={tool.id} size={18} trigger="hover" /><AnimatedIcon name="arrowUp" size={14} className="text-fg-subtle" trigger="none" /></div><div><p className="text-[13px] font-medium leading-tight">{t(tool.shortName)}</p><p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-fg-subtle">{t(tool.tagline)}</p></div></Link>)}</div>
       </div>
     </main>
     <DashboardCustomizePanel open={customizeOpen} onClose={() => setCustomizeOpen(false)} kpis={kpiCandidates.map(({ id, label }) => ({ id, label }))} selectedKpis={selectedKpis} onToggleKpi={toggleKpi} onMoveKpi={moveKpi} onRestoreKpis={restoreKpis} />

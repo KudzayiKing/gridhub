@@ -13,6 +13,8 @@ import {
   YAxis,
 } from "recharts";
 import { ChartEmptyState, RechartsTooltip, chartColor, useMounted } from "./chart-kit";
+import { monthLabel } from "./chart-kit";
+import { useI18n } from "@/lib/i18n";
 
 export interface TrendSeries {
   key: string;
@@ -33,7 +35,7 @@ export function TrendChart({
   type = "area",
   showGrid = true,
 }: {
-  data: Record<string, any>[];
+  data: Record<string, string | number | null | undefined>[];
   xKey: string;
   series: TrendSeries[];
   height?: number;
@@ -41,6 +43,7 @@ export function TrendChart({
   type?: "line" | "area";
   showGrid?: boolean;
 }) {
+  const { language } = useI18n();
   const mounted = useMounted();
   if (!mounted) return <div style={{ height }} />;
   if (!data.length || !series.length) return <ChartEmptyState label="No trend data yet" />;
@@ -49,6 +52,7 @@ export function TrendChart({
     <>
       <XAxis
         dataKey={xKey}
+        tickFormatter={(value) => /^\d{4}-\d{2}$/.test(String(value)) ? monthLabel(String(value), language) : value}
         tickLine={false}
         axisLine={false}
         tick={{ fill: "var(--fg-subtle)", fontSize: 11 }}

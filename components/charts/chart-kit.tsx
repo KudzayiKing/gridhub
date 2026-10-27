@@ -24,10 +24,15 @@ export function useMounted() {
 export const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "2026-03" -> "Mar", "2026" -> "2026". */
-export function monthLabel(period: string): string {
+export function monthLabel(period: string, language: string = "en"): string {
   if (period.length >= 7) {
-    const m = Number(period.slice(5, 7));
-    return MONTH_LABELS[(m - 1 + 12) % 12] ?? period;
+    const year = Number(period.slice(0, 4));
+    const month = Number(period.slice(5, 7));
+    if (Number.isFinite(year) && month >= 1 && month <= 12) {
+      const locale = ({ es: "es-ES", "zh-CN": "zh-CN", "pt-BR": "pt-BR", fr: "fr-FR", ar: "ar", ru: "ru-RU" } as Record<string, string>)[language] ?? "en-US";
+      return new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(year, month - 1, 1));
+    }
+    return period;
   }
   return period;
 }

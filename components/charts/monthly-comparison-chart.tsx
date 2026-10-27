@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartEmptyState, ChartLegend, RechartsTooltip, useMounted, monthLabel } from "./chart-kit";
+import { useI18n } from "@/lib/i18n";
 
 export interface MonthlyPointInput {
   /** "YYYY-MM" or "YYYY". */
@@ -38,13 +39,14 @@ export function MonthlyComparisonChart({
   onMonthClick?: (month: string) => void;
   selectedMonth?: string | null;
 }) {
+  const { language } = useI18n();
   const mounted = useMounted();
   if (!mounted) return <div style={{ height }} />;
   if (!data.length) return <ChartEmptyState label="No monthly data yet" />;
 
   const rows = data.map((d) => ({
     month: d.month,
-    label: monthLabel(d.month),
+    label: monthLabel(d.month, language),
     income: d.income,
     expenses: d.expenses,
   }));
