@@ -453,6 +453,10 @@ html[dir="rtl"] input[inputmode="numeric"] {
   /* A/B comparison: remove the bright face speculars from the first dashboard quick action. */
   .liquid-btn--no-gloss {
     --lb-fill: linear-gradient(180deg, rgba(23, 26, 24, 0.035), rgba(23, 26, 24, 0.065));
+    --lb-arc: rgba(202, 184, 143, 0.42);
+    --lb-arc-0: rgba(202, 184, 143, 0);
+    --lb-arc-base: linear-gradient(135deg, rgba(226, 213, 180, 0.52) 0%, rgba(23, 26, 24, 0.08) 28%, rgba(23, 26, 24, 0.08) 72%, rgba(226, 213, 180, 0.46) 100%);
+    --lb-arc-inset: rgba(226, 213, 180, 0.12);
     --lb-inset-bottom: rgba(23, 26, 24, 0.04);
     --lb-ring: rgba(23, 26, 24, 0.045);
     --lb-ring-strong: rgba(23, 26, 24, 0.08);
@@ -461,6 +465,10 @@ html[dir="rtl"] input[inputmode="numeric"] {
 
   .dark .liquid-btn.liquid-btn--no-gloss {
     --lb-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.028));
+    --lb-arc: rgba(215, 199, 163, 0.44);
+    --lb-arc-0: rgba(215, 199, 163, 0);
+    --lb-arc-base: linear-gradient(135deg, rgba(228, 214, 181, 0.48) 0%, rgba(228, 214, 181, 0.055) 28%, rgba(228, 214, 181, 0.055) 72%, rgba(228, 214, 181, 0.4) 100%);
+    --lb-arc-inset: rgba(228, 214, 181, 0.1);
     --lb-inset-bottom: rgba(255, 255, 255, 0.025);
     --lb-ring: rgba(255, 255, 255, 0.035);
     --lb-ring-strong: rgba(255, 255, 255, 0.075);
