@@ -52,13 +52,15 @@
   /* semantic (light) */
   --bg: #f7f7f2;
   --bg-elevated: #fdfdfa;
-  --bottom-nav-bg: #fdfdfa;
   --bg-subtle: #eef0e9;
   --surface: rgba(255, 255, 255, 0.74);
   --surface-strong: rgba(255, 255, 255, 0.92);
   --surface-hover: rgba(255, 255, 255, 0.96);
-  /* Header and safe-area color stay flush with the light page canvas. */
-  --header: #f7f7f2;
+  /* App chrome. Both bars float over scrolling content, so their fill must stay
+     translucent: an opaque fill paints over whatever is underneath and the blur then has
+     nothing to blur. Alpha is high enough to keep 13px labels legible over a busy card. */
+  --header: rgba(255, 255, 255, 0.63);
+  --bottom-nav-bg: rgba(253, 253, 250, 0.74);
   --border: rgba(23, 26, 24, 0.09);
   --border-strong: rgba(23, 26, 24, 0.16);
   --fg: #171a18;
@@ -104,14 +106,14 @@
 .dark {
   --bg: #121214;
   --bg-elevated: #17171a;
-  --bottom-nav-bg: #1d1d22;
   --bg-subtle: #1d1d21;
   --surface: rgba(24, 24, 28, 0.76);
   --surface-strong: rgba(29, 29, 34, 0.94);
   --surface-hover: rgba(35, 35, 41, 0.96);
-  /* Headers are opaque and exactly the page colour, so the top bar reads as part of the
-     canvas with only its hairline border separating it. */
-  --header: #121214;
+  /* Chrome is a wash of the canvas, not a block of it: 0.66 lets a card bleed through the
+     blur while the bar still reads darker than the content it covers. */
+  --header: rgba(18, 18, 20, 0.66);
+  --bottom-nav-bg: rgba(24, 24, 28, 0.78);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.18);
   --fg: #f3f3f5;
@@ -297,6 +299,32 @@ html[dir="rtl"] input[inputmode="numeric"] {
       rgba(255, 255, 255, 0.14) 70%,
       transparent
     );
+  }
+
+  /* ── App chrome glass ────────────────────────────────────────────────────────
+     The sticky header and the phone bottom bar are the only surfaces that sit *over*
+     scrolling content, which is the only place a translucent fill reads as glass rather
+     than as a tinted card. Two things are load-bearing:
+
+       · a translucent `background`. With an opaque fill the blur is applied to nothing and
+         the bar hides exactly the content it should be showing through. This was the bug:
+         `backdrop-filter` was declared on the header all along, but `--header` was an
+         opaque hex, so nothing ever blurred.
+       · `-webkit-backdrop-filter` beside `backdrop-filter`. iOS Safari only shipped the
+         unprefixed property in 18, and the bottom bar lives on iOS.
+
+     `saturate` is what separates glass from frosted plastic — it restores the colour a
+     plain blur washes out. */
+  .app-header-glass {
+    background: var(--header);
+  }
+  .app-bottom-nav-glass {
+    background: var(--bottom-nav-bg);
+  }
+  .app-header-glass,
+  .app-bottom-nav-glass {
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
   }
 
   .gp-card {
@@ -890,10 +918,28 @@ html[dir="rtl"] input[inputmode="numeric"] {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+  /* Chrome is the one place where translucency is load-bearing rather than decorative, so
+     it falls back to the solid canvas colour — still legible, just no longer see-through. */
+  .app-header-glass {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .app-bottom-nav-glass {
+    background: var(--bg-elevated);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass, .glass-strong, .glass-panel, .gp-card {
+    background: var(--bg-elevated);
+  }
+  .app-header-glass {
+    background: var(--bg);
+  }
+  .app-bottom-nav-glass {
     background: var(--bg-elevated);
   }
 }

@@ -17,7 +17,7 @@ export function AdminMobileNav() {
   return (
     <nav
       aria-label="Admin and workspace navigation"
-      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[var(--bottom-nav-bg)] lg:hidden"
+      className="safe-bottom app-bottom-nav-glass fixed inset-x-0 bottom-0 z-40 border-t border-line lg:hidden"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around px-2">
         {ITEMS.map((item) => {

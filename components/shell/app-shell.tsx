@@ -322,8 +322,9 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
       ) : null}
 
       <div className="app-shell-content lg:pl-[248px]">
-        {/* Top bar */}
-        <header className="safe-top sticky top-0 z-20 border-b border-line bg-header backdrop-blur-xl">
+        {/* Sticky glass bar: translucent fill + real blur, so content scrolling under it
+            stays visible as a soft smear instead of disappearing behind opaque paint. */}
+        <header className="safe-top app-header-glass sticky top-0 z-20 border-b border-line">
           <div className="relative flex h-14 items-center gap-2 px-3 sm:px-5">
             <Button
               variant="ghost"
@@ -399,7 +400,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
 
       {/* Mobile bottom navigation */}
       <nav
-        className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[var(--bottom-nav-bg)] lg:hidden"
+        className="safe-bottom app-bottom-nav-glass fixed inset-x-0 bottom-0 z-30 border-t border-line lg:hidden"
         aria-label="Primary"
       >
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-1">

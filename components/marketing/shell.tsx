@@ -41,7 +41,7 @@ export function SiteHeader() {
     <header
       className={cn(
         "sticky top-0 z-40 border-b transition-colors",
-        scrolled ? "border-line bg-header backdrop-blur-xl" : "border-transparent",
+        scrolled ? "border-line app-header-glass" : "border-transparent",
       )}
     >
       <div className="mx-auto flex h-16 max-w-[1680px] items-center gap-4 px-4 sm:px-6">

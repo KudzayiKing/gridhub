@@ -56,7 +56,8 @@ light and dark:
 | `--bg-subtle` | `#EEF0E9` | `#1D1D21` | Inset fill, hover |
 | `--surface` | `rgba(255,255,255,.74)` | `rgba(24,24,28,.76)` | Glass base |
 | `--surface-strong` | `rgba(255,255,255,.92)` | `rgba(29,29,34,.94)` | Dialog / sheet |
-| `--header` | `rgba(255,255,255,.63)` | `#121214` | Sticky header |
+| `--header` | `rgba(255,255,255,.63)` | `rgba(18,18,20,.66)` | Sticky header |
+| `--bottom-nav-bg` | `rgba(253,253,250,.74)` | `rgba(24,24,28,.78)` | Phone bottom bar |
 | `--border` | `rgba(23,26,24,.09)` | `rgba(255,255,255,.09)` | Hairline |
 | `--fg` | `#171A18` | `#F3F3F5` | Text |
 | `--fg-muted` | `#5C645C` | `#B1B1B9` | Secondary text |
@@ -70,9 +71,16 @@ light and dark:
 The dark scale is neutral, not sage-tinted. An earlier palette (`#10130F` / `#171B16` /
 `#1C211B`) was derived from the accent colour, so every dark surface carried a green cast. The
 green now lives only in `--accent` and its derived tokens, where it is a highlight rather than
-the room. `--header` is opaque and exactly the page colour in dark mode, so the sticky bar reads
-as part of the canvas with only its hairline separating it; in light mode it keeps the
-translucent wash it always had.
+the room.
+
+**Chrome tokens must stay translucent.** `--header` and `--bottom-nav-bg` fill the two bars
+that float *over* scrolling content, and they are the only place in the product where the
+translucency is functional rather than decorative: an opaque fill paints over the content
+underneath, which leaves the `backdrop-filter` blurring nothing and makes the bar read as flat
+paint. Both bars get their blur from `.app-header-glass` / `.app-bottom-nav-glass`, which
+declare `-webkit-backdrop-filter` as well as `backdrop-filter` — iOS Safari only shipped the
+unprefixed property in 18. Under `prefers-reduced-transparency` and in browsers without
+`backdrop-filter`, both classes fall back to a solid canvas fill.
 
 These are exposed to Tailwind through `@theme inline` as `bg-bg`, `text-fg`,
 `text-fg-muted`, `border-line`, `bg-accent`, `text-positive` and so on. `--border` is
