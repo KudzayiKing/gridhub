@@ -299,9 +299,18 @@ html[dir="rtl"] input[inputmode="numeric"] {
     );
   }
 
-  /* Home KPIs keep their solid face, with just a restrained glass edge and hover lift. */
+  /* Home KPI cards borrow the quick-action glass rim while keeping their contents crisp. */
   .home-key-metrics .glass-sheen::before {
-    opacity: 0.3;
+    opacity: 0.22;
+  }
+  .home-key-metrics .gp-card.home-kpi-glass {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: color-mix(in srgb, var(--border) 68%, var(--fg) 32%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
   }
   .home-kpi-link .gp-card {
     transition:
