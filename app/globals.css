@@ -300,17 +300,35 @@ html[dir="rtl"] input[inputmode="numeric"] {
   }
 
   /* Home KPI cards borrow the quick-action glass rim while keeping their contents crisp. */
+  .home-key-metrics {
+    background-image:
+      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.055), transparent 100%),
+      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.045), transparent 100%);
+  }
   .home-key-metrics .glass-sheen::before {
     opacity: 0.22;
   }
   .home-key-metrics .gp-card.home-kpi-glass {
     background: transparent;
+    background-image:
+      radial-gradient(ellipse 44% 68% at 0% 0%, rgba(255, 255, 255, 0.11), transparent 100%),
+      radial-gradient(ellipse 44% 68% at 100% 100%, rgba(255, 255, 255, 0.085), transparent 100%);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    border-color: color-mix(in srgb, var(--border) 68%, var(--fg) 32%);
+    border-color: color-mix(in srgb, var(--border) 84%, var(--fg) 16%);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.045),
       0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
+  }
+  .dark .home-key-metrics {
+    background-image:
+      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.07), transparent 100%),
+      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.06), transparent 100%);
+  }
+  .dark .home-key-metrics .gp-card.home-kpi-glass {
+    background-image:
+      radial-gradient(ellipse 44% 68% at 0% 0%, rgba(255, 255, 255, 0.16), transparent 100%),
+      radial-gradient(ellipse 44% 68% at 100% 100%, rgba(255, 255, 255, 0.12), transparent 100%);
   }
   .home-kpi-link .gp-card {
     transition:
