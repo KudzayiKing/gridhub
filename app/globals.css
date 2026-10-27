@@ -310,12 +310,18 @@ html[dir="rtl"] input[inputmode="numeric"] {
   }
   .home-key-metrics .gp-card.home-kpi-glass {
     background: transparent;
-    background-image: none;
+    background-image:
+      radial-gradient(ellipse 26% 44% at 0% 0%, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 100%),
+      radial-gradient(ellipse 26% 44% at 100% 100%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 100%);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     border-color: transparent;
     box-shadow: 0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
   }
+  /* The KPI rim is a real 1.5px ring that follows the card's rounded corners, so the
+     corner arc is actually painted instead of being clipped away by the radius. Two
+     corner-anchored radial gradients light the arc to solid white and carry the shine
+     out past the midpoint of both adjoining edges before it fades. */
   .home-key-metrics .home-kpi-glass::before {
     content: "";
     position: absolute;
@@ -323,11 +329,16 @@ html[dir="rtl"] input[inputmode="numeric"] {
     width: auto;
     height: auto;
     border-radius: inherit;
+    border: 1.5px solid transparent;
     background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.34) 18%, transparent) left top / 52% 1.5px no-repeat,
-      linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.34) 18%, transparent) left top / 1.5px 52% no-repeat,
-      linear-gradient(270deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.3) 18%, transparent) right bottom / 52% 1.5px no-repeat,
-      linear-gradient(0deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.3) 18%, transparent) right bottom / 1.5px 52% no-repeat;
+      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.78) 14%, rgba(255, 255, 255, 0.4) 38%, rgba(255, 255, 255, 0.16) 64%, rgba(255, 255, 255, 0) 92%),
+      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.72) 14%, rgba(255, 255, 255, 0.36) 38%, rgba(255, 255, 255, 0.14) 64%, rgba(255, 255, 255, 0) 92%);
+    background-origin: border-box;
+    background-clip: border-box;
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
     opacity: 1;
     pointer-events: none;
   }
