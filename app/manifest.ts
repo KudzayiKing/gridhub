@@ -12,9 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
     orientation: "any",
-    // A manifest carries a single value each, so these cannot follow the in-app theme.
-    // The light nav surface is the default; the app updates the browser theme-color meta tag
-    // after loading to follow the selected in-app theme.
+    // The light page canvas is the install-time default; Providers updates browser chrome
+    // to the selected in-app theme after startup.
     background_color: "#F7F7F2",
     theme_color: "#F7F7F2",
     categories: ["productivity", "finance", "business"],

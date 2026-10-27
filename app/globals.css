@@ -57,9 +57,8 @@
   --surface: rgba(255, 255, 255, 0.74);
   --surface-strong: rgba(255, 255, 255, 0.92);
   --surface-hover: rgba(255, 255, 255, 0.96);
-  /* Sticky headers. Light keeps the translucent wash it always had — this is exactly
-     `--surface` at the 85% opacity the header used to apply inline. */
-  --header: rgba(255, 255, 255, 0.63);
+  /* Header and safe-area color stay flush with the light page canvas. */
+  --header: #f7f7f2;
   --border: rgba(23, 26, 24, 0.09);
   --border-strong: rgba(23, 26, 24, 0.16);
   --fg: #171a18;
@@ -796,6 +795,31 @@ html[dir="rtl"] input[inputmode="numeric"] {
   }
   .safe-top {
     padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  @keyframes sidebar-fly-in-left {
+    from { opacity: 0; transform: translateX(-18px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes sidebar-fly-in-right {
+    from { opacity: 0; transform: translateX(18px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes dashboard-panel-fly-in {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .sidebar-fly-in-left {
+      animation: sidebar-fly-in-left 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    html[dir="rtl"] .sidebar-fly-in-left {
+      animation-name: sidebar-fly-in-right;
+    }
+    .dashboard-panel-fly-in {
+      animation: dashboard-panel-fly-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
   }
 
   /* Scrollbars */

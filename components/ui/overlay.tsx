@@ -23,6 +23,7 @@ export function DialogContent({
   description,
   wide,
   id,
+  hideHeader = false,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -30,6 +31,7 @@ export function DialogContent({
   description?: string;
   wide?: boolean;
   id?: string;
+  hideHeader?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -43,7 +45,7 @@ export function DialogContent({
           className,
         )}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
+        <div className={cn("mb-4 flex items-start justify-between gap-4", hideHeader && "sr-only")}>
           <div>
             <DialogPrimitive.Title className="text-lg font-semibold tracking-tight text-fg">
               {t(title)}

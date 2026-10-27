@@ -303,7 +303,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
   return (
     <div className="min-h-dvh">
       {/* Desktop sidebar */}
-      <aside className="app-desktop-sidebar fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-line bg-[var(--surface)] backdrop-blur-xl lg:block">
+      <aside className="app-desktop-sidebar sidebar-fly-in-left fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-line bg-[var(--surface)] backdrop-blur-xl lg:block">
         {sidebar()}
       </aside>
 
@@ -315,7 +315,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close navigation"
           />
-          <div className="app-mobile-sidebar glass-strong absolute inset-y-0 left-0 w-[280px]">
+          <div className="app-mobile-sidebar sidebar-fly-in-left glass-strong absolute inset-y-0 left-0 w-[280px]">
             {sidebar(() => setMobileNavOpen(false))}
           </div>
         </div>
