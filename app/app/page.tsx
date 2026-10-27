@@ -198,15 +198,15 @@ export default function DashboardPage() {
       {/* Recent activity and useful saved goals. */}
       <div className="grid gap-3 lg:grid-cols-2">
         {data.has("savings") && data.savings.goals.length ? (
-          <Card className="p-4">
+          <Card className="flex h-full min-h-[260px] flex-col p-4 lg:min-h-[320px]">
             <h2 className="mb-3 text-[14px] font-semibold">{t("Savings goals")}</h2>
-            <div className="flex flex-col gap-3">
+            <div className="mt-2 flex flex-1 flex-col justify-center gap-5">
               {data.savings.goals.slice(0, 3).map((goal) => (
-                <div key={goal.id} className="flex items-center gap-3">
+                <div key={goal.id} className="flex items-center gap-4">
                   <span
                     role="img"
                     aria-label={`${Math.round(goal.progressPct ?? 0)} percent saved`}
-                    className="h-[38px] w-[38px] shrink-0 rounded-full"
+                    className="h-20 w-20 shrink-0 rounded-full sm:h-28 sm:w-28 lg:h-36 lg:w-36 xl:h-40 xl:w-40"
                     style={{ background: `conic-gradient(var(--accent) ${Math.max(0, Math.min(100, goal.progressPct ?? 0))}%, var(--bg-subtle) 0)` }}
                   />
                   <div className="min-w-0 flex-1">
