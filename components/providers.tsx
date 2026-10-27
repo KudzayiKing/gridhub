@@ -72,19 +72,31 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
   // Keep browser and installed-PWA chrome aligned with the page background in the active theme.
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const root = document.documentElement;
     const syncThemeColor = () => {
       const color = getComputedStyle(root).getPropertyValue("--bg").trim();
       if (!color) return;
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
-        meta.content = color;
+        if (meta.content !== color || meta.media) {
+          meta.content = color;
+          meta.removeAttribute("media");
+        }
       });
     };
 
     syncThemeColor();
     const observer = new MutationObserver(syncThemeColor);
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    // App Router navigation can replace metadata nodes with the server-rendered default.
+    // Reapply the user's active theme immediately so the PWA status bar does not flash
+    // the wrong contrast (for example black icons over the dark canvas).
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["content", "media", "name"],
+    });
     return () => observer.disconnect();
   }, []);
 
