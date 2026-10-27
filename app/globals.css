@@ -453,28 +453,32 @@ html[dir="rtl"] input[inputmode="numeric"] {
 
   /* A/B comparison: remove the bright face speculars from the first dashboard quick action. */
   .liquid-btn--no-gloss {
-    --lb-fill: linear-gradient(180deg, rgba(23, 26, 24, 0.035), rgba(23, 26, 24, 0.065));
+    --lb-fill: transparent;
     --lb-backdrop-blur: none;
     --lb-arc: rgba(255, 255, 255, 0.24);
     --lb-arc-0: rgba(255, 255, 255, 0);
     --lb-arc-base: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.035) 28%, rgba(255, 255, 255, 0.035) 72%, rgba(255, 255, 255, 0.24) 100%);
     --lb-arc-inset: rgba(255, 255, 255, 0.055);
-    --lb-inset-bottom: rgba(23, 26, 24, 0.04);
-    --lb-ring: rgba(23, 26, 24, 0.045);
-    --lb-ring-strong: rgba(23, 26, 24, 0.08);
+    --lb-inset-top: transparent;
+    --lb-inset-bottom: transparent;
+    --lb-drop: transparent;
+    --lb-ring: transparent;
+    --lb-ring-strong: transparent;
     --lb-lift-2: rgba(255, 255, 255, 0.18);
   }
 
   .dark .liquid-btn.liquid-btn--no-gloss {
-    --lb-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.028));
+    --lb-fill: transparent;
     --lb-backdrop-blur: none;
     --lb-arc: rgba(255, 255, 255, 0.26);
     --lb-arc-0: rgba(255, 255, 255, 0);
     --lb-arc-base: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0.04) 72%, rgba(255, 255, 255, 0.25) 100%);
     --lb-arc-inset: rgba(255, 255, 255, 0.055);
-    --lb-inset-bottom: rgba(255, 255, 255, 0.025);
-    --lb-ring: rgba(255, 255, 255, 0.035);
-    --lb-ring-strong: rgba(255, 255, 255, 0.075);
+    --lb-inset-top: transparent;
+    --lb-inset-bottom: transparent;
+    --lb-drop: transparent;
+    --lb-ring: transparent;
+    --lb-ring-strong: transparent;
   }
 
   /*
