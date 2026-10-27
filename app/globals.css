@@ -304,12 +304,11 @@ html[dir="rtl"] input[inputmode="numeric"] {
     position: relative;
     /* Transparent border keeps the box size while leaving the rim as the only edge. */
     border: 1px solid transparent;
+    /* No fill and no corner wash — the 1px rim is the panel's only paint. */
+    background-image: none;
     /* Deliberately static: the container carries the rim only, never a hover lift. */
     transition: none;
     animation: none;
-    background-image:
-      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.055), transparent 100%),
-      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.045), transparent 100%);
   }
   /* Same 1px corner-lit glass rim as the KPI cards. The container keeps a transparent
      1px border for box size, so this rim is the only edge the panel shows. */
@@ -376,11 +375,6 @@ html[dir="rtl"] input[inputmode="numeric"] {
     opacity: 1;
     pointer-events: none;
   }
-  .dark .home-key-metrics {
-    background-image:
-      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.07), transparent 100%),
-      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.06), transparent 100%);
-  }
   .home-kpi-link .gp-card {
     transition:
       transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1),
@@ -407,13 +401,16 @@ html[dir="rtl"] input[inputmode="numeric"] {
     box-shadow: var(--shadow-soft);
   }
 
-  /* Extend the dashboard's corner lighting across its insight, chart, and tool cards. */
-  .home-dashboard .gp-card {
+  /* Extend the dashboard's corner lighting across its insight, chart, and tool cards.
+     The KPI cards are excluded: they are deliberately fill-less, and this rule used to
+     land after `.home-key-metrics .gp-card.home-kpi-glass` at equal specificity, so it
+     repainted a white wash over their transparent background in dark mode. */
+  .home-dashboard .gp-card:not(.home-kpi-glass) {
     background-image:
       radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.035), transparent 100%),
       radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.03), transparent 100%);
   }
-  .dark .home-dashboard .gp-card {
+  .dark .home-dashboard .gp-card:not(.home-kpi-glass) {
     background-image:
       radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.065), transparent 100%),
       radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.055), transparent 100%);
