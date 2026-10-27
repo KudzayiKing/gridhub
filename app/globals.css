@@ -450,6 +450,22 @@ html[dir="rtl"] input[inputmode="numeric"] {
     --lb-lift-3: rgba(0, 0, 0, 0.45);
   }
 
+  /* A/B comparison: remove the bright face speculars from the first dashboard quick action. */
+  .liquid-btn--no-gloss {
+    --lb-fill: linear-gradient(180deg, rgba(23, 26, 24, 0.035), rgba(23, 26, 24, 0.065));
+    --lb-inset-bottom: rgba(23, 26, 24, 0.04);
+    --lb-ring: rgba(23, 26, 24, 0.045);
+    --lb-ring-strong: rgba(23, 26, 24, 0.08);
+    --lb-lift-2: rgba(255, 255, 255, 0.18);
+  }
+
+  .dark .liquid-btn.liquid-btn--no-gloss {
+    --lb-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.028));
+    --lb-inset-bottom: rgba(255, 255, 255, 0.025);
+    --lb-ring: rgba(255, 255, 255, 0.035);
+    --lb-ring-strong: rgba(255, 255, 255, 0.075);
+  }
+
   /*
    * The contact shadow.
    *
