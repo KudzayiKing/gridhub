@@ -299,82 +299,6 @@ html[dir="rtl"] input[inputmode="numeric"] {
     );
   }
 
-  /* Key metrics panel: no fill, no border colour — the shared rim below is its edge. */
-  .home-key-metrics {
-    position: relative;
-    /* Transparent border keeps the box size while leaving the rim as the only edge. */
-    border: 1px solid transparent;
-    /* No fill and no corner wash — the 1px rim is the panel's only paint. */
-    background-image: none;
-    /* Deliberately static: the container carries the rim only, never a hover lift. */
-    transition: none;
-    animation: none;
-  }
-  /* ── Dashboard glass ─────────────────────────────────────────────────────────
-     The Key metrics panel and every card, chart container and tool tile on the
-     dashboard share one treatment: no fill, no corner wash, and a single 1px rim
-     that follows the corner radius and is lit at the top-left and bottom-right. */
-  .home-dashboard .gp-card {
-    position: relative;
-    background: transparent;
-    background-image: none;
-    border-color: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  /* One rim definition for the panel and every dashboard card. The gradient is masked
-     to a rounded padding-box ring, so the corner arc is painted instead of being
-     clipped away by the radius. A flat fill keeps the line evenly bright the whole way
-     round — all four corners read the same.
-     `height: auto` is load-bearing — `.glass-sheen::before` sets a 1px hairline. */
-  .home-dashboard .gp-card::before,
-  .home-key-metrics::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    width: auto;
-    height: auto;
-    border-radius: inherit;
-    border: 1px solid transparent;
-    background: rgba(255, 255, 255, 1);
-    background-origin: border-box;
-    background-clip: border-box;
-    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: 1;
-    pointer-events: none;
-    transition: none;
-    animation: none;
-  }
-  /* Light theme: white cannot shine on a near-white page, so the same rim is drawn in
-     ink. Without this every card loses its edge entirely on #f7f7f2. */
-  html:not(.dark) .home-dashboard .gp-card::before,
-  html:not(.dark) .home-key-metrics::before {
-    background: rgba(23, 26, 24, 0.34);
-  }
-  /* The KPI cards keep their slightly tighter drop shadow now that they share the rim. */
-  .home-key-metrics .gp-card.home-kpi-glass {
-    box-shadow: 0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
-  }
-  .home-kpi-link .gp-card {
-    transition:
-      transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1),
-      border-color 180ms ease,
-      box-shadow 180ms ease;
-  }
-  .home-kpi-link:hover .gp-card,
-  .home-kpi-link:focus-visible .gp-card {
-    transform: translateY(-1px);
-    border-color: transparent;
-    box-shadow: var(--shadow-lift);
-  }
-  .home-kpi-link:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-
   .gp-card {
     border-radius: var(--gp-card-radius);
     background: var(--surface);
@@ -382,44 +306,6 @@ html[dir="rtl"] input[inputmode="numeric"] {
     backdrop-filter: blur(var(--gp-glass-blur)) saturate(140%);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-soft);
-  }
-
-  @keyframes home-kpi-rim-shimmer {
-    from { background-position: 110% 0; }
-    to { background-position: -110% 0; }
-  }
-  .home-kpi-glass {
-    isolation: isolate;
-  }
-  .home-kpi-glass > * {
-    position: relative;
-    z-index: 1;
-  }
-  .home-kpi-glass::after {
-    content: "";
-    position: absolute;
-    z-index: 0;
-    inset: 0;
-    padding: 1px;
-    border-radius: inherit;
-    background: linear-gradient(110deg, transparent 24%, rgba(255, 255, 255, 0.48) 48%, transparent 72%);
-    background-size: 220% 100%;
-    background-position: 110% 0;
-    opacity: 0;
-    pointer-events: none;
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask-composite: exclude;
-  }
-  .home-kpi-link:hover .home-kpi-glass::after,
-  .home-kpi-link:focus-visible .home-kpi-glass::after {
-    opacity: 1;
-    animation: home-kpi-rim-shimmer 760ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
 
   /* Mobile Chromium can defer repainting blurred cards in long scrolling dashboards until a

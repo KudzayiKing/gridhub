@@ -7,7 +7,6 @@ import { usePrefs } from "@/components/providers";
 import { useActiveTools } from "@/lib/use-tools";
 import { MetricCard, Card, EmptyState, Badge, SectionHeading } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LiquidButton } from "@/components/ui/liquid-button";
 import { ToolIcon } from "@/components/icons/tool-icons";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { AreaTrend, BarList } from "@/components/charts/trend";
@@ -99,7 +98,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex items-start gap-5">
-    <main className={`home-dashboard flex min-w-0 flex-1 flex-col gap-5 transition-[margin] duration-300 ${customizeOpen ? "xl:mr-[380px]" : ""}`}>
+    <main className={`flex min-w-0 flex-1 flex-col gap-5 transition-[margin] duration-300 ${customizeOpen ? "xl:mr-[380px]" : ""}`}>
       {/* Greeting */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -110,11 +109,13 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <LiquidButton size="sm" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen} aria-controls="dashboard-customize-panel" className="liquid-btn--no-gloss">
+          <Button variant="secondary" size="sm" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen} aria-controls="dashboard-customize-panel">
             {customizeOpen ? <PanelLeftOpenIcon size={16} /> : <PanelRightOpenIcon size={16} />}
             {t("Customize")}
-          </LiquidButton>
-          <LiquidButton href="/app/explore" size="sm" icon="search" className="liquid-btn--no-gloss">{t("Explore tools")}</LiquidButton>
+          </Button>
+          <Button variant="secondary" size="sm" icon="search" asChild>
+            <Link href="/app/explore">{t("Explore tools")}</Link>
+          </Button>
         </div>
       </div>
 
@@ -156,10 +157,10 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        <section className="home-key-metrics order-1 rounded-2xl p-3 xl:order-2" aria-label={t("Key metrics")}>
+        <section className="order-1 rounded-2xl border border-line bg-[var(--surface)] p-3 xl:order-2" aria-label={t("Key metrics")}>
           <h2 className="mb-2 px-1 text-[12px] font-semibold text-fg-muted">{t("Key metrics")}</h2>
-          {kpis.length ? <div className="grid grid-cols-2 gap-2">{kpis.map((kpi) => <Link key={kpi.label} href={kpi.href} className="home-kpi-link block rounded-2xl"><MetricCard label={kpi.label} value={kpi.value} hint={kpi.hint} icon={kpi.icon} tone={kpi.tone} className="home-kpi-glass h-full min-h-[100px] p-3 sm:p-3" /></Link>)}</div> : <p className="px-1 py-4 text-[12px] text-fg-muted">{t("Your key metrics will appear as you add records to your tools.")}</p>}
-          {quickActions.length ? <div className="mt-3 border-t border-line pt-3"><h3 className="mb-2 px-1 text-[11px] font-medium text-fg-subtle">{t("Quick actions")}</h3><div className="flex flex-wrap gap-1.5">{quickActions.slice(0, 3).map((action) => <LiquidButton key={action.href} href={action.href} icon={action.icon} size="sm" className="liquid-btn--no-gloss">{t(action.label)}</LiquidButton>)}</div></div> : null}
+          {kpis.length ? <div className="grid grid-cols-2 gap-2">{kpis.map((kpi) => <Link key={kpi.label} href={kpi.href} className="block"><MetricCard label={kpi.label} value={kpi.value} hint={kpi.hint} icon={kpi.icon} tone={kpi.tone} className="h-full min-h-[100px] p-3 sm:p-3" /></Link>)}</div> : <p className="px-1 py-4 text-[12px] text-fg-muted">{t("Your key metrics will appear as you add records to your tools.")}</p>}
+          {quickActions.length ? <div className="mt-3 border-t border-line pt-3"><h3 className="mb-2 px-1 text-[11px] font-medium text-fg-subtle">{t("Quick actions")}</h3><div className="flex flex-wrap gap-1.5">{quickActions.slice(0, 3).map((action) => <Button key={action.href} variant="secondary" size="sm" icon={action.icon} iconTrigger="hover" asChild><Link href={action.href}>{t(action.label)}</Link></Button>)}</div></div> : null}
         </section>
       </div>
 
