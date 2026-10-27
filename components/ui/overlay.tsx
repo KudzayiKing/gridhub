@@ -22,18 +22,21 @@ export function DialogContent({
   title,
   description,
   wide,
+  id,
 }: {
   children: React.ReactNode;
   className?: string;
   title: string;
   description?: string;
   wide?: boolean;
+  id?: string;
 }) {
   const { t } = useI18n();
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.5)] backdrop-blur-[3px] data-[state=open]:animate-in" />
       <DialogPrimitive.Content
+        id={id}
         className={cn(
           "glass-strong fixed left-1/2 top-1/2 z-50 max-h-[92dvh] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[24px] p-5 thin-scroll sm:p-6",
           wide ? "max-w-3xl" : "max-w-lg",

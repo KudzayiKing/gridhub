@@ -14,6 +14,7 @@
  */
 
 import * as React from "react";
+import { LazyMotion, domAnimation, m } from "motion/react";
 import { useCollection } from "@/lib/store";
 import { usePrefs, useSyncState } from "@/components/providers";
 import { useActiveTools } from "@/lib/use-tools";
@@ -680,21 +681,21 @@ function DashboardWidgetCatalog({ onClose, kpis, selectedKpis, onToggleKpi, onMo
   };
 
   return (
-    <div className="flex min-h-0 flex-col">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-col overflow-hidden">
+      <div className="mb-4 flex min-w-0 items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold">{t("Customize Dashboard")}</h2>
           <p className="mt-1 text-[12px] text-fg-muted">{t("Choose what matters most to you.")}</p>
           <p className="mt-1 text-[11px] text-fg-subtle">{t("{count} widgets added", { count: pins.length })}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={restoreDefaults}>{t("Restore defaults")}</Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button variant="ghost" size="sm" className="max-sm:px-2 max-sm:text-[11px]" onClick={restoreDefaults}>{t("Restore defaults")}</Button>
           <Button variant="ghost" size="icon-sm" icon="close" aria-label={t("Close customization")} onClick={onClose} />
         </div>
       </div>
-      <label className="mb-3 flex h-10 items-center gap-2 rounded-xl border border-line bg-[var(--bg-subtle)] px-3">
+      <label className="mb-3 flex h-10 w-full min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-xl border border-line bg-[var(--bg-subtle)] px-3">
         <AnimatedIcon name="search" size={15} className="text-fg-subtle" trigger="none" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search widgets")} className="min-w-0 flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-subtle" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search widgets")} className="block h-full w-full min-w-0 flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-subtle" />
       </label>
       <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label={t("Filter widgets by collection")}>
         {COLLECTION_FILTERS.map((filter) => (
@@ -705,26 +706,26 @@ function DashboardWidgetCatalog({ onClose, kpis, selectedKpis, onToggleKpi, onMo
       </div>
       <section className="mb-3 rounded-xl border border-line bg-[var(--surface)]/55 p-3" aria-label={t("Overview KPIs")}>
         <div className="mb-2 flex items-center justify-between"><h3 className="text-[12px] font-semibold">{t("Overview KPIs")}</h3><span className="text-[10px] text-fg-subtle">{selectedKpis.length}/4</span></div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           {kpis.map((kpi) => {
             const selected = selectedKpis.includes(kpi.id);
-            return <div key={kpi.id} className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-2"><span className="min-w-0 flex-1 truncate text-[11.5px]">{t(kpi.label)}</span>{selected ? <><button type="button" aria-label={t("Move KPI up")} onClick={() => onMoveKpi(kpi.id, -1)} className="grid h-7 w-7 place-items-center rounded-md border border-line text-fg-muted hover:bg-[var(--surface-hover)]"><AnimatedIcon name="chevronUp" size={12} trigger="none" /></button><button type="button" aria-label={t("Move KPI down")} onClick={() => onMoveKpi(kpi.id, 1)} className="grid h-7 w-7 place-items-center rounded-md border border-line text-fg-muted hover:bg-[var(--surface-hover)]"><AnimatedIcon name="chevronDown" size={12} trigger="none" /></button></> : null}<Button size="sm" variant={selected ? "secondary" : "primary"} disabled={!selected && selectedKpis.length >= 4} onClick={() => onToggleKpi(kpi.id)}>{t(selected ? "Remove" : "Add")}</Button></div>;
+            return <div key={kpi.id} className="flex min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border border-line px-2 py-2"><span className="min-w-0 flex-1 truncate text-[11.5px]">{t(kpi.label)}</span>{selected ? <><button type="button" aria-label={t("Move KPI up")} onClick={() => onMoveKpi(kpi.id, -1)} className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line text-fg-muted hover:bg-[var(--surface-hover)]"><AnimatedIcon name="chevronUp" size={12} trigger="none" /></button><button type="button" aria-label={t("Move KPI down")} onClick={() => onMoveKpi(kpi.id, 1)} className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line text-fg-muted hover:bg-[var(--surface-hover)]"><AnimatedIcon name="chevronDown" size={12} trigger="none" /></button></> : null}<Button size="sm" variant={selected ? "secondary" : "primary"} className="shrink-0" disabled={!selected && selectedKpis.length >= 4} onClick={() => onToggleKpi(kpi.id)}>{t(selected ? "Remove" : "Add")}</Button></div>;
           })}
           {!kpis.length ? <p className="text-[11px] text-fg-subtle">{t("Relevant KPIs appear when an activated tool has records.")}</p> : null}
         </div>
       </section>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+      <div className="min-h-0 min-w-0 w-full max-w-full flex-1 space-y-2 overflow-x-hidden overflow-y-auto pr-1">
         {visible.map((widget) => {
           const tool = TOOL_MAP[widget.tool];
           const added = isPinned(pins, widget.id);
           return (
-            <div key={widget.id} className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)]/75 p-3">
+            <div key={widget.id} className="flex min-w-0 w-full items-center gap-3 overflow-hidden rounded-xl border border-line bg-[var(--surface)]/75 p-3">
               <ToolIcon toolId={widget.tool} size={17} trigger="none" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12.5px] font-medium">{t(widget.title)}</p>
                 <p className="truncate text-[11px] text-fg-subtle">{t(tool?.shortName ?? "")} · {t(widget.description)}</p>
               </div>
-              <Button size="sm" variant={added ? "secondary" : "primary"} onClick={() => void toggleWidget(widget)}>{t(added ? "Remove" : "Add")}</Button>
+              <Button size="sm" variant={added ? "secondary" : "primary"} className="shrink-0" onClick={() => void toggleWidget(widget)}>{t(added ? "Remove" : "Add")}</Button>
             </div>
           );
         })}
@@ -743,11 +744,10 @@ export function DashboardCustomizePanel({ open, onClose, kpis, selectedKpis, onT
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  if (!open) return null;
-  if (desktop) return <aside className="glass-strong sticky top-4 hidden h-[calc(100dvh-7rem)] w-[360px] shrink-0 rounded-2xl p-4 xl:flex" aria-label="Dashboard customization"><DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} /></aside>;
+  if (desktop) return <LazyMotion features={domAnimation}><m.aside id="dashboard-customize-panel" aria-label="Dashboard customization" aria-hidden={!open} inert={!open} className="glass-strong sticky top-4 hidden h-[calc(100dvh-7rem)] shrink-0 overflow-hidden rounded-2xl p-4 xl:flex" initial={{ width: 0, opacity: 0 }} animate={{ width: open ? 360 : 0, opacity: open ? 1 : 0 }} transition={{ duration: 0.28, ease: "easeInOut" }}><m.div className="h-full w-[328px] min-w-[328px]" initial={false} animate={{ x: open ? 0 : 380 }} transition={{ duration: 0.28, ease: "easeInOut" }}><DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} /></m.div></m.aside></LazyMotion>;
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent title="Customize Dashboard" description="Choose what matters most to you." wide className="!fixed !left-0 !top-auto !bottom-0 !max-h-[88dvh] !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-b-none !rounded-t-[24px] !p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] xl:hidden">
+      <DialogContent id="dashboard-customize-panel" title="Customize Dashboard" description="Choose what matters most to you." wide className="!box-border !fixed !left-0 !top-auto !bottom-0 !max-h-[88dvh] !w-full !max-w-none !translate-x-0 !translate-y-0 !overflow-x-hidden !rounded-b-none !rounded-t-[24px] !p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] xl:hidden">
         <DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} />
       </DialogContent>
     </Dialog>

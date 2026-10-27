@@ -9,8 +9,9 @@ import { MetricCard, Card, EmptyState, Badge, SectionHeading } from "@/component
 import { Button } from "@/components/ui/button";
 import { ToolIcon } from "@/components/icons/tool-icons";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
-import { AreaTrend, BarList, ProgressRing } from "@/components/charts/trend";
+import { AreaTrend, BarList } from "@/components/charts/trend";
 import { CHART_WIDGETS, PinnedCharts, DashboardCustomizePanel } from "@/lib/chart-widgets";
+import { PanelLeftOpenIcon, PanelRightOpenIcon } from "@/components/icons/panel-toggle-icons";
 import { formatMoney, formatPercent } from "@/lib/money";
 import { TOOL_MAP } from "@/lib/catalog";
 import { formatDate } from "@/lib/utils";
@@ -107,7 +108,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon="settings" onClick={() => setCustomizeOpen(true)}>{t("Customize")}</Button>
+          <Button variant="secondary" size="sm" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen} aria-controls="dashboard-customize-panel">
+            {customizeOpen ? <PanelLeftOpenIcon size={16} /> : <PanelRightOpenIcon size={16} />}
+            {t("Customize")}
+          </Button>
           <Button variant="secondary" size="sm" icon="search" asChild>
             <Link href="/app/explore">Explore tools</Link>
           </Button>
@@ -198,7 +202,12 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-3">
               {data.savings.goals.slice(0, 3).map((goal) => (
                 <div key={goal.id} className="flex items-center gap-3">
-                  <ProgressRing value={goal.progressPct} size={38} />
+                  <span
+                    role="img"
+                    aria-label={`${Math.round(goal.progressPct ?? 0)} percent saved`}
+                    className="h-[38px] w-[38px] shrink-0 rounded-full"
+                    style={{ background: `conic-gradient(var(--accent) ${Math.max(0, Math.min(100, goal.progressPct ?? 0))}%, var(--bg-subtle) 0)` }}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12.5px] font-medium">{goal.name}</p>
                     <p className="text-[11px] text-fg-subtle">
