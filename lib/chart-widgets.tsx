@@ -41,6 +41,10 @@ import { BudgetVsActualChart } from "@/components/charts/budget-vs-actual-chart"
 import { debtDueOccurrences, estimatedDebtProgress, localISODate } from "@/lib/reporting/debt-tracker";
 import { savingsBalanceTrend, savingsGoalRows } from "@/lib/reporting/savings-dashboard";
 import { netWorthSummary } from "@/lib/calc/money";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/overlay";
+import { useI18n } from "@/lib/i18n";
+import { toast } from "sonner";
 
 function dateAfterDays(date: string, days: number) {
   const next = new Date(date + "T00:00:00");
@@ -631,6 +635,125 @@ export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "paycheck.monthly-trend", tool: "paycheck", title: "Monthly income vs expenses", description: "Paycheck Planner · posted income and expenses", Component: PaycheckMonthlyWidget },
 ];
 
+const COLLECTION_FILTERS = ["all", "money", "business", "life", "work"] as const;
+type CollectionFilter = (typeof COLLECTION_FILTERS)[number];
+
+function DashboardWidgetCatalog({ onClose, kpis, selectedKpis, onToggleKpi, onMoveKpi, onRestoreKpis }: { onClose: () => void; kpis: { id: string; label: string }[]; selectedKpis: string[]; onToggleKpi: (id: string) => void; onMoveKpi: (id: string, direction: -1 | 1) => void; onRestoreKpis: () => void }) {
+  const { t } = useI18n();
+  const { prefs, setPrefs } = usePrefs();
+  const { active } = useActiveTools();
+  const [query, setQuery] = React.useState("");
+  const [collection, setCollection] = React.useState<CollectionFilter>("all");
+  const pins = (prefs.pinnedCharts ?? []) as PinnedChart[];
+  const widgets = CHART_WIDGETS.filter((widget) => active.includes(widget.tool));
+  const visible = widgets.filter((widget) => {
+    const tool = TOOL_MAP[widget.tool];
+    const matchesCollection = collection === "all" || tool?.collection === collection;
+    const haystack = `${widget.title} ${widget.description} ${tool?.shortName ?? ""}`.toLocaleLowerCase();
+    return matchesCollection && haystack.includes(query.trim().toLocaleLowerCase());
+  });
+  const toggleWidget = async (widget: ChartWidgetDef) => {
+    try {
+      const next = isPinned(pins, widget.id)
+        ? removePin(pins, widget.id)
+        : addPin(pins, { id: widget.id, tool: widget.tool, chart: widget.id, title: widget.title });
+      const sizes = { ...(prefs.pinnedChartSizes ?? {}) };
+      if (isPinned(pins, widget.id)) delete sizes[widget.id];
+      await setPrefs({ pinnedCharts: next, pinnedChartSizes: sizes });
+      toast.success(t(isPinned(pins, widget.id) ? "Widget removed from dashboard" : "Widget added to dashboard"));
+    } catch {
+      toast.error(t("Could not save dashboard changes. Please try again."));
+    }
+  };
+  const restoreDefaults = async () => {
+    const recommended = ["budget.monthly", "savings.goals", "sales.revenue", "projects.completion"]
+      .map((id) => CHART_WIDGETS.find((widget) => widget.id === id))
+      .filter((widget): widget is ChartWidgetDef => Boolean(widget && active.includes(widget.tool)))
+      .map((widget) => ({ id: widget.id, tool: widget.tool, chart: widget.id, title: widget.title }));
+    try {
+      await setPrefs({ pinnedCharts: recommended, pinnedChartSizes: {} });
+      onRestoreKpis();
+      toast.success(t("Recommended dashboard restored"));
+    } catch {
+      toast.error(t("Could not save dashboard changes. Please try again."));
+    }
+  };
+
+  return (
+    <div className="flex min-h-0 flex-col">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">{t("Customize Dashboard")}</h2>
+          <p className="mt-1 text-[12px] text-fg-muted">{t("Choose what matters most to you.")}</p>
+          <p className="mt-1 text-[11px] text-fg-subtle">{t("{count} widgets added", { count: pins.length })}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={restoreDefaults}>{t("Restore defaults")}</Button>
+          <Button variant="ghost" size="icon-sm" icon="close" aria-label={t("Close customization")} onClick={onClose} />
+        </div>
+      </div>
+      <label className="mb-3 flex h-10 items-center gap-2 rounded-xl border border-line bg-[var(--bg-subtle)] px-3">
+        <AnimatedIcon name="search" size={15} className="text-fg-subtle" trigger="none" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search widgets")} className="min-w-0 flex-1 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-subtle" />
+      </label>
+      <div className="no-scrollbar mb-3 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label={t("Filter widgets by collection")}>
+        {COLLECTION_FILTERS.map((filter) => (
+          <button key={filter} role="tab" aria-selected={collection === filter} onClick={() => setCollection(filter)} className={`shrink-0 rounded-full px-3 py-1.5 text-[11.5px] font-medium ${collection === filter ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "border border-line text-fg-muted hover:bg-[var(--surface-hover)]"}`}>
+            {t(filter === "all" ? "All" : filter[0].toUpperCase() + filter.slice(1))}
+          </button>
+        ))}
+      </div>
+      <section className="mb-3 rounded-xl border border-line bg-[var(--surface)]/55 p-3" aria-label={t("Overview KPIs")}>
+        <div className="mb-2 flex items-center justify-between"><h3 className="text-[12px] font-semibold">{t("Overview KPIs")}</h3><span className="text-[10px] text-fg-subtle">{selectedKpis.length}/4</span></div>
+        <div className="space-y-1.5">
+          {kpis.map((kpi) => {
+            const selected = selectedKpis.includes(kpi.id);
+            return <div key={kpi.id} className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-2"><span className="min-w-0 flex-1 truncate text-[11.5px]">{t(kpi.label)}</span>{selected ? <><button type="button" aria-label={t("Move KPI up")} onClick={() => onMoveKpi(kpi.id, -1)} className="grid h-7 w-7 place-items-center rounded-md border border-line text-fg-muted hover:bg-[var(--surface-hover)]"><AnimatedIcon name="chevronUp" size={12} trigger="none" /></button><button type="button" aria-label={t("Move KPI down")} onClick={() => onMoveKpi(kpi.id, 1)} className="grid h-7 w-7 place-items-center rounded-md border border-line text-fg-muted hover:bg-[var(--surface-hover)]"><AnimatedIcon name="chevronDown" size={12} trigger="none" /></button></> : null}<Button size="sm" variant={selected ? "secondary" : "primary"} disabled={!selected && selectedKpis.length >= 4} onClick={() => onToggleKpi(kpi.id)}>{t(selected ? "Remove" : "Add")}</Button></div>;
+          })}
+          {!kpis.length ? <p className="text-[11px] text-fg-subtle">{t("Relevant KPIs appear when an activated tool has records.")}</p> : null}
+        </div>
+      </section>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+        {visible.map((widget) => {
+          const tool = TOOL_MAP[widget.tool];
+          const added = isPinned(pins, widget.id);
+          return (
+            <div key={widget.id} className="flex items-center gap-3 rounded-xl border border-line bg-[var(--surface)]/75 p-3">
+              <ToolIcon toolId={widget.tool} size={17} trigger="none" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12.5px] font-medium">{t(widget.title)}</p>
+                <p className="truncate text-[11px] text-fg-subtle">{t(tool?.shortName ?? "")} · {t(widget.description)}</p>
+              </div>
+              <Button size="sm" variant={added ? "secondary" : "primary"} onClick={() => void toggleWidget(widget)}>{t(added ? "Remove" : "Add")}</Button>
+            </div>
+          );
+        })}
+        {!visible.length ? <p className="py-8 text-center text-[12px] text-fg-subtle">{t("No widgets match your search.")}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+export function DashboardCustomizePanel({ open, onClose, kpis, selectedKpis, onToggleKpi, onMoveKpi, onRestoreKpis }: { open: boolean; onClose: () => void; kpis: { id: string; label: string }[]; selectedKpis: string[]; onToggleKpi: (id: string) => void; onMoveKpi: (id: string, direction: -1 | 1) => void; onRestoreKpis: () => void }) {
+  const [desktop, setDesktop] = React.useState(false);
+  React.useEffect(() => {
+    const media = window.matchMedia("(min-width: 1280px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  if (!open) return null;
+  if (desktop) return <aside className="glass-strong sticky top-4 hidden h-[calc(100dvh-7rem)] w-[360px] shrink-0 rounded-2xl p-4 xl:flex" aria-label="Dashboard customization"><DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} /></aside>;
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent title="Customize Dashboard" description="Choose what matters most to you." wide className="!fixed !left-0 !top-auto !bottom-0 !max-h-[88dvh] !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-b-none !rounded-t-[24px] !p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] xl:hidden">
+        <DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function getWidget(id: string): ChartWidgetDef | undefined {
   return CHART_WIDGETS.find((w) => w.id === id);
 }
@@ -686,7 +809,7 @@ function OfflineBadge() {
   return null;
 }
 
-export function ChartWidgetCard({ pin }: { pin: PinnedChart }) {
+export function ChartWidgetCard({ pin, size = "half" }: { pin: PinnedChart; size?: "half" | "full" }) {
   const def = getWidget(pin.id);
   const { prefs, setPrefs } = usePrefs();
   const { active } = useActiveTools();
@@ -697,7 +820,7 @@ export function ChartWidgetCard({ pin }: { pin: PinnedChart }) {
 
   if (!toolActive) {
     return (
-      <ChartContainer title={def.title} subtitle={def.description} icon="lock">
+      <ChartContainer title={def.title} subtitle={def.description} icon="lock" className={size === "full" ? "lg:col-span-2" : undefined}>
         <p className="py-6 text-center text-[12px] text-fg-subtle">
           This chart belongs to a tool you haven&apos;t activated.
         </p>
@@ -713,9 +836,19 @@ export function ChartWidgetCard({ pin }: { pin: PinnedChart }) {
       title={def.title}
       subtitle={def.description}
       icon={TOOL_MAP[def.tool]?.icon}
+      className={size === "full" ? "lg:col-span-2" : undefined}
       action={
         <div className="flex items-center gap-1.5">
           <OfflineBadge />
+          <button
+            type="button"
+            aria-label={size === "full" ? "Use half-width widget" : "Use full-width widget"}
+            title={size === "full" ? "Use half width" : "Use full width"}
+            onClick={() => setPrefs({ pinnedChartSizes: { ...(prefs.pinnedChartSizes ?? {}), [pin.id]: size === "full" ? "half" : "full" } })}
+            className="press grid h-7 min-w-7 place-items-center rounded-lg border border-line px-1.5 text-[10px] font-semibold text-fg-muted hover:bg-[var(--surface-strong)] hover:text-fg"
+          >
+            {size === "full" ? "½" : "↔"}
+          </button>
           <button
             type="button"
             aria-label="Move widget up"
@@ -779,12 +912,10 @@ export function PinnedCharts() {
   const pins = (prefs.pinnedCharts ?? []) as PinnedChart[];
   if (!pins.length) return null;
   return (
-    <>
       <div className="grid gap-3 lg:grid-cols-2">
-        {pins.map((pin) => (
-          <ChartWidgetCard key={pin.id} pin={pin} />
+        {pins.map((pin, index) => (
+          <ChartWidgetCard key={pin.id} pin={pin} size={prefs.pinnedChartSizes?.[pin.id] ?? (index === 0 ? "full" : "half")} />
         ))}
       </div>
-    </>
   );
 }

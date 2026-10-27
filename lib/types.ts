@@ -605,6 +605,10 @@ export interface UserPreferences extends BaseRecord {
   reducedMotion: boolean;
   /** Charts the user has pinned to the home dashboard (spec #20). */
   pinnedCharts?: Array<{ id: string; tool: string; chart: string; title: string }>;
+  /** Per-widget dashboard width preference. Chart widgets support half or full width. */
+  pinnedChartSizes?: Record<string, "half" | "full">;
+  /** Ordered KPI IDs shown on the Overview, limited to four. */
+  dashboardKpis?: string[];
   /** Per-tool reporting period preference (spec #3). Value meaning is tool-defined. */
   periods?: Record<string, string>;
 }

@@ -36,7 +36,7 @@ export function useDashboardData() {
   const { prefs } = usePrefs();
   const currency = prefs.currency || "USD";
 
-  const has = (id: string) => active.includes(id as never);
+  const has = React.useCallback((id: string) => active.includes(id as never), [active]);
 
   const money = useCollection<MoneyTransaction>("budget", "transactions");
   const categories = useCollection<MoneyCategory>("budget", "categories");
@@ -178,7 +178,7 @@ export function useDashboardData() {
     money.loading || goals.loading || invoices.loading || tasks.loading || habits.loading || posts.loading;
 
   const recent = React.useMemo(() => {
-    const rows: { id: string; title: string; meta: string; at: string; icon: string }[] = [];
+    const rows: { id: string; title: string; meta: string; at: string; icon: string; href: string }[] = [];
     if (has("budget")) {
       for (const t of money.rows.slice(0, 4)) {
         rows.push({
@@ -187,6 +187,7 @@ export function useDashboardData() {
           meta: `${t.type} · ${t.amount.toFixed(2)}`,
           at: t.date,
           icon: t.type === "income" ? "arrowUp" : t.type === "expense" ? "arrowDown" : "swap",
+          href: "/app/money/budget",
         });
       }
     }
@@ -198,6 +199,7 @@ export function useDashboardData() {
           meta: "Task completed",
           at: t.completedAt ?? t.updatedAt,
           icon: "check",
+          href: "/app/work/projects",
         });
       }
     }
