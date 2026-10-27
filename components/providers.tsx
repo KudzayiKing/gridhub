@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/overlay";
 import { useMeta } from "@/lib/store";
+import { flattenOver } from "@/lib/color";
 import { runSync, subscribeSync, type SyncState } from "@/lib/sync";
 import { deviceTimeZone } from "@/lib/utils";
 import type { UserPreferences } from "@/lib/types";
@@ -67,15 +68,30 @@ function detectBrowserLanguage(): NonNullable<UserPreferences["uiLanguage"]> {
   return "en";
 }
 
+/**
+ * OS chrome — the status bar and the home-indicator strip — is painted by the platform, above
+ * our content. No CSS can blur it. The most a web app can do is make its colour *equal* the
+ * glass band sitting next to it, so the seam disappears and the bar reads as the top of the
+ * glass instead of a flat lid.
+ *
+ * That colour is not `--bg`: the header is a translucent wash laid over `--bg`, so the value
+ * the eye sees is the composite of the two. `flattenOver` computes it rather than hard-coding
+ * it — otherwise the next change to `--header`'s alpha silently reintroduces a visible step.
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
-  // Keep browser and installed-PWA chrome aligned with the page background in the active theme.
+  // Keep the OS-painted browser and installed-PWA chrome flush with the glass header that sits
+  // directly beneath it. Sampling `--bg` alone left a visible step: the header is a translucent
+  // wash over that background, so the platform bar has to be told the composited colour.
   React.useLayoutEffect(() => {
     const root = document.documentElement;
     const syncThemeColor = () => {
-      const color = getComputedStyle(root).getPropertyValue("--bg").trim();
+      const styles = getComputedStyle(root);
+      const page = styles.getPropertyValue("--bg").trim();
+      const header = styles.getPropertyValue("--header").trim();
+      const color = (header && flattenOver(header, page)) || page;
       if (!color) return;
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
         if (meta.content !== color || meta.media) {
