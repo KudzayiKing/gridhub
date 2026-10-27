@@ -8,6 +8,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { useI18n } from "@/lib/i18n";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 
 /* -------------------------------- Label -------------------------------- */
 
@@ -229,30 +230,15 @@ export function Segmented<T extends string>({
 }) {
   const { t } = useI18n();
   return (
-    <div
-      role="tablist"
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-full border border-line bg-[var(--bg-subtle)] p-0.5",
-        className,
-      )}
-    >
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          role="tab"
-          aria-selected={value === opt.value}
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            "press rounded-full font-medium transition-colors",
-            size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3.5 text-[13px]",
-            value === opt.value
-              ? "bg-[var(--surface-strong)] text-fg shadow-[0_1px_2px_rgba(23,26,24,0.08)]"
-              : "text-fg-muted hover:text-fg",
-          )}
-        >
-          {typeof opt.label === "string" ? t(opt.label) : opt.label}
-        </button>
-      ))}
-    </div>
+    <AnimatedTabs
+      value={value}
+      onChange={onChange}
+      options={options.map((option) => ({
+        value: option.value,
+        label: typeof option.label === "string" ? t(option.label) : option.label,
+      }))}
+      className={cn("inline-flex items-center gap-0.5 rounded-full border border-line bg-[var(--bg-subtle)] p-0.5", className)}
+      buttonClassName={size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3.5 text-[13px]"}
+    />
   );
 }

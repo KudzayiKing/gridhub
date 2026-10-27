@@ -77,12 +77,12 @@ export function ChartContainer({
   const { t } = useI18n();
   return (
     <section className={cn("gp-card min-w-0 p-4", className)}>
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="mb-3 flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0">
           <h3 className="text-[13.5px] font-semibold text-fg">{t(title)}</h3>
           {subtitle ? <p className="text-[12px] text-fg-muted">{t(subtitle)}</p> : null}
         </div>
-        {action}
+        {action ? <div className="flex max-w-full flex-wrap items-center gap-1.5 self-start sm:shrink-0 sm:self-auto">{action}</div> : null}
       </div>
       <div className={cn("min-w-0 w-full", bodyClassName)}>{children}</div>
     </section>

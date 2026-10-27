@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 
 export interface PeriodOption {
   value: string;
@@ -29,38 +30,17 @@ export function ChartPeriodSelector({
   ariaLabel?: string;
   className?: string;
 }) {
-  const selectedIndex = options.findIndex((o) => o.value === value);
   return (
-    <div
-      role="tablist"
+    <AnimatedTabs
       aria-label={ariaLabel}
+      value={value}
+      onChange={onChange}
+      options={options}
       className={cn(
         "no-scrollbar inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-line bg-[var(--bg-subtle)]/60 p-0.5",
         className,
       )}
-    >
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <button
-            key={opt.value}
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              "press shrink-0 whitespace-nowrap rounded-full font-medium transition-colors",
-              size === "sm" ? "px-2.5 py-1 text-[12px]" : "px-3 py-1.5 text-[13px]",
-              active
-                ? "bg-[var(--accent)] text-[var(--accent-fg)]"
-                : "text-fg-muted hover:bg-[var(--surface-strong)] hover:text-fg",
-            )}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-      {/* selectedIndex kept to discourage duplicate labels; index is used by screen readers. */}
-      <span className="sr-only">{selectedIndex >= 0 ? options[selectedIndex].label : ""}</span>
-    </div>
+      buttonClassName={cn(size === "sm" ? "px-2.5 py-1 text-[12px]" : "px-3 py-1.5 text-[13px]")}
+    />
   );
 }

@@ -15,6 +15,7 @@ import { rows } from "@/lib/tools/shared";
 import type { DataMap } from "@/lib/tools/shared";
 import type { DebtPayment, GoalMovement, MoneyAccount, MoneyBudget, MoneyCategory, MoneyTransaction, PaySchedule, Paycheck, PaycheckAllocation, RecurringBill, SavingsGoal } from "@/lib/types";
 import { PinChartButton } from "@/lib/chart-widgets";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 
 type Mode = "monthly" | "paycheck";
 const localDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -163,9 +164,14 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-full border border-line bg-[var(--bg-subtle)]/60 p-0.5" role="tablist" aria-label="Budget view">
-          {(["monthly", "paycheck"] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={mode === value} onClick={() => setMode(value)} className={`press rounded-full px-3 py-1.5 text-[12px] font-medium capitalize ${mode === value ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "text-fg-muted hover:bg-[var(--surface-strong)]"}`}>{value === "monthly" ? "Monthly" : "Per Paycheck"}</button>)}
-        </div>
+        <AnimatedTabs
+          value={mode}
+          onChange={setMode}
+          ariaLabel="Budget view"
+          className="inline-flex rounded-full border border-line bg-[var(--bg-subtle)]/60 p-0.5"
+          buttonClassName="px-3 py-1.5 text-[12px] capitalize"
+          options={(["monthly", "paycheck"] as const).map((value) => ({ value, label: value === "monthly" ? "Monthly" : "Per Paycheck" }))}
+        />
         <div className="flex flex-wrap items-center gap-2">
           <label className="sr-only" htmlFor="paycheck-month">Select month</label>
           <Select id="paycheck-month" value={month} onChange={(e) => period.setValue(e.target.value)} className="h-9 w-auto">

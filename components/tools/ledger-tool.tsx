@@ -14,6 +14,7 @@ import { DataTable, type Column } from "@/components/data/data-table";
 import { RecordForm, type FormField, type FormValues } from "@/components/data/record-form";
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from "@/components/ui/overlay";
 import { useI18n } from "@/lib/i18n";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 
 export interface LedgerTab {
   id: string;
@@ -207,7 +208,7 @@ export function LedgerTool({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <ToolIcon toolId={toolId} size={22} trigger="mount" />
+          <ToolIcon toolId={toolId} size={22} trigger={toolId === "cash-flow" ? "none" : "mount"} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{translateText(tool.name)}</h1>
@@ -260,25 +261,17 @@ export function LedgerTool({
       {children}
 
       {tabs.length > 1 && (
-        <div className="no-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1" role="tablist">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={active === t.id}
-              onClick={() => setActive(t.id)}
-              className={cn(
-                "press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium",
-                active === t.id
-                  ? "bg-[var(--accent)] text-[var(--accent-fg)]"
-                  : "text-fg-muted hover:bg-[var(--bg-subtle)] hover:text-fg",
-              )}
-            >
-              {t.icon ? <AnimatedIcon name={t.icon} size={14} trigger="hover" /> : null}
-              {translateText(t.label)}
-            </button>
-          ))}
-        </div>
+        <AnimatedTabs
+          value={active ?? tabs[0].id}
+          onChange={setActive}
+          ariaLabel="Tool sections"
+          className="no-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1"
+          buttonClassName="gap-1.5 px-3 py-1.5 text-[13px]"
+          options={tabs.map((tab) => ({
+            value: tab.id,
+            label: <>{tab.icon ? <AnimatedIcon name={tab.icon} size={14} trigger="hover" /> : null}{translateText(tab.label)}</>,
+          }))}
+        />
       )}
 
       <Card className="p-3 sm:p-4">

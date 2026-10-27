@@ -12,6 +12,7 @@ import { debtDueOccurrences, debtPaymentHistory, estimatedDebtProgress, localISO
 import { debtTotals, simulateDebt } from "@/lib/calc/money";
 import { formatMoney, formatPercent, round2 } from "@/lib/money";
 import type { Debt, DebtPayment, Paycheck } from "@/lib/types";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 
 type Section = "overview" | "calendar" | "strategies" | "insights";
 type CalendarMode = "month" | "week" | "agenda";
@@ -214,16 +215,19 @@ export function DebtDashboard({ currency }: { currency: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="no-scrollbar flex gap-1 overflow-x-auto" role="tablist" aria-label="Debt payoff sections">
-        {([
+      <AnimatedTabs
+        value={section}
+        onChange={setSection}
+        ariaLabel="Debt payoff sections"
+        className="no-scrollbar flex gap-1 overflow-x-auto"
+        buttonClassName="px-3 py-1.5 text-[12px]"
+        options={([
           ["overview", "Overview", "chart-column"],
           ["calendar", "Payment Calendar", "calendar-days"],
           ["strategies", "Strategies", "target"],
           ["insights", "Insights", "chart-no-axes-combined"],
-        ] as const).map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={section === id} onClick={() => setSection(id)} className={"press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium " + (section === id ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "text-fg-muted hover:bg-[var(--bg-subtle)]")}>{label}</button>
-        ))}
-      </div>
+        ] as const).map(([value, label]) => ({ value, label }))}
+      />
       {paymentSuccess ? <p role="status" className="rounded-xl border border-[var(--positive)]/30 bg-[var(--positive)]/10 px-3 py-2 text-[11px] text-[var(--positive)]">{paymentSuccess}<button className="ml-2 underline" onClick={() => setPaymentSuccess("")}>Dismiss</button></p> : null}
       {section === "overview" ? <>
         <div className="grid items-stretch gap-3 xl:grid-cols-2">
