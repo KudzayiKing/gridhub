@@ -52,10 +52,10 @@ export function MonthlyComparisonChart({
   }));
 
   return (
-    <div>
-      <div style={{ width: "100%", height }}>
+    <div className="min-w-0 w-full">
+      <div className="min-w-0" style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: -8 }} barGap={2}>
+        <BarChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} barGap={2}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="label"
@@ -67,8 +67,8 @@ export function MonthlyComparisonChart({
           <YAxis
             tickLine={false}
             axisLine={false}
-            width={44}
-            tick={{ fill: "var(--fg-subtle)", fontSize: 11 }}
+            width={60}
+            tick={{ fill: "var(--fg-subtle)", fontSize: 10 }}
             tickFormatter={(v) => formatValue(v)}
           />
           <Tooltip

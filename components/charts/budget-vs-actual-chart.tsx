@@ -32,8 +32,8 @@ export function BudgetVsActualChart({
   const h = height ?? Math.max(160, data.length * 34 + 24);
 
   return (
-    <div>
-      <div style={{ width: "100%", height: h }}>
+    <div className="min-w-0 w-full">
+      <div className="min-w-0" style={{ width: "100%", height: h }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           layout="vertical"

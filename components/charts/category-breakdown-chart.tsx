@@ -43,8 +43,8 @@ export function CategoryBreakdownChart({
   const rows = data.map((d, i) => ({ ...d, fill: d.color ?? chartColor(i) }));
 
   return (
-    <div>
-      <div className="relative" style={{ width: "100%", height }}>
+    <div className="min-w-0 w-full">
+      <div className="relative min-w-0" style={{ width: "100%", height }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

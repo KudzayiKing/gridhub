@@ -35,9 +35,9 @@ export function StackedBarChart({
 
   return (
     <div>
-      <div style={{ width: "100%", height }}>
+      <div className="min-w-0" style={{ width: "100%", height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 6, bottom: 0, left: -10 }}>
+          <BarChart data={data} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey={xKey}
@@ -49,8 +49,8 @@ export function StackedBarChart({
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={48}
-              tick={{ fill: "var(--fg-subtle)", fontSize: 11 }}
+              width={60}
+              tick={{ fill: "var(--fg-subtle)", fontSize: 10 }}
               tickFormatter={(v) => formatValue(v)}
             />
             <Tooltip

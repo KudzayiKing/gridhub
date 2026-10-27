@@ -39,7 +39,7 @@ export function HorizontalRankingChart({
   const h = height ?? Math.max(160, source.length * 34 + 24);
 
   return (
-    <div style={{ width: "100%", height: h }}>
+    <div className="min-w-0 w-full" style={{ height: h }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart layout="vertical" data={source} margin={{ top: 4, right: 8, bottom: 4, left: 4 }}>
           <XAxis type="number" hide tickFormatter={(v) => formatValue(v)} />

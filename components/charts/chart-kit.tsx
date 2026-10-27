@@ -76,7 +76,7 @@ export function ChartContainer({
 }) {
   const { t } = useI18n();
   return (
-    <section className={cn("gp-card p-4", className)}>
+    <section className={cn("gp-card min-w-0 p-4", className)}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-[13.5px] font-semibold text-fg">{t(title)}</h3>
@@ -84,7 +84,7 @@ export function ChartContainer({
         </div>
         {action}
       </div>
-      <div className={cn("w-full", bodyClassName)}>{children}</div>
+      <div className={cn("min-w-0 w-full", bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -106,7 +106,7 @@ export function ChartLegend({ items }: { items: { label: string; color: string }
 export function ChartEmptyState({ label = "No data for this period yet" }: { label?: string }) {
   const { t } = useI18n();
   return (
-    <div className="flex h-full min-h-[160px] items-center justify-center rounded-xl border border-dashed border-line-strong text-[12px] text-fg-subtle">
+    <div className="flex h-full min-h-[160px] min-w-0 items-center justify-center rounded-xl border border-dashed border-line-strong px-3 text-center text-[12px] leading-relaxed text-fg-subtle [overflow-wrap:anywhere]">
       {t(label)}
     </div>
   );

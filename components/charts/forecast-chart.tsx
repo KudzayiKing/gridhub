@@ -56,9 +56,9 @@ export function ForecastChart({
   }));
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div className="min-w-0 w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={rows} margin={{ top: 8, right: 6, bottom: 0, left: -10 }}>
+        <ComposedChart data={rows} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
           <XAxis
             dataKey="x"
             tickLine={false}
@@ -69,8 +69,8 @@ export function ForecastChart({
           <YAxis
             tickLine={false}
             axisLine={false}
-            width={48}
-            tick={{ fill: "var(--fg-subtle)", fontSize: 11 }}
+            width={60}
+            tick={{ fill: "var(--fg-subtle)", fontSize: 10 }}
             tickFormatter={(v) => formatValue(v)}
           />
           <Tooltip
