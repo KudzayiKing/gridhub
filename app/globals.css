@@ -324,10 +324,10 @@ html[dir="rtl"] input[inputmode="numeric"] {
     height: auto;
     border-radius: inherit;
     background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent) left top / 36% 1px no-repeat,
-      linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent) left top / 1px 36% no-repeat,
-      linear-gradient(270deg, rgba(255, 255, 255, 0.26), transparent) right bottom / 36% 1px no-repeat,
-      linear-gradient(0deg, rgba(255, 255, 255, 0.26), transparent) right bottom / 1px 36% no-repeat;
+      linear-gradient(90deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.34) 18%, transparent) left top / 52% 1.5px no-repeat,
+      linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.34) 18%, transparent) left top / 1.5px 52% no-repeat,
+      linear-gradient(270deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.3) 18%, transparent) right bottom / 52% 1.5px no-repeat,
+      linear-gradient(0deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.3) 18%, transparent) right bottom / 1.5px 52% no-repeat;
     opacity: 1;
     pointer-events: none;
   }
