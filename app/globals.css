@@ -301,24 +301,58 @@ html[dir="rtl"] input[inputmode="numeric"] {
 
   /* Home KPI cards borrow the quick-action glass rim while keeping their contents crisp. */
   .home-key-metrics {
+    position: relative;
+    /* Transparent border keeps the box size while leaving the rim as the only edge. */
+    border: 1px solid transparent;
+    /* Deliberately static: the container carries the rim only, never a hover lift. */
+    transition: none;
+    animation: none;
     background-image:
       radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.055), transparent 100%),
       radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.045), transparent 100%);
+  }
+  /* Same 1px corner-lit glass rim as the KPI cards. The container keeps a transparent
+     1px border for box size, so this rim is the only edge the panel shows. */
+  .home-key-metrics::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid transparent;
+    background:
+      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.74) 14%, rgba(255, 255, 255, 0.38) 38%, rgba(255, 255, 255, 0.15) 64%, rgba(255, 255, 255, 0) 92%),
+      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.68) 14%, rgba(255, 255, 255, 0.34) 38%, rgba(255, 255, 255, 0.13) 64%, rgba(255, 255, 255, 0) 92%);
+    background-origin: border-box;
+    background-clip: border-box;
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 1;
+    pointer-events: none;
+    transition: none;
+    animation: none;
+  }
+  /* Light theme: white cannot shine on a near-white page, so the identical rim is
+     drawn in ink. Keeps the panel and its KPI cards bounded in both themes. */
+  html:not(.dark) .home-key-metrics::before,
+  html:not(.dark) .home-key-metrics .home-kpi-glass::before {
+    background:
+      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(23, 26, 24, 0.34) 0%, rgba(23, 26, 24, 0.22) 14%, rgba(23, 26, 24, 0.1) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%),
+      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(23, 26, 24, 0.3) 0%, rgba(23, 26, 24, 0.2) 14%, rgba(23, 26, 24, 0.09) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%);
   }
   .home-key-metrics .glass-sheen::before {
     opacity: 0.22;
   }
   .home-key-metrics .gp-card.home-kpi-glass {
     background: transparent;
-    background-image:
-      radial-gradient(ellipse 26% 44% at 0% 0%, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 100%),
-      radial-gradient(ellipse 26% 44% at 100% 100%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 100%);
+    background-image: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     border-color: transparent;
     box-shadow: 0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
   }
-  /* The KPI rim is a real 1.5px ring that follows the card's rounded corners, so the
+  /* The KPI rim is a real 1px ring that follows the card's rounded corners, so the
      corner arc is actually painted instead of being clipped away by the radius. Two
      corner-anchored radial gradients light the arc to solid white and carry the shine
      out past the midpoint of both adjoining edges before it fades. */
@@ -329,7 +363,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
     width: auto;
     height: auto;
     border-radius: inherit;
-    border: 1.5px solid transparent;
+    border: 1px solid transparent;
     background:
       radial-gradient(ellipse 112% 112% at 0% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.78) 14%, rgba(255, 255, 255, 0.4) 38%, rgba(255, 255, 255, 0.16) 64%, rgba(255, 255, 255, 0) 92%),
       radial-gradient(ellipse 112% 112% at 100% 100%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.72) 14%, rgba(255, 255, 255, 0.36) 38%, rgba(255, 255, 255, 0.14) 64%, rgba(255, 255, 255, 0) 92%);
