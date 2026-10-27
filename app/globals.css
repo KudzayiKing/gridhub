@@ -714,6 +714,29 @@ html[dir="rtl"] input[inputmode="numeric"] {
     background: none;
   }
 
+  /* A localized color field lets translucent dashboard surfaces and liquid buttons read as glass. */
+  .dashboard-home::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    inset-block-start: -1.5rem;
+    inset-inline: -2rem;
+    height: min(44rem, 78vh);
+    background:
+      radial-gradient(ellipse 34rem 24rem at 78% 17%, rgba(0, 213, 135, 0.13), transparent 72%),
+      radial-gradient(ellipse 38rem 28rem at 20% 5%, rgba(192, 212, 188, 0.36), transparent 72%),
+      radial-gradient(ellipse 26rem 22rem at 92% 76%, rgba(105, 168, 190, 0.14), transparent 74%);
+    filter: blur(10px);
+  }
+
+  .dark .dashboard-home::before {
+    background:
+      radial-gradient(ellipse 34rem 24rem at 78% 17%, rgba(0, 213, 135, 0.13), transparent 72%),
+      radial-gradient(ellipse 38rem 28rem at 20% 5%, rgba(94, 125, 105, 0.17), transparent 72%),
+      radial-gradient(ellipse 26rem 22rem at 92% 76%, rgba(93, 111, 157, 0.13), transparent 74%);
+  }
+
   /* ---------- Typography helpers ---------- */
   .display-xl {
     font-family: var(--font-display);
