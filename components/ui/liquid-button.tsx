@@ -30,6 +30,8 @@ export interface LiquidButtonProps {
   disabled?: boolean;
   type?: "button" | "submit";
   onClick?: () => void;
+  "aria-expanded"?: boolean;
+  "aria-controls"?: string;
 }
 
 /**
@@ -48,6 +50,8 @@ export function LiquidButton({
   disabled = false,
   type = "button",
   onClick,
+  "aria-expanded": ariaExpanded,
+  "aria-controls": ariaControls,
 }: LiquidButtonProps) {
   const content = (
     <span className="liquid-btn__label">
@@ -69,6 +73,8 @@ export function LiquidButton({
           href={href}
           className="liquid-btn__core"
           aria-disabled={disabled || undefined}
+          aria-expanded={ariaExpanded}
+          aria-controls={ariaControls}
           tabIndex={disabled ? -1 : undefined}
           onClick={disabled ? undefined : onClick}
         >
@@ -79,6 +85,8 @@ export function LiquidButton({
           type={type}
           className="liquid-btn__core"
           disabled={disabled}
+          aria-expanded={ariaExpanded}
+          aria-controls={ariaControls}
           onClick={onClick}
         >
           {content}

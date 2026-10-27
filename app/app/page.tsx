@@ -110,13 +110,11 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen} aria-controls="dashboard-customize-panel">
+          <LiquidButton size="sm" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen} aria-controls="dashboard-customize-panel" className="liquid-btn--no-gloss">
             {customizeOpen ? <PanelLeftOpenIcon size={16} /> : <PanelRightOpenIcon size={16} />}
             {t("Customize")}
-          </Button>
-          <Button variant="secondary" size="sm" icon="search" asChild>
-            <Link href="/app/explore">Explore tools</Link>
-          </Button>
+          </LiquidButton>
+          <LiquidButton href="/app/explore" size="sm" icon="search" className="liquid-btn--no-gloss">{t("Explore tools")}</LiquidButton>
         </div>
       </div>
 
