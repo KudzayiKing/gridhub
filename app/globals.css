@@ -356,6 +356,56 @@ html[dir="rtl"] input[inputmode="numeric"] {
     box-shadow: var(--shadow-soft);
   }
 
+  /* Extend the dashboard's corner lighting across its insight, chart, and tool cards. */
+  .home-dashboard .gp-card {
+    background-image:
+      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.035), transparent 100%),
+      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.03), transparent 100%);
+  }
+  .dark .home-dashboard .gp-card {
+    background-image:
+      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.065), transparent 100%),
+      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.055), transparent 100%);
+  }
+
+  @keyframes home-kpi-rim-shimmer {
+    from { background-position: 110% 0; }
+    to { background-position: -110% 0; }
+  }
+  .home-kpi-glass {
+    isolation: isolate;
+  }
+  .home-kpi-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+  .home-kpi-glass::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(110deg, transparent 24%, rgba(255, 255, 255, 0.48) 48%, transparent 72%);
+    background-size: 220% 100%;
+    background-position: 110% 0;
+    opacity: 0;
+    pointer-events: none;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  .home-kpi-link:hover .home-kpi-glass::after,
+  .home-kpi-link:focus-visible .home-kpi-glass::after {
+    opacity: 1;
+    animation: home-kpi-rim-shimmer 760ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
   /* Mobile Chromium can defer repainting blurred cards in long scrolling dashboards until a
      touch invalidates the layer. Keep Recent activity on a stable, directly painted surface. */
   @media (hover: none) and (pointer: coarse) {
