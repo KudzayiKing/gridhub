@@ -346,6 +346,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
     --lb-time: 400ms;
     --lb-ease: cubic-bezier(0.25, 1, 0.5, 1);
     --lb-border: clamp(1px, 0.09em, 4px);
+    --lb-backdrop-blur: blur(clamp(1px, 0.125em, 4px));
 
     /*
      * The face is two radial speculars, not a wash. Light lands on the top-left and
@@ -453,6 +454,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
   /* A/B comparison: remove the bright face speculars from the first dashboard quick action. */
   .liquid-btn--no-gloss {
     --lb-fill: linear-gradient(180deg, rgba(23, 26, 24, 0.035), rgba(23, 26, 24, 0.065));
+    --lb-backdrop-blur: none;
     --lb-arc: rgba(255, 255, 255, 0.24);
     --lb-arc-0: rgba(255, 255, 255, 0);
     --lb-arc-base: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.035) 28%, rgba(255, 255, 255, 0.035) 72%, rgba(255, 255, 255, 0.24) 100%);
@@ -465,6 +467,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
 
   .dark .liquid-btn.liquid-btn--no-gloss {
     --lb-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.028));
+    --lb-backdrop-blur: none;
     --lb-arc: rgba(255, 255, 255, 0.26);
     --lb-arc-0: rgba(255, 255, 255, 0);
     --lb-arc-base: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0.04) 72%, rgba(255, 255, 255, 0.25) 100%);
@@ -513,8 +516,8 @@ html[dir="rtl"] input[inputmode="numeric"] {
       inset 0 -0.125em 0.125em var(--lb-inset-bottom),
       0 0.25em 0.125em -0.125em var(--lb-drop),
       0 0 0.1em 0.25em inset var(--lb-ring);
-    -webkit-backdrop-filter: blur(clamp(1px, 0.125em, 4px));
-    backdrop-filter: blur(clamp(1px, 0.125em, 4px));
+    -webkit-backdrop-filter: var(--lb-backdrop-blur);
+    backdrop-filter: var(--lb-backdrop-blur);
     transition: all var(--lb-time) var(--lb-ease);
   }
 
