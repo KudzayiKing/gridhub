@@ -299,7 +299,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
     );
   }
 
-  /* Home KPI cards borrow the quick-action glass rim while keeping their contents crisp. */
+  /* Key metrics panel: no fill, no border colour — the shared rim below is its edge. */
   .home-key-metrics {
     position: relative;
     /* Transparent border keeps the box size while leaving the rim as the only edge. */
@@ -310,52 +310,25 @@ html[dir="rtl"] input[inputmode="numeric"] {
     transition: none;
     animation: none;
   }
-  /* Same 1px corner-lit glass rim as the KPI cards. The container keeps a transparent
-     1px border for box size, so this rim is the only edge the panel shows. */
-  .home-key-metrics::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border: 1px solid transparent;
-    background:
-      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.74) 14%, rgba(255, 255, 255, 0.38) 38%, rgba(255, 255, 255, 0.15) 64%, rgba(255, 255, 255, 0) 92%),
-      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.68) 14%, rgba(255, 255, 255, 0.34) 38%, rgba(255, 255, 255, 0.13) 64%, rgba(255, 255, 255, 0) 92%);
-    background-origin: border-box;
-    background-clip: border-box;
-    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: 1;
-    pointer-events: none;
-    transition: none;
-    animation: none;
-  }
-  /* Light theme: white cannot shine on a near-white page, so the identical rim is
-     drawn in ink. Keeps the panel and its KPI cards bounded in both themes. */
-  html:not(.dark) .home-key-metrics::before,
-  html:not(.dark) .home-key-metrics .home-kpi-glass::before {
-    background:
-      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(23, 26, 24, 0.34) 0%, rgba(23, 26, 24, 0.22) 14%, rgba(23, 26, 24, 0.1) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%),
-      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(23, 26, 24, 0.3) 0%, rgba(23, 26, 24, 0.2) 14%, rgba(23, 26, 24, 0.09) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%);
-  }
-  .home-key-metrics .glass-sheen::before {
-    opacity: 0.22;
-  }
-  .home-key-metrics .gp-card.home-kpi-glass {
+  /* ── Dashboard glass ─────────────────────────────────────────────────────────
+     The Key metrics panel and every card, chart container and tool tile on the
+     dashboard share one treatment: no fill, no corner wash, and a single 1px rim
+     that follows the corner radius and is lit at the top-left and bottom-right. */
+  .home-dashboard .gp-card {
+    position: relative;
     background: transparent;
     background-image: none;
+    border-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    border-color: transparent;
-    box-shadow: 0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
   }
-  /* The KPI rim is a real 1px ring that follows the card's rounded corners, so the
-     corner arc is actually painted instead of being clipped away by the radius. Two
-     corner-anchored radial gradients light the arc to solid white and carry the shine
-     out past the midpoint of both adjoining edges before it fades. */
-  .home-key-metrics .home-kpi-glass::before {
+  /* One rim definition for the panel and every dashboard card. The gradient is masked
+     to a rounded padding-box ring, so the corner arc is painted instead of being
+     clipped away by the radius; two corner-anchored radials light the arc and carry the
+     shine past the midpoint of both adjoining edges before it fades.
+     `height: auto` is load-bearing — `.glass-sheen::before` sets a 1px hairline. */
+  .home-dashboard .gp-card::before,
+  .home-key-metrics::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -374,6 +347,20 @@ html[dir="rtl"] input[inputmode="numeric"] {
     mask-composite: exclude;
     opacity: 1;
     pointer-events: none;
+    transition: none;
+    animation: none;
+  }
+  /* Light theme: white cannot shine on a near-white page, so the same rim is drawn in
+     ink. Without this every card loses its edge entirely on #f7f7f2. */
+  html:not(.dark) .home-dashboard .gp-card::before,
+  html:not(.dark) .home-key-metrics::before {
+    background:
+      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(23, 26, 24, 0.34) 0%, rgba(23, 26, 24, 0.22) 14%, rgba(23, 26, 24, 0.1) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%),
+      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(23, 26, 24, 0.3) 0%, rgba(23, 26, 24, 0.2) 14%, rgba(23, 26, 24, 0.09) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%);
+  }
+  /* The KPI cards keep their slightly tighter drop shadow now that they share the rim. */
+  .home-key-metrics .gp-card.home-kpi-glass {
+    box-shadow: 0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
   }
   .home-kpi-link .gp-card {
     transition:
@@ -399,21 +386,6 @@ html[dir="rtl"] input[inputmode="numeric"] {
     backdrop-filter: blur(var(--gp-glass-blur)) saturate(140%);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-soft);
-  }
-
-  /* Extend the dashboard's corner lighting across its insight, chart, and tool cards.
-     The KPI cards are excluded: they are deliberately fill-less, and this rule used to
-     land after `.home-key-metrics .gp-card.home-kpi-glass` at equal specificity, so it
-     repainted a white wash over their transparent background in dark mode. */
-  .home-dashboard .gp-card:not(.home-kpi-glass) {
-    background-image:
-      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.035), transparent 100%),
-      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.03), transparent 100%);
-  }
-  .dark .home-dashboard .gp-card:not(.home-kpi-glass) {
-    background-image:
-      radial-gradient(ellipse 36% 58% at 0% 0%, rgba(255, 255, 255, 0.065), transparent 100%),
-      radial-gradient(ellipse 36% 58% at 100% 100%, rgba(255, 255, 255, 0.055), transparent 100%);
   }
 
   @keyframes home-kpi-rim-shimmer {
