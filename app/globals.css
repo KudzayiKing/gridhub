@@ -324,8 +324,8 @@ html[dir="rtl"] input[inputmode="numeric"] {
   }
   /* One rim definition for the panel and every dashboard card. The gradient is masked
      to a rounded padding-box ring, so the corner arc is painted instead of being
-     clipped away by the radius; two corner-anchored radials light the arc and carry the
-     shine past the midpoint of both adjoining edges before it fades.
+     clipped away by the radius. A flat fill keeps the line evenly bright the whole way
+     round — all four corners read the same.
      `height: auto` is load-bearing — `.glass-sheen::before` sets a 1px hairline. */
   .home-dashboard .gp-card::before,
   .home-key-metrics::before {
@@ -336,9 +336,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
     height: auto;
     border-radius: inherit;
     border: 1px solid transparent;
-    background:
-      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.78) 14%, rgba(255, 255, 255, 0.4) 38%, rgba(255, 255, 255, 0.16) 64%, rgba(255, 255, 255, 0) 92%),
-      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.72) 14%, rgba(255, 255, 255, 0.36) 38%, rgba(255, 255, 255, 0.14) 64%, rgba(255, 255, 255, 0) 92%);
+    background: rgba(255, 255, 255, 1);
     background-origin: border-box;
     background-clip: border-box;
     -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
@@ -354,9 +352,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
      ink. Without this every card loses its edge entirely on #f7f7f2. */
   html:not(.dark) .home-dashboard .gp-card::before,
   html:not(.dark) .home-key-metrics::before {
-    background:
-      radial-gradient(ellipse 112% 112% at 0% 0%, rgba(23, 26, 24, 0.34) 0%, rgba(23, 26, 24, 0.22) 14%, rgba(23, 26, 24, 0.1) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%),
-      radial-gradient(ellipse 112% 112% at 100% 100%, rgba(23, 26, 24, 0.3) 0%, rgba(23, 26, 24, 0.2) 14%, rgba(23, 26, 24, 0.09) 38%, rgba(23, 26, 24, 0.03) 64%, rgba(23, 26, 24, 0) 92%);
+    background: rgba(23, 26, 24, 0.34);
   }
   /* The KPI cards keep their slightly tighter drop shadow now that they share the rim. */
   .home-key-metrics .gp-card.home-kpi-glass {
