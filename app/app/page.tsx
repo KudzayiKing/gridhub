@@ -7,6 +7,7 @@ import { usePrefs } from "@/components/providers";
 import { useActiveTools } from "@/lib/use-tools";
 import { MetricCard, Card, EmptyState, Badge, SectionHeading } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LiquidButton } from "@/components/ui/liquid-button";
 import { ToolIcon } from "@/components/icons/tool-icons";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { AreaTrend, BarList } from "@/components/charts/trend";
@@ -160,7 +161,7 @@ export default function DashboardPage() {
         <section className="order-1 rounded-2xl border border-line bg-[var(--surface)]/70 p-3 xl:order-2" aria-label={t("Key metrics")}>
           <h2 className="mb-2 px-1 text-[12px] font-semibold text-fg-muted">{t("Key metrics")}</h2>
           {kpis.length ? <div className="grid grid-cols-2 gap-2">{kpis.map((kpi) => <Link key={kpi.label} href={kpi.href} className="block"><MetricCard label={kpi.label} value={kpi.value} hint={kpi.hint} icon={kpi.icon} tone={kpi.tone} className="h-full min-h-[100px] p-3 sm:p-3" /></Link>)}</div> : <p className="px-1 py-4 text-[12px] text-fg-muted">{t("Your key metrics will appear as you add records to your tools.")}</p>}
-          {quickActions.length ? <div className="mt-3 border-t border-line pt-3"><h3 className="mb-2 px-1 text-[11px] font-medium text-fg-subtle">{t("Quick actions")}</h3><div className="flex flex-wrap gap-1.5">{quickActions.slice(0, 3).map((action) => <Button key={action.href} variant="secondary" size="sm" icon={action.icon} iconTrigger="hover" asChild><Link href={action.href}>{t(action.label)}</Link></Button>)}</div></div> : null}
+          {quickActions.length ? <div className="mt-3 border-t border-line pt-3"><h3 className="mb-2 px-1 text-[11px] font-medium text-fg-subtle">{t("Quick actions")}</h3><div className="flex flex-wrap gap-1.5">{quickActions.slice(0, 3).map((action) => <LiquidButton key={action.href} href={action.href} icon={action.icon} size="sm">{t(action.label)}</LiquidButton>)}</div></div> : null}
         </section>
       </div>
 
