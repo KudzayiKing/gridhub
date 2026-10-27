@@ -49,6 +49,10 @@
   --gp-glass-blur: 18px;
   --gp-card-radius: 20px;
 
+  /* The sticky header's own height: 56px of content plus the notch inset. The ambient wash
+     stops exactly here so the glass bar has a flat, uniform backdrop. */
+  --chrome-h: calc(56px + env(safe-area-inset-top, 0px));
+
   /* semantic (light) */
   --bg: #f7f7f2;
   --bg-elevated: #fdfdfa;
@@ -61,6 +65,13 @@
      nothing to blur. Alpha is high enough to keep 13px labels legible over a busy card. */
   --header: rgba(255, 255, 255, 0.63);
   --bottom-nav-bg: rgba(253, 253, 250, 0.74);
+  /* The chrome fill composited over the canvas — what each bar looks like where nothing is
+     scrolled under it. The platform paints the status bar and gesture bar one flat colour and
+     gives web content no way to blur them, so these are the only values that can be matched:
+     `theme-color` reports `--chrome-solid`, and both scrims fade from it. Keep them in sync
+     with the rgba tokens above; `tests/chrome-tokens.test.ts` pins the arithmetic. */
+  --chrome-solid: #fcfcfa;
+  --nav-solid: #fbfbf8;
   --border: rgba(23, 26, 24, 0.09);
   --border-strong: rgba(23, 26, 24, 0.16);
   --fg: #171a18;
@@ -114,6 +125,10 @@
      blur while the bar still reads darker than the content it covers. */
   --header: rgba(18, 18, 20, 0.66);
   --bottom-nav-bg: rgba(24, 24, 28, 0.78);
+  /* Both bars composite to within a couple of levels of the canvas here, so the scrim is
+     effectively the page colour. Kept as separate tokens so the light theme can differ. */
+  --chrome-solid: #121214;
+  --nav-solid: #17171a;
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.18);
   --fg: #f3f3f5;
@@ -325,6 +340,66 @@ html[dir="rtl"] input[inputmode="numeric"] {
   .app-bottom-nav-glass {
     -webkit-backdrop-filter: blur(20px) saturate(160%);
     backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  /* ── Chrome scrims ──────────────────────────────────────────────────────────
+     Both bars sit on a physical edge, and a physical edge is where a translucent bar is at its
+     worst: anything scrolling underneath arrives at the very top of the screen — under the
+     status bar — and again at the very bottom, under the gesture bar.
+
+     Concretely, a dark segmented-control chip scrolling up under the header blurred into a soft
+     dark smudge hugging the top-left corner. Against the flat colour the OS paints above it,
+     that smudge reads as a border sitting between the header and the status bar.
+
+     So the last `inset + 22px` of each bar is painted solid `--chrome-solid` / `--nav-solid`
+     and then masked away. The bar still reads as glass — cards still show through and blur in
+     the middle — but content now dissolves as it reaches the platform bar instead of colliding
+     with it, and the top edge is one flat colour that `theme-color` can match exactly.
+
+     `z-index: -1` keeps the scrim above the bar's own fill but below its buttons and wordmark.
+     Both bars already create a stacking context (`z-20` / `z-30`), so it cannot escape. */
+  .app-header-glass::before,
+  .app-bottom-nav-glass::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .app-header-glass::before {
+    top: 0;
+    height: calc(env(safe-area-inset-top, 0px) + 22px);
+    background: var(--chrome-solid);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(env(safe-area-inset-top, 0px) + 6px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(env(safe-area-inset-top, 0px) + 6px),
+      transparent 100%
+    );
+  }
+  .app-bottom-nav-glass::before {
+    bottom: 0;
+    height: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    background: var(--nav-solid);
+    -webkit-mask-image: linear-gradient(
+      to top,
+      #000 0,
+      #000 calc(env(safe-area-inset-bottom, 0px) + 6px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to top,
+      #000 0,
+      #000 calc(env(safe-area-inset-bottom, 0px) + 6px),
+      transparent 100%
+    );
   }
 
   .gp-card {
@@ -765,6 +840,28 @@ html[dir="rtl"] input[inputmode="numeric"] {
       radial-gradient(900px 500px at 12% -8%, rgba(192, 212, 188, 0.32), transparent 60%),
       radial-gradient(760px 420px at 92% 4%, rgba(233, 235, 228, 0.85), transparent 62%),
       radial-gradient(700px 500px at 50% 108%, rgba(192, 212, 188, 0.18), transparent 60%);
+  }
+  /*
+   * Keep the wash out from behind the sticky header.
+   *
+   * The header is glass, so it samples whatever is behind it. The first radial starts at
+   * `12% -8%`, i.e. just above the top-left corner, so without this the bar is tinted sage
+   * across its left third and clean white on the right. Replacing the wash with a magenta
+   * gradient confirmed it: with this mask in place the bar does not change colour at all,
+   * and with the mask removed the whole bar turns magenta.
+   *
+   * A bar whose colour varies across its width can never match the one flat colour the
+   * platform paints the status bar, so the mismatch shows up as a border under the status
+   * bar no matter what `theme-color` says. Painting the canvas colour over the top band (and
+   * fading it out below) leaves the header compositing to a single flat colour.
+   * `--chrome-h` is the header's own height: 56px of content plus the notch inset.
+   */
+  .gp-ambient::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: calc(var(--chrome-h) + 140px);
+    background: linear-gradient(to bottom, var(--bg) 0 var(--chrome-h), transparent 100%);
   }
   .dark .gp-ambient {
     /* No wash. Any radial here would tint the canvas away from #121214 and reintroduce the

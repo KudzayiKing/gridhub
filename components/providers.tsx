@@ -70,13 +70,15 @@ function detectBrowserLanguage(): NonNullable<UserPreferences["uiLanguage"]> {
 
 /**
  * OS chrome — the status bar and the home-indicator strip — is painted by the platform, above
- * our content. No CSS can blur it. The most a web app can do is make its colour *equal* the
- * glass band sitting next to it, so the seam disappears and the bar reads as the top of the
+ * our content. No CSS can blur it, and there is no "transparent" option: Android Chrome paints
+ * `theme-color` as a flat band, and iOS's `black-translucent` status bar forces white glyphs,
+ * which are unreadable on the light theme. The most a web app can do is make its colour *equal*
+ * the glass band sitting next to it, so the seam disappears and the bar reads as the top of the
  * glass instead of a flat lid.
  *
- * That colour is not `--bg`: the header is a translucent wash laid over `--bg`, so the value
- * the eye sees is the composite of the two. `flattenOver` computes it rather than hard-coding
- * it — otherwise the next change to `--header`'s alpha silently reintroduces a visible step.
+ * `--chrome-solid` is that colour: the chrome fill composited over the canvas. The scrims in
+ * globals.css fade from the same token, so the two cannot drift. When the token is missing,
+ * fall back to computing the composite from `--header` rather than guessing.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
@@ -90,8 +92,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const syncThemeColor = () => {
       const styles = getComputedStyle(root);
       const page = styles.getPropertyValue("--bg").trim();
+      const solid = styles.getPropertyValue("--chrome-solid").trim();
       const header = styles.getPropertyValue("--header").trim();
-      const color = (header && flattenOver(header, page)) || page;
+      const color = solid || (header && flattenOver(header, page)) || page;
       if (!color) return;
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
         if (meta.content !== color || meta.media) {

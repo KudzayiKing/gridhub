@@ -54,8 +54,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  // Start with the app's light canvas; Providers synchronizes this with the saved theme.
-  themeColor: "#F7F7F2",
+  // The header's glass over the flat canvas — not the canvas itself. Reporting `--bg` left a
+  // visible step under the status bar, because a translucent header over #f7f7f2 is lighter
+  // than #f7f7f2. Providers recomputes this per theme; this is the light default first paint
+  // uses, and it must match `manifest.theme_color`.
+  themeColor: "#FCFCFA",
   viewportFit: "cover",
 };
 

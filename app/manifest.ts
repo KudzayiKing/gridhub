@@ -12,10 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
     orientation: "any",
-    // The light page canvas is the install-time default; Providers updates browser chrome
-    // to the selected in-app theme after startup.
+    // The splash uses the canvas; the status bar uses the header's glass over that canvas, so
+    // the platform bar and the sticky header meet without a step. Must stay in step with
+    // `viewport.themeColor` in app/layout.tsx — the install-time value is read from here, and
+    // an installed app keeps it until the manifest is re-read.
     background_color: "#F7F7F2",
-    theme_color: "#F7F7F2",
+    theme_color: "#FCFCFA",
     categories: ["productivity", "finance", "business"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

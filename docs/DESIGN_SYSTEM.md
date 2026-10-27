@@ -58,6 +58,8 @@ light and dark:
 | `--surface-strong` | `rgba(255,255,255,.92)` | `rgba(29,29,34,.94)` | Dialog / sheet |
 | `--header` | `rgba(255,255,255,.63)` | `rgba(18,18,20,.66)` | Sticky header |
 | `--bottom-nav-bg` | `rgba(253,253,250,.74)` | `rgba(24,24,28,.78)` | Phone bottom bar |
+| `--chrome-solid` | `#FCFCFA` | `#121214` | Header composite; `theme-color`; top scrim |
+| `--nav-solid` | `#FBFBF8` | `#17171A` | Bottom-bar composite; bottom scrim |
 | `--border` | `rgba(23,26,24,.09)` | `rgba(255,255,255,.09)` | Hairline |
 | `--fg` | `#171A18` | `#F3F3F5` | Text |
 | `--fg-muted` | `#5C645C` | `#B1B1B9` | Secondary text |
@@ -81,6 +83,20 @@ paint. Both bars get their blur from `.app-header-glass` / `.app-bottom-nav-glas
 declare `-webkit-backdrop-filter` as well as `backdrop-filter` — iOS Safari only shipped the
 unprefixed property in 18. Under `prefers-reduced-transparency` and in browsers without
 `backdrop-filter`, both classes fall back to a solid canvas fill.
+
+**`--chrome-solid` / `--nav-solid` are derived, not chosen.** They are the chrome fill flattened
+over the canvas, i.e. what each bar looks like where nothing is scrolled under it. They exist
+because the platform paints the status bar and gesture bar one flat colour and gives web content
+no way to blur them, so the only achievable result is an exact colour match. `theme-color`
+reports `--chrome-solid`, and both scrims fade from the same token. `tests/chrome-tokens.test.ts`
+recomputes the composite from `--header` / `--bottom-nav-bg` and fails if the pair drifts.
+
+**Both bars carry a scrim at their physical edge.** `.app-header-glass::before` and
+`.app-bottom-nav-glass::before` paint the solid colour over the last `inset + 22px` and mask it
+away. A bar that sits on a screen edge is translucent exactly where it is most conspicuous:
+content scrolling up arrives underneath the status bar, and a dark element blurred there reads as
+a border between the header and the bar above it. The scrim makes content dissolve before it
+reaches the platform bar while the middle of the bar still shows and blurs content.
 
 These are exposed to Tailwind through `@theme inline` as `bg-bg`, `text-fg`,
 `text-fg-muted`, `border-line`, `bg-accent`, `text-positive` and so on. `--border` is
