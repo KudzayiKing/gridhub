@@ -314,13 +314,22 @@ html[dir="rtl"] input[inputmode="numeric"] {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     border-color: transparent;
-    box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.18),
-      inset -1px -1px 0 rgba(255, 255, 255, 0.15),
-      0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0.32em 0.5em -0.12em rgba(0, 0, 0, 0.2);
   }
   .home-key-metrics .home-kpi-glass::before {
-    opacity: 0;
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-radius: inherit;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent) left top / 36% 1px no-repeat,
+      linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent) left top / 1px 36% no-repeat,
+      linear-gradient(270deg, rgba(255, 255, 255, 0.26), transparent) right bottom / 36% 1px no-repeat,
+      linear-gradient(0deg, rgba(255, 255, 255, 0.26), transparent) right bottom / 1px 36% no-repeat;
+    opacity: 1;
+    pointer-events: none;
   }
   .dark .home-key-metrics {
     background-image:
@@ -336,7 +345,7 @@ html[dir="rtl"] input[inputmode="numeric"] {
   .home-kpi-link:hover .gp-card,
   .home-kpi-link:focus-visible .gp-card {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--border) 72%, var(--fg) 28%);
+    border-color: transparent;
     box-shadow: var(--shadow-lift);
   }
   .home-kpi-link:focus-visible {
