@@ -7,12 +7,15 @@ import { usePrefs } from "@/components/providers";
 import { ChartContainer, ChartEmptyState, CategoryBreakdownChart, ChartLegend, ProgressChart, TrendChart } from "@/components/charts";
 import { Button } from "@/components/ui/button";
 import { Badge, CompactMetric, InlineAlert } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/overlay";
 import { useCollection } from "@/lib/store";
 import { debtDueOccurrences, debtPaymentHistory, estimatedDebtProgress, localISODate, paymentSplitIsValid, reminderMatches, type DebtPayStrategy, type DebtDueOccurrence } from "@/lib/reporting/debt-tracker";
 import { debtTotals, simulateDebt } from "@/lib/calc/money";
 import { formatMoney, formatPercent, round2 } from "@/lib/money";
 import type { Debt, DebtPayment, Paycheck } from "@/lib/types";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import { useI18n } from "@/lib/i18n";
+import { toast } from "sonner";
 
 type Section = "overview" | "calendar" | "strategies" | "insights";
 type CalendarMode = "month" | "week" | "agenda";
@@ -34,6 +37,7 @@ const statusTone = (status: string): "positive" | "warning" | "negative" | "neut
 
 export function DebtDashboard({ currency }: { currency: string }) {
   const { prefs, setPrefs } = usePrefs();
+  const { t } = useI18n();
   const debtState = useCollection<Debt>("debt", "debts");
   const paymentState = useCollection<DebtPayment>("debt", "payments");
   const paycheckState = useCollection<Paycheck>("paycheck", "paychecks");
@@ -60,6 +64,9 @@ export function DebtDashboard({ currency }: { currency: string }) {
   const [savingPayment, setSavingPayment] = React.useState(false);
   const [paymentSuccess, setPaymentSuccess] = React.useState("");
   const [reminderError, setReminderError] = React.useState("");
+  const [pendingStrategy, setPendingStrategy] = React.useState<DebtPayStrategy | null>(null);
+  const [isSavingStrategy, setIsSavingStrategy] = React.useState(false);
+  const strategyOriginRef = React.useRef<HTMLButtonElement | null>(null);
 
   const strategy: DebtPayStrategy = prefs.periods?.["debt-strategy"] === "avalanche" ? "avalanche" : "snowball";
   const totals = debtTotals(debts);
@@ -117,10 +124,31 @@ export function DebtDashboard({ currency }: { currency: string }) {
     date.setMonth(date.getMonth() - 1);
     setCalendarDate(localISODate(date));
   };
-  const changeStrategy = (next: DebtPayStrategy) => {
+  const changeStrategy = (next: DebtPayStrategy, event: React.MouseEvent<HTMLButtonElement>) => {
     if (strategy === next) return;
-    if (typeof window !== "undefined" && !window.confirm("Use " + (next === "snowball" ? "Snowball" : "Avalanche") + " as your active debt payoff strategy? This changes projections only; it does not change payment schedules.")) return;
-    void setPrefs({ periods: { ...(prefs.periods ?? {}), "debt-strategy": next } });
+    strategyOriginRef.current = event.currentTarget;
+    setPendingStrategy(next);
+  };
+  const closeStrategyDialog = () => {
+    if (isSavingStrategy) return;
+    setPendingStrategy(null);
+    requestAnimationFrame(() => strategyOriginRef.current?.focus());
+  };
+  const confirmStrategy = async () => {
+    if (!pendingStrategy || isSavingStrategy) return;
+    const next = pendingStrategy;
+    const nextName = t(next === "snowball" ? "Snowball" : "Avalanche");
+    setIsSavingStrategy(true);
+    try {
+      await setPrefs({ periods: { ...(prefs.periods ?? {}), "debt-strategy": next } });
+      setPendingStrategy(null);
+      requestAnimationFrame(() => strategyOriginRef.current?.focus());
+      toast.success(t("{strategy} is now your active strategy.", { strategy: nextName }));
+    } catch {
+      toast.error(t("Could not save your strategy. Your previous strategy is still active."));
+    } finally {
+      setIsSavingStrategy(false);
+    }
   };
   const openPayment = (event: DebtDueOccurrence) => {
     setPaymentTarget(event);
@@ -327,7 +355,7 @@ export function DebtDashboard({ currency }: { currency: string }) {
       {section === "strategies" ? <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-[var(--surface)] p-3">
           <div><h3 className="text-[13px] font-semibold">Active projection strategy</h3><p className="text-[10.5px] text-fg-muted">Changing this preference changes estimates only; confirm before switching.</p></div>
-          <div className="flex gap-2">{(["snowball", "avalanche"] as const).map((item) => <Button key={item} size="sm" variant={strategy === item ? "primary" : "secondary"} onClick={() => changeStrategy(item)}>{item === "snowball" ? "Snowball · smallest balance" : "Avalanche · highest APR"}</Button>)}</div>
+          <div className="flex gap-2">{(["snowball", "avalanche"] as const).map((item) => <Button key={item} size="sm" variant={strategy === item ? "primary" : "secondary"} onClick={(event) => changeStrategy(item, event)}>{t(item === "snowball" ? "Snowball · smallest balance" : "Avalanche · highest APR")}</Button>)}</div>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
           {([snowball, avalanche] as const).map((result) => <section key={result.strategy} className="rounded-2xl border border-line bg-[var(--surface)] p-3"><h3 className="text-[13px] font-semibold capitalize">{result.strategy} comparison</h3><div className="mt-2 grid grid-cols-2 gap-2"><CompactMetric label="Debt-free date" value={result.nonAmortizing ? "Payment too low" : result.payoffDate.slice(0, 7)} hint={result.months + " months"} /><CompactMetric label="Projected interest" value={formatMoney(result.totalInterest, { currency })} /><CompactMetric label="Total repayment" value={formatMoney(result.totalPaid, { currency })} /><CompactMetric label="First payoff" value={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.name ?? "No milestone"} hint={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.payoffDate ?? "Insufficient payments"} /></div></section>)}
@@ -360,6 +388,41 @@ export function DebtDashboard({ currency }: { currency: string }) {
           {payments.length ? <div className="max-h-64 overflow-y-auto">{[...payments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map((payment) => <div key={payment.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0"><div className="min-w-0"><p className="truncate text-[11px]">{debts.find((debt) => debt.id === payment.debtId)?.name ?? "Debt"} · {dateLabel(payment.date)}</p><p className="text-[9.5px] text-fg-subtle capitalize">{payment.status ?? "paid"}{payment.transactionId ? " · linked transaction" : ""}</p></div><span className="tnum text-[11px]">{formatMoney(payment.amount, { currency })}</span></div>)}</div> : <ChartEmptyState label="Payment history will appear here when you record lender payments" />}
         </ChartContainer>
       </div> : null}
+
+      <Dialog
+        open={pendingStrategy !== null}
+        onOpenChange={(open) => {
+          if (!open) closeStrategyDialog();
+        }}
+      >
+        {pendingStrategy ? (() => {
+          const currentName = strategy === "snowball" ? "Snowball" : "Avalanche";
+          const nextName = pendingStrategy === "snowball" ? "Snowball" : "Avalanche";
+          return (
+            <DialogContent
+              title="Change Debt Payoff Strategy?"
+              description={
+                <>
+                  {t("You're about to switch your active repayment strategy:")} {" "}
+                  <strong className="font-semibold text-fg">{t(currentName)} → {t(nextName)}</strong>.{" "}
+                  {t("This will update your debt payoff projections, repayment order, and estimated debt-free date.")} {" "}
+                  {t("Your existing debts, recorded payments, and payment schedules will remain unchanged.")}
+                </>
+              }
+              className="sm:max-w-[470px]"
+            >
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" size="sm" onClick={closeStrategyDialog} disabled={isSavingStrategy}>
+                  {t("Cancel")}
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => void confirmStrategy()} disabled={isSavingStrategy}>
+                  {isSavingStrategy ? t("Saving…") : t("Switch to {strategy}", { strategy: t(nextName) })}
+                </Button>
+              </div>
+            </DialogContent>
+          );
+        })() : null}
+      </Dialog>
     </div>
   );
 }

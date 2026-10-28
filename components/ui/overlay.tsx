@@ -28,7 +28,7 @@ export function DialogContent({
   children: React.ReactNode;
   className?: string;
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   wide?: boolean;
   id?: string;
   hideHeader?: boolean;
@@ -52,7 +52,7 @@ export function DialogContent({
             </DialogPrimitive.Title>
             {description ? (
               <DialogPrimitive.Description className="mt-1 text-[13px] text-fg-muted">
-                {t(description)}
+                {typeof description === "string" ? t(description) : description}
               </DialogPrimitive.Description>
             ) : (
               <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>

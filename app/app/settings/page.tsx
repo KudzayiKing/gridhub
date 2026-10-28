@@ -190,11 +190,11 @@ export default function SettingsPage() {
 
       <Card className="p-4">
           <h2 className="text-[14px] font-semibold">{t("Account")}</h2>
-        <p className="mt-0.5 text-[12px] text-fg-muted">
-          {isSupabaseConfigured()
-            ? t("Signed in with Google through Supabase Auth.")
-            : t("Supabase is not configured in this environment, so you are working in local-only mode.")}
-        </p>
+        {!isSupabaseConfigured() ? (
+          <p className="mt-0.5 text-[12px] text-fg-muted">
+            {t("Supabase is not configured in this environment, so you are working in local-only mode.")}
+          </p>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
             variant="ghost"
