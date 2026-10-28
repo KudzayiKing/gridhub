@@ -76,6 +76,11 @@ To enable accounts, sync and billing, follow:
 2. [`docs/GOOGLE_AUTH.md`](docs/GOOGLE_AUTH.md) — OAuth client and redirect allowlist
 3. [`docs/STRIPE_SETUP.md`](docs/STRIPE_SETUP.md) — products, prices, webhook endpoint
 
+Journal articles can be translated on demand with Google Cloud Translation. Set the server-only
+`GOOGLE_TRANSLATE_API_KEY` in Vercel and apply `supabase/migrations/0006_journal_article_translations.sql`
+to cache generated translations across readers and devices. Without the API key, article pages
+continue to show the English original.
+
 ### Scripts
 
 | Command | Purpose |

@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingShell } from "@/components/marketing/shell";
-import { ArticleCard } from "@/components/journal/article-card";
-import { ArticleBody } from "@/components/journal/article-body";
-import { getJournalCategories, getPublishedArticle, getPublishedArticles, readingMinutes } from "@/lib/journal/data";
+import { LocalizedArticle } from "@/components/journal/localized-article";
+import { JournalCategoryListing, RelatedGuides } from "@/components/journal/journal-listings";
+import { getJournalCategories, getPublishedArticle, getPublishedArticles } from "@/lib/journal/data";
 import { FREE_TOOLS } from "@/lib/free-tool-catalog";
 import { TOOL_MAP } from "@/lib/catalog";
-import { JournalArticleAnalytics } from "@/components/journal/journal-analytics";
-import { ArticleToolCtas } from "@/components/journal/article-tool-ctas";
 import { getSiteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
@@ -20,31 +17,18 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return { title: article.seo_title || article.title, description: article.seo_description || article.excerpt, alternates: { canonical: article.canonical_url || `${getSiteUrl()}/journal/${article.slug}` }, openGraph: { type: "article", title: article.seo_title || article.title, description: article.seo_description || article.excerpt, publishedTime: article.published_at ?? undefined, modifiedTime: article.updated_at } };
 }
 
-function contents(markdown: string) { return markdown.split("\n").flatMap((line) => { const heading = line.match(/^#{2,3}\s+(.+)$/); if (!heading) return []; const title = heading[1].trim(); return [{ title, id: title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") }]; }); }
-
-type ArticlePracticeCtaProps = {
-  articleId: string;
-  calculator?: { href: string; label: string };
-  tool?: { href: string; label: string };
-};
-
-function ArticlePracticeCta({ articleId, calculator, tool }: ArticlePracticeCtaProps) {
-  return <section className="rounded-2xl border border-line bg-[var(--surface)] p-5"><p className="eyebrow">Keep going with GridHub</p><h2 className="mt-2 text-lg font-semibold">Put this guide into practice</h2><p className="mt-1 text-sm text-fg-muted">Use a relevant GridHub tool to put these ideas into action.</p><ArticleToolCtas articleId={articleId} calculator={calculator} tool={tool}/></section>;
-}
-
 export default async function JournalSlugPage({ params }: Params) {
   const { slug } = await params; const categories = await getJournalCategories(); const category = categories.find((item) => item.slug === slug);
   if (category) {
     const articles = await getPublishedArticles({ category: slug });
-    return <MarketingShell><div className="mx-auto max-w-6xl px-4 pb-16 pt-10"><Link href="/journal" className="text-xs text-fg-muted hover:text-fg">← GridHub Journal</Link><section className="mt-4 rounded-[28px] border border-line bg-[var(--surface)] p-6 sm:p-9"><p className="eyebrow">Journal collection</p><h1 className="mt-2 text-4xl font-semibold">{category.name}</h1><p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-muted">{category.description}</p></section>{articles.length ? <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{articles.map((article) => <ArticleCard key={article.id} article={article}/>)}</div> : <p className="mt-7 rounded-2xl border border-dashed border-line p-8 text-center text-sm text-fg-muted">No published articles in this collection yet.</p>}</div></MarketingShell>;
+    return <MarketingShell><JournalCategoryListing category={category} articles={articles}/></MarketingShell>;
   }
   const article = await getPublishedArticle(slug); if (!article?.revision) notFound();
   const [, nearby] = await Promise.all([getPublishedArticles({ limit: 100 }), getPublishedArticles({ category: article.category?.slug, limit: 5 })]);
-  const related = nearby.filter((item) => item.id !== article.id).slice(0, 3); const toc = contents(article.revision.body_markdown);
+  const related = nearby.filter((item) => item.id !== article.id).slice(0, 3);
   const calculator = article.related_calculator_slug ? FREE_TOOLS.find((tool) => tool.id === article.related_calculator_slug) : undefined;
   const gridhubTool = article.related_tool_slug ? Object.values(TOOL_MAP).find((tool) => tool.id === article.related_tool_slug) : undefined;
   const publishedAt = article.published_at ? new Date(article.published_at) : new Date(article.revision.created_at);
   const jsonLd = { "@context": "https://schema.org", "@type": "Article", headline: article.title, description: article.seo_description || article.excerpt, datePublished: publishedAt.toISOString(), dateModified: new Date(article.updated_at).toISOString(), author: { "@type": "Organization", name: article.author_name }, publisher: { "@type": "Organization", name: "GridHub", url: getSiteUrl() }, mainEntityOfPage: article.canonical_url || `${getSiteUrl()}/journal/${article.slug}`, ...(article.featured_image ? { image: [article.featured_image] } : {}) };
-  const cta = calculator || gridhubTool ? <ArticlePracticeCta articleId={article.id} calculator={calculator ? { href: `/free-tools/${calculator.id}`, label: calculator.cta } : undefined} tool={gridhubTool ? { href: gridhubTool.route, label: gridhubTool.shortName } : undefined}/> : null;
-  return <MarketingShell><article className="mx-auto max-w-6xl px-4 pb-16 pt-8"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}/><div className="mb-6 text-xs text-fg-subtle"><Link href="/journal" className="hover:text-fg">Journal</Link>{article.category && <> / <Link href={`/journal/${article.category.slug}`} className="hover:text-fg">{article.category.name}</Link></>}</div><header className="mx-auto max-w-3xl"><p className="eyebrow">{article.category?.name ?? "GridHub Journal"}</p><h1 className="display-xl mt-3 text-4xl leading-tight sm:text-5xl">{article.title}</h1><p className="mt-4 text-lg leading-relaxed text-fg-muted">{article.excerpt}</p><div className="mt-5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-fg-subtle"><span>{article.author_name}</span><span>·</span><time dateTime={publishedAt.toISOString()}>Published {publishedAt.toLocaleDateString("en", { dateStyle: "long", timeZone: "UTC" })}</time>{article.updated_at !== article.published_at && <><span>·</span><time dateTime={article.updated_at}>Updated {new Date(article.updated_at).toLocaleDateString("en", { dateStyle: "long", timeZone: "UTC" })}</time></>}<span>·</span><span>{readingMinutes(article.revision.body_markdown)} min read</span></div></header>{article.featured_image && <figure className="mx-auto mt-8 max-w-5xl"><img className="max-h-[480px] w-full rounded-3xl border border-line object-cover" src={article.featured_image} alt={article.featured_image_alt} fetchPriority="high"/></figure>}<div className="mx-auto mt-9 grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_240px]"><div className="mx-auto w-full max-w-3xl"><ArticleBody markdown={article.revision.body_markdown}/><p className="mt-8 border-t border-line pt-5 text-xs leading-relaxed text-fg-subtle">This guide is general information for educational purposes. Verify details that depend on your personal circumstances, jurisdiction, or current product terms.</p>{cta && <div className="mt-8">{cta}</div>}<JournalArticleAnalytics articleId={article.id}/></div>{toc.length > 2 && <aside className="order-first lg:order-last"><div className="sticky top-24 space-y-4"><div className="rounded-2xl border border-line bg-[var(--surface)] p-4"><p className="eyebrow">On this page</p><ul className="mt-3 space-y-2">{toc.map((item) => <li key={item.id}><a className="text-xs leading-relaxed text-fg-muted hover:text-fg" href={`#${item.id}`}>{item.title}</a></li>)}</ul></div>{cta}</div></aside>}</div>{related.length > 0 && <section className="mx-auto mt-12 max-w-6xl"><h2 className="text-2xl font-semibold">Related guides</h2><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{related.map((item) => <ArticleCard key={item.id} article={item}/>)}</div></section>}</article></MarketingShell>;
+  return <MarketingShell><article className="mx-auto max-w-6xl px-4 pb-16 pt-8"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}/>{article.featured_image && <figure className="mx-auto mt-8 max-w-5xl"><img className="max-h-[480px] w-full rounded-3xl border border-line object-cover" src={article.featured_image} alt={article.featured_image_alt} fetchPriority="high"/></figure>}<LocalizedArticle articleId={article.id} revisionId={article.published_revision_id ?? article.revision.id} slug={article.slug} title={article.title} excerpt={article.excerpt} category={article.category ? { name: article.category.name, slug: article.category.slug } : null} authorName={article.author_name} publishedAt={publishedAt.toISOString()} updatedAt={article.updated_at} bodyMarkdown={article.revision.body_markdown} calculator={calculator ? { href: `/free-tools/${calculator.id}`, label: calculator.cta } : undefined} tool={gridhubTool ? { href: gridhubTool.route, label: gridhubTool.shortName } : undefined}/>{related.length > 0 && <RelatedGuides articles={related}/>}</article></MarketingShell>;
 }
