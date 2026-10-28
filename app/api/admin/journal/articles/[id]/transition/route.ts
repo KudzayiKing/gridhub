@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: Context) {
   const service = getServiceClient();
   if (!service) return NextResponse.json({ error: "Service role key not configured" }, { status: 503 });
   const { id } = await params;
-  let body: { action?: string; publish_at?: string; notes?: string; checklist?: Record<string, boolean> };
+  let body: { action?: string; publish_at?: string; notes?: string; checklist?: Record<string, boolean>; editorial_confirmation?: boolean };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   const { data: article, error } = await service.from("journal_articles").select("*").eq("id", id).maybeSingle();
   if (error || !article) return NextResponse.json({ error: "Article not found" }, { status: 404 });
@@ -65,9 +65,18 @@ export async function POST(request: Request, { params }: Context) {
     const { error: scheduleError } = await service.from("journal_publication_schedule").upsert({ article_id: id, revision_id: article.approved_revision_id, publish_at: date.toISOString(), created_by: auth.userId, status: "scheduled" }, { onConflict: "article_id,revision_id" });
     if (scheduleError) return NextResponse.json({ error: scheduleError.message }, { status: 500 });
   } else if (action === "publish-now") {
-    if (article.status !== "approved" || !article.approved_revision_id) return NextResponse.json({ error: "Only an approved revision can be published." }, { status: 409 });
+    const draftPublish = article.status === "draft";
+    const revisionId = draftPublish ? article.current_revision_id : article.approved_revision_id;
+    if (!revisionId) return NextResponse.json({ error: "Save the article before publishing." }, { status: 409 });
+    if (draftPublish && body.editorial_confirmation !== true) return NextResponse.json({ error: "Confirm that you reviewed the article before publishing." }, { status: 400 });
+    if (draftPublish) {
+      const { data: revision, error: revisionError } = await service.from("journal_article_revisions").select("body_markdown").eq("id", revisionId).single();
+      if (revisionError || !revision || revision.body_markdown.trim().length < 80) return NextResponse.json({ error: "Add the article content before publishing." }, { status: 422 });
+      if (!article.title?.trim() || !article.slug?.trim() || !article.seo_title?.trim() || !article.seo_description?.trim()) return NextResponse.json({ error: "Add the title, URL slug, SEO title, and description before publishing." }, { status: 422 });
+      update.approved_revision_id = revisionId;
+    }
     next = "published";
-    update.published_revision_id = article.approved_revision_id;
+    update.published_revision_id = revisionId;
     update.published_at = new Date().toISOString();
   } else if (action === "cancel-schedule") {
     if (article.status !== "scheduled") return NextResponse.json({ error: "Article is not scheduled." }, { status: 409 });
@@ -75,14 +84,19 @@ export async function POST(request: Request, { params }: Context) {
     update.publish_at = null;
     await service.from("journal_publication_schedule").update({ status: "canceled" }).eq("article_id", id).eq("status", "scheduled");
   } else if (action === "archive") next = "archived";
-  if (!next || !transitions[article.status]?.includes(next)) return NextResponse.json({ error: `Transition ${article.status} → ${next ?? "?"} is not allowed.` }, { status: 409 });
+  const directDraftPublish = action === "publish-now" && article.status === "draft" && next === "published";
+  if (!next || (!directDraftPublish && !transitions[article.status]?.includes(next))) return NextResponse.json({ error: `Transition ${article.status} → ${next ?? "?"} is not allowed.` }, { status: 409 });
   update.status = next;
   const { data: transitioned, error: updateError } = await service.from("journal_articles").update(update).eq("id", id).eq("status", article.status).select("id").maybeSingle();
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
   if (!transitioned) return NextResponse.json({ error: "Article changed in another session. Reload before trying again." }, { status: 409 });
-  if (action === "publish-now" && article.approved_revision_id) {
-    await service.from("journal_publication_schedule").upsert({ article_id: id, revision_id: article.approved_revision_id, publish_at: update.published_at, status: "published", created_by: auth.userId }, { onConflict: "article_id,revision_id" });
-    await service.from("journal_publication_events").insert({ article_id: id, revision_id: article.approved_revision_id, event_type: article.published_revision_id ? "republished" : "published", actor_id: auth.userId, source: "admin" });
+  if (action === "publish-now" && update.published_revision_id) {
+    const publishedRevisionId = String(update.published_revision_id);
+    await service.from("journal_publication_schedule").upsert({ article_id: id, revision_id: publishedRevisionId, publish_at: update.published_at, status: "published", created_by: auth.userId }, { onConflict: "article_id,revision_id" });
+    await service.from("journal_publication_events").insert({ article_id: id, revision_id: publishedRevisionId, event_type: article.published_revision_id ? "republished" : "published", actor_id: auth.userId, source: "admin" });
+    if (article.status === "draft") {
+      await service.from("journal_editorial_reviews").insert({ article_id: id, revision_id: publishedRevisionId, reviewer_id: auth.userId, decision: "approved", checklist: { editorial_confirmation: true }, notes: "Editor confirmed review while publishing." });
+    }
   }
   if (action === "archive" && article.published_revision_id) {
     await service.from("journal_publication_events").insert({ article_id: id, revision_id: article.published_revision_id, event_type: "archived", actor_id: auth.userId, source: "admin" });
