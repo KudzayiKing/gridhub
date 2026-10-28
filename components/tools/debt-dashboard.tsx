@@ -52,6 +52,7 @@ export function DebtDashboard({ currency }: { currency: string }) {
   const [historyRange, setHistoryRange] = React.useState(12);
   const [extraAmount, setExtraAmount] = React.useState(0);
   const [targetDebt, setTargetDebt] = React.useState("");
+  const [selectedDebtId, setSelectedDebtId] = React.useState<string | null>(null);
   const [paymentTarget, setPaymentTarget] = React.useState<DebtDueOccurrence | null>(null);
   const [paymentAmount, setPaymentAmount] = React.useState("");
   const [paymentPrincipal, setPaymentPrincipal] = React.useState("");
@@ -72,14 +73,27 @@ export function DebtDashboard({ currency }: { currency: string }) {
   const totals = debtTotals(debts);
   const extraFromRecords = round2(debts.reduce((sum, debt) => sum + Math.max(0, debt.extraPayment ?? 0), 0));
   const simulationInput = debts.map((debt) => ({ id: debt.id, name: debt.name, balance: Math.max(0, debt.openingPrincipal), annualRate: Math.max(0, debt.annualRate), minimumPayment: Math.max(0, debt.minimumPayment) * (debt.frequency === "biweekly" ? 26 / 12 : 1) }));
-  const baseSimulation = simulateDebt(simulationInput, extraFromRecords, strategy);
   const snowball = simulateDebt(simulationInput, extraFromRecords, "snowball");
   const avalanche = simulateDebt(simulationInput, extraFromRecords, "avalanche");
-  const simulatorInput = targetDebt
-    ? simulationInput.map((debt) => ({ ...debt, minimumPayment: debt.id === targetDebt ? debt.minimumPayment + extraAmount : debt.minimumPayment }))
-    : simulationInput;
-  const proposedSimulation = simulateDebt(simulatorInput, targetDebt ? extraFromRecords : extraFromRecords + extraAmount, strategy);
+  const strategyDebts = selectedDebtId ? debts.filter((debt) => debt.id === selectedDebtId) : debts;
+  const strategySimulationInput = selectedDebtId ? simulationInput.filter((debt) => debt.id === selectedDebtId) : simulationInput;
+  const activeSelectedDebtId = strategyDebts.length === 1 && selectedDebtId ? strategyDebts[0].id : null;
+  const selectedDebtExists = selectedDebtId ? debts.some((debt) => debt.id === selectedDebtId) : true;
+  const strategyExtraFromRecords = round2(strategyDebts.reduce((sum, debt) => sum + Math.max(0, debt.extraPayment ?? 0), 0));
+  const strategySnowball = simulateDebt(strategySimulationInput, strategyExtraFromRecords, "snowball");
+  const strategyAvalanche = simulateDebt(strategySimulationInput, strategyExtraFromRecords, "avalanche");
+  const strategyProjection = strategy === "snowball" ? strategySnowball : strategyAvalanche;
+  const simulatorTargetDebt = selectedDebtId ?? (targetDebt && strategySimulationInput.some((debt) => debt.id === targetDebt) ? targetDebt : null);
+  const simulatorInput = simulatorTargetDebt
+    ? strategySimulationInput.map((debt) => ({ ...debt, minimumPayment: debt.id === simulatorTargetDebt ? debt.minimumPayment + extraAmount : debt.minimumPayment }))
+    : strategySimulationInput;
+  const baseStrategySimulation = strategyProjection;
+  const proposedSimulation = simulateDebt(simulatorInput, simulatorTargetDebt ? strategyExtraFromRecords : strategyExtraFromRecords + extraAmount, strategy);
   const selectedStrategy = strategy === "snowball" ? snowball : avalanche;
+  const strategyComparisons = [strategySnowball, strategyAvalanche] as const;
+  React.useEffect(() => {
+    if (selectedDebtId && !selectedDebtExists) setSelectedDebtId(null);
+  }, [selectedDebtId, selectedDebtExists]);
   const dateExtent = calendarMode === "month"
     ? { from: monthStart(calendarDate), to: localISODate(new Date(Number(calendarDate.slice(0, 4)), Number(calendarDate.slice(5, 7)), 0)) }
     : calendarMode === "week"
@@ -245,7 +259,10 @@ export function DebtDashboard({ currency }: { currency: string }) {
     <div className="flex flex-col gap-3">
       <AnimatedTabs
         value={section}
-        onChange={setSection}
+        onChange={(nextSection) => {
+          if (nextSection !== section) setSelectedDebtId(null);
+          setSection(nextSection);
+        }}
         ariaLabel="Debt payoff sections"
         className="no-scrollbar flex gap-1 overflow-x-auto"
         buttonClassName="px-3 py-1.5 text-[12px]"
@@ -256,6 +273,19 @@ export function DebtDashboard({ currency }: { currency: string }) {
           ["insights", "Insights", "chart-no-axes-combined"],
         ] as const).map(([value, label]) => ({ value, label }))}
       />
+      {section === "strategies" ? (
+        <AnimatedTabs
+          value={activeSelectedDebtId ?? "all-debts"}
+          onChange={(value) => setSelectedDebtId(value === "all-debts" ? null : value)}
+          ariaLabel="Debt selection"
+          className="no-scrollbar flex gap-1 overflow-x-auto"
+          buttonClassName="px-3 py-1.5 text-[12px]"
+          options={[
+            { value: "all-debts", label: t("All Debts") },
+            ...debts.map((debt) => ({ value: debt.id, label: debt.name })),
+          ]}
+        />
+      ) : null}
       {paymentSuccess ? <p role="status" className="rounded-xl border border-[var(--positive)]/30 bg-[var(--positive)]/10 px-3 py-2 text-[11px] text-[var(--positive)]">{paymentSuccess}<button className="ml-2 underline" onClick={() => setPaymentSuccess("")}>Dismiss</button></p> : null}
       {section === "overview" ? <>
         <div className="grid items-stretch gap-3 xl:grid-cols-2">
@@ -358,16 +388,16 @@ export function DebtDashboard({ currency }: { currency: string }) {
           <div className="flex gap-2">{(["snowball", "avalanche"] as const).map((item) => <Button key={item} size="sm" variant={strategy === item ? "primary" : "secondary"} onClick={(event) => changeStrategy(item, event)}>{t(item === "snowball" ? "Snowball · smallest balance" : "Avalanche · highest APR")}</Button>)}</div>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          {([snowball, avalanche] as const).map((result) => <section key={result.strategy} className="rounded-2xl border border-line bg-[var(--surface)] p-3"><h3 className="text-[13px] font-semibold capitalize">{result.strategy} comparison</h3><div className="mt-2 grid grid-cols-2 gap-2"><CompactMetric label="Debt-free date" value={result.nonAmortizing ? "Payment too low" : result.payoffDate.slice(0, 7)} hint={result.months + " months"} /><CompactMetric label="Projected interest" value={formatMoney(result.totalInterest, { currency })} /><CompactMetric label="Total repayment" value={formatMoney(result.totalPaid, { currency })} /><CompactMetric label="First payoff" value={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.name ?? "No milestone"} hint={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.payoffDate ?? "Insufficient payments"} /></div></section>)}
+          {strategyComparisons.map((result) => <section key={result.strategy} className="rounded-2xl border border-line bg-[var(--surface)] p-3"><h3 className="text-[13px] font-semibold capitalize">{result.strategy} comparison{activeSelectedDebtId ? " · " + (debts.find((debt) => debt.id === activeSelectedDebtId)?.name ?? "") : " · " + t("All Debts")}</h3><div className="mt-2 grid grid-cols-2 gap-2"><CompactMetric label="Debt-free date" value={result.nonAmortizing ? "Payment too low" : result.payoffDate.slice(0, 7)} hint={result.months + " months"} /><CompactMetric label="Projected interest" value={formatMoney(result.totalInterest, { currency })} /><CompactMetric label="Total repayment" value={formatMoney(result.totalPaid, { currency })} /><CompactMetric label="First payoff" value={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.name ?? "No milestone"} hint={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.payoffDate ?? "Insufficient payments"} /></div></section>)}
         </div>
         <ChartContainer title="Extra payment impact simulator" subtitle="Preview only · saved debt payment schedules are unchanged" icon="target">
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_16rem]">
-            <div className="space-y-3"><label className="block text-[11px] text-fg-muted">Additional monthly amount<input type="number" min="0" step="10" value={extraAmount} onChange={(event) => setExtraAmount(Math.max(0, Number(event.target.value) || 0))} className="mt-1 h-10 w-full rounded-lg border border-line bg-[var(--surface)] px-3 text-sm"/></label><input aria-label="Extra monthly payment slider" type="range" min="0" max={Math.max(1000, extraFromRecords * 3, totals.minimums * 2)} step="10" value={Math.min(extraAmount, Math.max(1000, extraFromRecords * 3, totals.minimums * 2))} onChange={(event) => setExtraAmount(Number(event.target.value))} className="w-full accent-[var(--accent)]"/><label className="block text-[11px] text-fg-muted">Apply extra to<Select value={targetDebt} onChange={(event) => setTargetDebt(event.target.value)} className="mt-1 h-10 w-full"><option value="">Selected strategy target</option>{debts.map((debt) => <option key={debt.id} value={debt.id}>{debt.name}</option>)}</Select></label><p className="text-[10px] text-fg-subtle">Each debt accrues estimated monthly interest at APR ÷ 12. The simulation caps each final payment at the remaining balance and does not create a payment record.</p></div>
-            <div className="grid grid-cols-2 gap-2"><CompactMetric label="Current payoff" value={baseSimulation.nonAmortizing ? "Insufficient" : baseSimulation.months + " mo"} hint={formatMoney(baseSimulation.totalInterest, { currency }) + " interest"} /><CompactMetric label="Proposed payoff" value={proposedSimulation.nonAmortizing ? "Insufficient" : proposedSimulation.months + " mo"} hint={formatMoney(proposedSimulation.totalInterest, { currency }) + " interest"} tone="positive" /><CompactMetric label="Months saved" value={baseSimulation.nonAmortizing ? "—" : Math.max(0, baseSimulation.months - proposedSimulation.months) + " mo"} /><CompactMetric label="Interest saved" value={formatMoney(Math.max(0, baseSimulation.totalInterest - proposedSimulation.totalInterest), { currency })} tone="positive" /></div>
+            <div className="space-y-3"><label className="block text-[11px] text-fg-muted">Additional monthly amount<input type="number" min="0" step="10" value={extraAmount} onChange={(event) => setExtraAmount(Math.max(0, Number(event.target.value) || 0))} className="mt-1 h-10 w-full rounded-lg border border-line bg-[var(--surface)] px-3 text-sm"/></label><input aria-label="Extra monthly payment slider" type="range" min="0" max={Math.max(1000, extraFromRecords * 3, totals.minimums * 2)} step="10" value={Math.min(extraAmount, Math.max(1000, extraFromRecords * 3, totals.minimums * 2))} onChange={(event) => setExtraAmount(Number(event.target.value))} className="w-full accent-[var(--accent)]"/><label className="block text-[11px] text-fg-muted">Apply extra to<Select value={simulatorTargetDebt ?? ""} onChange={(event) => setTargetDebt(event.target.value)} className="mt-1 h-10 w-full"><option value="">Selected strategy target</option>{strategyDebts.map((debt) => <option key={debt.id} value={debt.id}>{debt.name}</option>)}</Select></label><p className="text-[10px] text-fg-subtle">Each debt accrues estimated monthly interest at APR ÷ 12. The simulation caps each final payment at the remaining balance and does not create a payment record.</p></div>
+            <div className="grid grid-cols-2 gap-2"><CompactMetric label="Current payoff" value={baseStrategySimulation.nonAmortizing ? "Insufficient" : baseStrategySimulation.months + " mo"} hint={formatMoney(baseStrategySimulation.totalInterest, { currency }) + " interest"} /><CompactMetric label="Proposed payoff" value={proposedSimulation.nonAmortizing ? "Insufficient" : proposedSimulation.months + " mo"} hint={formatMoney(proposedSimulation.totalInterest, { currency }) + " interest"} tone="positive" /><CompactMetric label="Months saved" value={baseStrategySimulation.nonAmortizing ? "—" : Math.max(0, baseStrategySimulation.months - proposedSimulation.months) + " mo"} /><CompactMetric label="Interest saved" value={formatMoney(Math.max(0, baseStrategySimulation.totalInterest - proposedSimulation.totalInterest), { currency })} tone="positive" /></div>
           </div>
         </ChartContainer>
         <ChartContainer title="Projected payoff milestones" subtitle={"Calculated by the " + strategy + " amortization simulation"} icon="calendar-range">
-          {selectedStrategy.perDebt.length ? <div className="flex flex-col gap-2">{[...selectedStrategy.perDebt].sort((a, b) => a.payoffMonth - b.payoffMonth).map((milestone) => <div key={milestone.debtId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-line p-2.5"><div className="min-w-0"><p className="truncate text-[12px] font-medium">{milestone.name}</p><p className="text-[10px] text-fg-subtle">{milestone.payoffMonth ? dateLabel(milestone.payoffDate, { month: "long", year: "numeric" }) : "No payoff month projected"}</p></div><div className="w-24"><div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full bg-[var(--accent)]" style={{ width: selectedStrategy.months ? Math.min(100, milestone.payoffMonth / selectedStrategy.months * 100) + "%" : "0%" }} /></div></div></div>)}</div> : <ChartEmptyState label="Add debts to calculate payoff milestones" />}
+          {strategyProjection.perDebt.length ? <div className="flex flex-col gap-2">{[...strategyProjection.perDebt].sort((a, b) => a.payoffMonth - b.payoffMonth).map((milestone) => <div key={milestone.debtId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-line p-2.5"><div className="min-w-0"><p className="truncate text-[12px] font-medium">{milestone.name}</p><p className="text-[10px] text-fg-subtle">{milestone.payoffMonth ? dateLabel(milestone.payoffDate, { month: "long", year: "numeric" }) : "No payoff month projected"}</p></div><div className="w-24"><div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full bg-[var(--accent)]" style={{ width: strategyProjection.months ? Math.min(100, milestone.payoffMonth / strategyProjection.months * 100) + "%" : "0%" }} /></div></div></div>)}</div> : <ChartEmptyState label="Add debts to calculate payoff milestones" />}
         </ChartContainer>
       </div> : null}
 
