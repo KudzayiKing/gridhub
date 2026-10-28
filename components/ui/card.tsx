@@ -190,12 +190,13 @@ export function CompactMetric({
   hint?: string;
   tone?: "neutral" | "positive" | "negative";
 }) {
+  const { t } = useI18n();
   const color = tone === "positive" ? "var(--positive)" : tone === "negative" ? "var(--negative)" : "var(--fg)";
   return (
     <div className="flex min-h-[82px] min-w-0 flex-col rounded-xl border border-line bg-[var(--bg-subtle)]/50 px-2.5 py-2">
-      <p className="truncate text-[10px] uppercase tracking-wide text-fg-subtle">{label}</p>
+      <p className="truncate text-[10px] uppercase tracking-wide text-fg-subtle">{t(label)}</p>
       <p className="tnum truncate text-[13px] font-semibold leading-5" style={{ color }}>{value}</p>
-      <p className="min-h-[14px] truncate text-[10px] leading-[14px] text-fg-subtle">{hint || " "}</p>
+      <p className="min-h-[14px] truncate text-[10px] leading-[14px] text-fg-subtle">{hint ? t(hint) : " "}</p>
     </div>
   );
 }

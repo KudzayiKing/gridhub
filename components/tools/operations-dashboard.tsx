@@ -12,6 +12,7 @@ import { dailyTotals } from "@/lib/calc/life";
 import { contentSummary } from "@/lib/calc/work";
 import type { BusinessProduct, BusinessTransaction, CashForecastItem, CashScenario, ContentPost, Habit, HabitCompletion, InventoryMovement, Invoice, MoneyCategory, NutritionLog, Payment, PropertyExpense, Sale, SalesTarget, Task, WeddingExpense } from "@/lib/types";
 import type { ToolId } from "@/lib/catalog";
+import { useI18n } from "@/lib/i18n";
 
 export interface DashboardKpi {
   label: string;
@@ -39,10 +40,11 @@ export function OperationsDashboard({
   action?: React.ReactNode;
   pin?: { chartId: string; title: string; tool: ToolId };
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><h2 className="text-[16px] font-semibold">{title}</h2><p className="text-[11px] text-fg-muted">{description}</p></div>
+        <div><h2 className="text-[16px] font-semibold">{t(title)}</h2><p className="text-[11px] text-fg-muted">{t(description)}</p></div>
         {action}
       </div>
       <div className="grid items-stretch gap-3 lg:grid-cols-2">
@@ -57,7 +59,8 @@ export function OperationsDashboard({
 }
 
 export function DashboardAction({ label, onClick }: { label: string; onClick: () => void }) {
-  return <Button size="sm" variant="primary" icon="plus" onClick={onClick}>{label}</Button>;
+  const { t } = useI18n();
+  return <Button size="sm" variant="primary" icon="plus" onClick={onClick}>{t(label)}</Button>;
 }
 
 const colors = ["var(--positive)", "var(--accent)", "var(--warning)", "var(--negative)", "#76a8c9", "#b39ddb"];

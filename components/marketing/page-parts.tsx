@@ -1,5 +1,24 @@
+"use client";
+
 import Link from "next/link";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
+import * as React from "react";
+import { useI18n } from "@/lib/i18n";
+
+function localizeTextNodes(node: React.ReactNode, t: (source: string) => string): React.ReactNode {
+  if (typeof node === "string") {
+    const text = node.trim();
+    if (!text) return node;
+    const leading = node.slice(0, node.indexOf(text));
+    const trailing = node.slice(node.indexOf(text) + text.length);
+    return `${leading}${t(text)}${trailing}`;
+  }
+  if (Array.isArray(node)) return node.map((child) => localizeTextNodes(child, t));
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return React.cloneElement(node, undefined, localizeTextNodes(node.props.children, t));
+  }
+  return node;
+}
 
 export function PageHeader({
   eyebrow,
@@ -12,12 +31,13 @@ export function PageHeader({
   description?: string;
   children?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-14">
-      <p className="eyebrow">{eyebrow}</p>
-      <h1 className="display-xl mt-2 max-w-3xl text-[34px] sm:text-[46px]">{title}</h1>
+      <p className="eyebrow">{t(eyebrow)}</p>
+      <h1 className="display-xl mt-2 max-w-3xl text-[34px] sm:text-[46px]">{t(title)}</h1>
       {description ? (
-        <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-fg-muted">{description}</p>
+        <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-fg-muted">{t(description)}</p>
       ) : null}
       {children}
     </section>
@@ -25,14 +45,14 @@ export function PageHeader({
 }
 
 export function Prose({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   return (
     <div className="mx-auto max-w-3xl px-4 pb-16">
       <div className="flex flex-col gap-5 text-[13.5px] leading-relaxed text-fg-muted [&_h2]:mt-4 [&_h2]:text-[17px] [&_h2]:font-semibold [&_h2]:text-fg [&_h3]:mt-2 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:text-fg [&_li]:ml-4 [&_li]:list-disc [&_p]:max-w-none [&_strong]:text-fg [&_ul]:flex [&_ul]:flex-col [&_ul]:gap-1">
-        {children}
+        {localizeTextNodes(children, t)}
       </div>
       <p className="mt-8 rounded-xl border border-line bg-[var(--bg-subtle)]/60 p-3 text-[11.5px] text-fg-subtle">
-        This page is product documentation, not legal advice. Have your own counsel review anything you rely on
-        commercially.
+        {t("This page is product documentation, not legal advice. Have your own counsel review anything you rely on commercially.")}
       </p>
     </div>
   );
@@ -57,16 +77,17 @@ export function CtaBand({
   title?: string;
   body?: string;
 }) {
+  const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-4 pb-16">
       <div className="gp-card glass-sheen flex flex-col items-center gap-2 px-6 py-10 text-center">
-        <h2 className="display-xl text-2xl sm:text-3xl">{title}</h2>
-        <p className="max-w-md text-[13px] leading-relaxed text-fg-muted">{body}</p>
+        <h2 className="display-xl text-2xl sm:text-3xl">{t(title)}</h2>
+        <p className="max-w-md text-[13px] leading-relaxed text-fg-muted">{t(body)}</p>
         <Link
           href="/login"
           className="press mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-[13px] font-medium text-[var(--accent-fg)]"
         >
-          Create your workspace
+          {t("Create your workspace")}
           <AnimatedIcon name="arrowRight" size={14} trigger="click" />
         </Link>
       </div>

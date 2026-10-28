@@ -43,7 +43,7 @@ export function TrendChart({
   type?: "line" | "area";
   showGrid?: boolean;
 }) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const mounted = useMounted();
   if (!mounted) return <div style={{ height }} />;
   if (!data.length || !series.length) return <ChartEmptyState label="No trend data yet" />;
@@ -86,7 +86,7 @@ export function TrendChart({
                   key={s.key}
                   type="monotone"
                   dataKey={s.key}
-                  name={s.name}
+                  name={t(s.name)}
                   stroke={color}
                   fill={color}
                   fillOpacity={0.12}
@@ -112,7 +112,7 @@ export function TrendChart({
                   key={s.key}
                   type="monotone"
                   dataKey={s.key}
-                  name={s.name}
+                  name={t(s.name)}
                   stroke={color}
                   strokeWidth={2}
                   dot={false}

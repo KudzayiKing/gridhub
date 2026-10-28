@@ -72,8 +72,8 @@ export default function BillingPage() {
   return (
     <div className="flex flex-col gap-5">
       <SectionHeading
-        eyebrow="Subscription"
-        title="Billing"
+        eyebrow={t("Subscription")}
+        title={t("Billing")}
         description={t("Choose the plan that fits the tools you actually use. Annual billing is charged upfront.")}
         action={
           <Segmented
@@ -89,8 +89,8 @@ export default function BillingPage() {
 
       {entitlement && entitlement.configured === false ? (
         <InlineAlert tone="warning" title="Billing is not configured in this environment">
-          Stripe keys and price IDs are missing, so checkout cannot complete. Everything else in the workspace works
-          locally. See <code className="text-[12px]">docs/STRIPE_SETUP.md</code> to finish configuration.
+              {t("Stripe keys and price IDs are missing, so checkout cannot complete. Everything else in the workspace works locally. See")}{" "}
+              <code className="text-[12px]">docs/STRIPE_SETUP.md</code>{" "}{t("to finish configuration.")}
         </InlineAlert>
       ) : null}
 
@@ -116,7 +116,7 @@ export default function BillingPage() {
               {entitlement?.adminAccess ? t("Admin") : t(entitlement?.status ?? "local")}
             </Badge>
             <Button variant="secondary" size="sm" icon="billing" onClick={openPortal} disabled={busy === "portal"}>
-              Manage billing
+              {t("Manage billing")}
             </Button>
           </div>
         </div>
