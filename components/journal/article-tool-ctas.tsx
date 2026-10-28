@@ -19,7 +19,7 @@ export function ArticleToolCtas({ articleId, calculator, tool }: ArticleToolCtas
             trackJournalEvent(articleId, "journal_cta_clicked");
             trackJournalEvent(articleId, "journal_calculator_opened");
           }}
-          className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)]"
+          className="max-w-full whitespace-nowrap rounded-full bg-[var(--accent)] px-3 py-2 text-[clamp(0.625rem,3.1vw,0.875rem)] font-semibold text-[var(--accent-fg)] sm:px-4"
         >
           {calculator.label}
         </Link>
@@ -28,7 +28,7 @@ export function ArticleToolCtas({ articleId, calculator, tool }: ArticleToolCtas
         <Link
           href={tool.href}
           onClick={() => trackJournalEvent(articleId, "journal_cta_clicked")}
-          className="rounded-full border border-line px-4 py-2 text-sm font-medium"
+          className="max-w-full whitespace-nowrap rounded-full border border-line px-3 py-2 text-[clamp(0.625rem,3.1vw,0.875rem)] font-medium sm:px-4"
         >
           Explore {tool.label}
         </Link>
