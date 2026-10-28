@@ -8,6 +8,7 @@ import { Badge, Card, InlineAlert, SectionHeading } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/field";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
 interface EntitlementResponse {
@@ -21,6 +22,7 @@ interface EntitlementResponse {
 }
 
 export default function BillingPage() {
+  const { t } = useI18n();
   const { active } = useActiveTools();
   const [interval, setInterval] = React.useState<BillingInterval>("monthly");
   const [entitlement, setEntitlement] = React.useState<EntitlementResponse | null>(null);
@@ -72,7 +74,7 @@ export default function BillingPage() {
       <SectionHeading
         eyebrow="Subscription"
         title="Billing"
-        description="Choose the plan that fits the tools you actually use. Annual billing is charged upfront."
+        description={t("Choose the plan that fits the tools you actually use. Annual billing is charged upfront.")}
         action={
           <Segmented
             value={interval}
@@ -96,18 +98,22 @@ export default function BillingPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.08em] text-fg-subtle">Current plan</p>
-            <p className="mt-0.5 text-lg font-semibold capitalize">{entitlement?.plan ?? "No active subscription"}</p>
+            <p className="mt-0.5 text-lg font-semibold capitalize">
+              {entitlement?.plan
+                ? t(PLANS.find((plan) => plan.id === entitlement.plan)?.name ?? entitlement.plan)
+                : t("No active subscription")}
+            </p>
             <p className="text-[12px] text-fg-muted">
               {entitlement?.adminAccess
-                ? "Admin testing access · no payment required."
+                ? t("Admin testing access · no payment required.")
                 : entitlement?.currentPeriodEnd
-                ? `Renews ${entitlement.currentPeriodEnd}`
-                : "Local preview — no payment method on file."}
+                ? `${t("Renews")} ${entitlement.currentPeriodEnd}`
+                : t("Local preview — no payment method on file.")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge tone={entitlement?.status === "active" ? "positive" : "neutral"}>
-              {entitlement?.adminAccess ? "Admin" : entitlement?.status ?? "local"}
+              {entitlement?.adminAccess ? t("Admin") : t(entitlement?.status ?? "local")}
             </Badge>
             <Button variant="secondary" size="sm" icon="billing" onClick={openPortal} disabled={busy === "portal"}>
               Manage billing
@@ -130,8 +136,8 @@ export default function BillingPage() {
               )}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-[14px] font-semibold">{plan.name}</h3>
-                {plan.id === "plus" ? <Badge tone="accent">Popular</Badge> : null}
+                <h3 className="text-[14px] font-semibold">{t(plan.name)}</h3>
+                {plan.id === "plus" ? <Badge tone="accent">{t("Popular")}</Badge> : null}
               </div>
 
               <div>
@@ -142,11 +148,11 @@ export default function BillingPage() {
                   </span>
                 </p>
                 {interval === "annual" && saving > 0 ? (
-                  <p className="text-[11px] text-[var(--positive)]">
-                    Save ${annualSavingsAmount(plan)} ({saving}%)
+                    <p className="text-[11px] text-[var(--positive)]">
+                    {t("Save ${amount} ({percent}%)", { amount: annualSavingsAmount(plan), percent: saving })}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-fg-subtle">{plan.blurb}</p>
+                  <p className="text-[11px] text-fg-subtle">{t(plan.blurb)}</p>
                 )}
               </div>
 
@@ -154,7 +160,7 @@ export default function BillingPage() {
                 {plan.highlights.map((h) => (
                   <li key={h} className="flex items-start gap-1.5">
                     <AnimatedIcon name="check" size={12} className="mt-0.5 text-[var(--accent)]" trigger="none" />
-                    {h}
+                    {t(h)}
                   </li>
                 ))}
               </ul>
@@ -162,11 +168,11 @@ export default function BillingPage() {
               <div className="mt-auto pt-1">
                 {entitlement?.adminAccess ? (
                   <Button variant="outline" size="sm" className="w-full" disabled>
-                    Included for admins
+                    {t("Included for admins")}
                   </Button>
                 ) : plan.id === "free" ? (
                   <Button variant="outline" size="sm" className="w-full" disabled>
-                    {isCurrent ? "Current plan" : "Included"}
+                    {isCurrent ? t("Current plan") : t("Included")}
                   </Button>
                 ) : (
                   <Button
@@ -176,7 +182,7 @@ export default function BillingPage() {
                     onClick={() => void startCheckout(plan.id)}
                     disabled={busy === plan.id}
                   >
-                    {isCurrent ? "Current plan" : busy === plan.id ? "Opening…" : "Choose"}
+                    {isCurrent ? t("Current plan") : busy === plan.id ? t("Opening…") : t("Choose")}
                   </Button>
                 )}
               </div>
@@ -186,15 +192,15 @@ export default function BillingPage() {
       </div>
 
       <Card className="p-4">
-        <h3 className="text-[13.5px] font-semibold">How tool selection works</h3>
+        <h3 className="text-[13.5px] font-semibold">{t("How tool selection works")}</h3>
         <ul className="mt-2 flex flex-col gap-1.5 text-[12px] leading-relaxed text-fg-muted">
-          <li>· Single includes any one paid tool, Plus three, Pro six, Unlimited all sixteen.</li>
-          <li>· Tool swaps are allowed once per billing cycle on Single, Plus and Pro. Upgrades take effect immediately.</li>
-          <li>· If you deactivate a tool, its records are preserved and become read-only rather than being deleted.</li>
-          <li>· Offline editing, data export and privacy protections are never paywalled.</li>
+          <li>· {t("Single includes any one paid tool, Plus three, Pro six, Unlimited all sixteen.")}</li>
+          <li>· {t("Tool swaps are allowed once per billing cycle on Single, Plus and Pro. Upgrades take effect immediately.")}</li>
+          <li>· {t("If you deactivate a tool, its records are preserved and become read-only rather than being deleted.")}</li>
+          <li>· {t("Offline editing, data export and privacy protections are never paywalled.")}</li>
         </ul>
         <p className="mt-2 text-[11.5px] text-fg-subtle">
-          You currently have {active.length} tool{active.length === 1 ? "" : "s"} activated.
+          {t("You currently have {count} tools activated.", { count: active.length })}
         </p>
       </Card>
     </div>

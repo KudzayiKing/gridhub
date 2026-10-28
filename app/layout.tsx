@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   },
   description:
     "Your money. Your business. Your life. Your work. One intelligent workspace.",
+  // The product has its own locale selector and static reviewed translations. Prevent
+  // browser page-translation from retranslating those strings inconsistently per device.
+  other: { google: "notranslate" },
   applicationName: "Gridhub",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -64,7 +67,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${manrope.variable}`}>
+    <html lang="en" translate="no" suppressHydrationWarning className={`${inter.variable} ${manrope.variable} notranslate`}>
       <body>
         <SiteJsonLd />
         <div className="gp-ambient" aria-hidden="true" />
