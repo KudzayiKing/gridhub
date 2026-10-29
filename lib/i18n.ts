@@ -20,6 +20,8 @@ type Translation = readonly [string, string, string, string, string];
 const catalog: Record<string, Translation> = {
   "Quick add": ["Añadir rápido", "快速添加", "Adição rápida", "Ajout rapide", "Быстрое добавление"],
   "Ask Gridhub AI": ["Preguntar a Gridhub AI", "询问 Gridhub AI", "Perguntar ao Gridhub AI", "Demander à Gridhub AI", "Спросить Gridhub AI"],
+  "Open tool sections": ["Abrir secciones de la herramienta", "打开工具分区", "Abrir seções da ferramenta", "Ouvrir les sections de l’outil", "Открыть разделы инструмента"],
+  "Tool sections": ["Secciones de la herramienta", "工具分区", "Seções da ferramenta", "Sections de l’outil", "Разделы инструмента"],
   "Let's create a workspace built around what matters to you. Pick a few collections, then choose the tools you want inside each one.": ["Creemos un espacio de trabajo adaptado a lo que te importa. Elige algunas colecciones y después las herramientas que quieres en cada una.", "让我们创建一个围绕你关注重点的工作空间。先选择几个分类，再为每个分类挑选所需工具。", "Vamos criar um espaço de trabalho focado no que importa para você. Escolha algumas coleções e depois as ferramentas que deseja em cada uma.", "Créons un espace de travail adapté à vos priorités. Choisissez quelques collections, puis les outils que vous souhaitez dans chacune.", "Создадим рабочее пространство с учётом ваших приоритетов. Выберите несколько разделов, а затем нужные инструменты для каждого."],
   "You're all caught up.": ["Estás al día.", "你已全部处理完毕。", "Está tudo em dia.", "Tout est à jour.", "Вы всё выполнили."],
   "Ideas for a more organized life.": ["Ideas para una vida más organizada.", "让生活更有条理的灵感。", "Ideias para uma vida mais organizada.", "Des idées pour une vie mieux organisée.", "Идеи для более организованной жизни."],
@@ -1789,6 +1791,8 @@ const arabicCatalog: Record<string, string> = {
   "Deficit": "العجز",
   "Customer": "العميل",
   "My Tools": "أدواتي",
+  "Open tool sections": "فتح أقسام الأداة",
+  "Tool sections": "أقسام الأداة",
   "Contacts": "جهات الاتصال",
   "Sync now": "المزامنة الآن",
   "Subtotal": "الإجمالي الفرعي",

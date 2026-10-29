@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, Card } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/data/data-table";
 import { RecordForm, type FormField, type FormValues } from "@/components/data/record-form";
-import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from "@/components/ui/overlay";
+import { Dialog, DialogContent, Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from "@/components/ui/overlay";
 import { useI18n } from "@/lib/i18n";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 
@@ -189,7 +189,19 @@ export function LedgerTool({
   const { t: translateText } = useI18n();
   const tool = TOOL_MAP[toolId];
   const [active, setActive] = React.useState(defaultTab ?? tabs[0]?.id ?? "");
+  const [sectionsDialogOpen, setSectionsDialogOpen] = React.useState(false);
   const activeTab = tabs.find((t) => t.id === active) ?? tabs[0];
+
+  React.useEffect(() => {
+    const onOpenSections = () => setSectionsDialogOpen(true);
+    window.addEventListener("gridhub:open-tool-sections", onOpenSections);
+    return () => window.removeEventListener("gridhub:open-tool-sections", onOpenSections);
+  }, []);
+
+  const setSectionsDialog = (open: boolean) => {
+    setSectionsDialogOpen(open);
+    window.dispatchEvent(new CustomEvent("gridhub:tool-sections-state", { detail: open }));
+  };
 
   // Drill-down (e.g. clicking a month in a chart) asks to focus a specific tab.
   React.useEffect(() => {
@@ -279,6 +291,41 @@ export function LedgerTool({
           <TabPanel key={`${activeTab.id}:${addRequest?.tabId === activeTab.id ? addRequest.id : ""}`} toolId={toolId} tab={activeTab} onClearFilter={onClearFilter} addRequest={addRequest} onAddRequestHandled={onAddRequestHandled} />
         ) : null}
       </Card>
+
+      <Dialog open={sectionsDialogOpen} onOpenChange={setSectionsDialog}>
+        <DialogContent
+          title={tool.name}
+          description={tool.description}
+          wide
+          className="max-h-[min(88dvh,900px)]"
+        >
+          {tabs.length > 1 ? (
+            <AnimatedTabs
+              value={active ?? tabs[0].id}
+              onChange={setActive}
+              ariaLabel={translateText("Tool sections")}
+              className="no-scrollbar -mx-1 mb-3 flex items-center gap-1 overflow-x-auto px-1 pb-1"
+              buttonClassName="gap-1.5 px-3 py-1.5 text-[13px]"
+              options={tabs.map((tab) => ({
+                value: tab.id,
+                label: <>{tab.icon ? <AnimatedIcon name={tab.icon} size={14} trigger="hover" /> : null}{translateText(tab.label)}</>,
+              }))}
+            />
+          ) : null}
+          <Card className="max-h-[calc(88dvh-10rem)] overflow-y-auto p-3 thin-scroll sm:p-4">
+            {activeTab ? (
+              <TabPanel
+                key={`modal:${activeTab.id}:${addRequest?.tabId === activeTab.id ? addRequest.id : ""}`}
+                toolId={toolId}
+                tab={activeTab}
+                onClearFilter={onClearFilter}
+                addRequest={addRequest}
+                onAddRequestHandled={onAddRequestHandled}
+              />
+            ) : null}
+          </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
