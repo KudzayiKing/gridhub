@@ -343,20 +343,13 @@ html[dir="rtl"] input[inputmode="numeric"] {
   .app-header-glass::before {
     content: "";
     position: absolute;
-    z-index: -1;
+    z-index: 0;
     inset: 0 0 auto;
     height: calc(env(safe-area-inset-top, 0px) + 22px);
-    background: var(--chrome-solid);
-    -webkit-mask-image: linear-gradient(
+    background: linear-gradient(
       to bottom,
-      #000 0,
-      #000 calc(env(safe-area-inset-top, 0px) + 6px),
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to bottom,
-      #000 0,
-      #000 calc(env(safe-area-inset-top, 0px) + 6px),
+      var(--chrome-solid) 0,
+      var(--chrome-solid) calc(env(safe-area-inset-top, 0px) + 6px),
       transparent 100%
     );
     pointer-events: none;
@@ -370,21 +363,6 @@ html[dir="rtl"] input[inputmode="numeric"] {
        glass surface full height and move its padded portion with the chin. */
     padding-bottom: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
     bottom: calc(env(safe-area-inset-bottom, 0px) - env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px)));
-    isolation: isolate;
-  }
-  .app-bottom-nav-glass.safe-bottom::after {
-    content: "";
-    position: absolute;
-    z-index: 0;
-    inset-inline: 0;
-    bottom: 0;
-    height: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
-    background: var(--nav-solid);
-    pointer-events: none;
-  }
-  .app-bottom-nav-glass.safe-bottom > div {
-    position: relative;
-    z-index: 1;
   }
 
   .gp-card {

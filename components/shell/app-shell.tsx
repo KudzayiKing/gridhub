@@ -324,8 +324,8 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
       <div className="app-shell-content lg:pl-[248px]">
         {/* Sticky glass bar: translucent fill + real blur, so content scrolling under it
             stays visible as a soft smear instead of disappearing behind opaque paint. */}
-        <header className="safe-top app-header-glass sticky top-0 z-20">
-          <div className="relative flex h-14 items-center gap-2 px-3 sm:px-5">
+        <header className="safe-top app-header-glass sticky top-0 z-20 isolate">
+          <div className="relative z-10 flex h-14 items-center gap-2 px-3 sm:px-5">
             <Button
               variant="ghost"
               size="icon-sm"
