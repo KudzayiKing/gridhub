@@ -12,12 +12,10 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
     orientation: "any",
-    // The splash uses the canvas; the status bar uses the header's glass over that canvas, so
-    // the platform bar and the sticky header meet without a step. Must stay in step with
-    // `viewport.themeColor` in app/layout.tsx — the install-time value is read from here, and
-    // an installed app keeps it until the manifest is re-read.
+    // Use the light glass tint for first launch. Runtime theme-color metadata follows the
+    // selected theme; browsers that ignore alpha will use this as a matching opaque fallback.
     background_color: "#F7F7F2",
-    theme_color: "#FCFCFA",
+    theme_color: "rgba(255, 255, 255, 0.63)",
     categories: ["productivity", "finance", "business"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

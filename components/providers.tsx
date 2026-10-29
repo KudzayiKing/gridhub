@@ -68,33 +68,25 @@ function detectBrowserLanguage(): NonNullable<UserPreferences["uiLanguage"]> {
   return "en";
 }
 
-/**
- * OS chrome — the status bar and the home-indicator strip — is painted by the platform, above
- * our content. No CSS can blur it, and there is no "transparent" option: Android Chrome paints
- * `theme-color` as a flat band, and iOS's `black-translucent` status bar forces white glyphs,
- * which are unreadable on the light theme. The most a web app can do is make its colour *equal*
- * the glass band sitting next to it, so the seam disappears and the bar reads as the top of the
- * glass instead of a flat lid.
- *
- * `--chrome-solid` is that colour: the chrome fill composited over the canvas. The scrims in
- * globals.css fade from the same token, so the two cannot drift. When the token is missing,
- * fall back to computing the composite from `--header` rather than guessing.
+/** Keep browser chrome aligned with the app's translucent header and choose readable iOS
+ * status glyphs for the current theme. CSS can draw the glass beneath system bars only on
+ * platforms that expose those safe areas; the OS still owns the status and gesture indicators.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
-  // Keep the OS-painted browser and installed-PWA chrome flush with the glass header that sits
-  // directly beneath it. Sampling `--bg` alone left a visible step: the header is a translucent
-  // wash over that background, so the platform bar has to be told the composited colour.
+  // Offer the translucent header tint to browsers that allow alpha in theme-color. Browsers
+  // that ignore alpha still get a close, theme-matched color. iOS standalone PWA status glyphs
+  // are switched to white only in dark mode so they remain legible over the glass.
   React.useLayoutEffect(() => {
     const root = document.documentElement;
-    const syncThemeColor = () => {
+    const syncPlatformChrome = () => {
       const styles = getComputedStyle(root);
       const page = styles.getPropertyValue("--bg").trim();
       const solid = styles.getPropertyValue("--chrome-solid").trim();
       const header = styles.getPropertyValue("--header").trim();
-      const color = solid || (header && flattenOver(header, page)) || page;
+      const color = header || solid || flattenOver(header, page) || page;
       if (!color) return;
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
         if (meta.content !== color || meta.media) {
@@ -102,10 +94,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
           meta.removeAttribute("media");
         }
       });
+
+      const statusBar = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-status-bar-style"]');
+      const statusStyle = root.classList.contains("dark") ? "black-translucent" : "default";
+      if (statusBar && statusBar.content !== statusStyle) statusBar.content = statusStyle;
     };
 
-    syncThemeColor();
-    const observer = new MutationObserver(syncThemeColor);
+    syncPlatformChrome();
+    const observer = new MutationObserver(syncPlatformChrome);
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     // App Router navigation can replace metadata nodes with the server-rendered default.
     // Reapply the user's active theme immediately so the PWA status bar does not flash

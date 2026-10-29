@@ -49,8 +49,7 @@
   --gp-glass-blur: 18px;
   --gp-card-radius: 20px;
 
-  /* The sticky header's own height: 56px of content plus the notch inset. The ambient wash
-     stops exactly here so the glass bar has a flat, uniform backdrop. */
+  /* The sticky header's own height: 56px of content plus the notch inset. */
   --chrome-h: calc(56px + env(safe-area-inset-top, 0px));
 
   /* semantic (light) */
@@ -65,11 +64,8 @@
      nothing to blur. Alpha is high enough to keep 13px labels legible over a busy card. */
   --header: rgba(255, 255, 255, 0.63);
   --bottom-nav-bg: rgba(253, 253, 250, 0.74);
-  /* The chrome fill composited over the canvas — what each bar looks like where nothing is
-     scrolled under it. The platform paints the status bar and gesture bar one flat colour and
-     gives web content no way to blur them, so these are the only values that can be matched:
-     `theme-color` reports `--chrome-solid`, and both scrims fade from it. Keep them in sync
-     with the rgba tokens above; `tests/chrome-tokens.test.ts` pins the arithmetic. */
+  /* Native status/navigation chrome cannot render a CSS blur, so report the composited glass
+     tint as its fallback colour. The in-app safe areas are painted by the glass header/footer. */
   --chrome-solid: #fcfcfa;
   --nav-solid: #fbfbf8;
   --border: rgba(23, 26, 24, 0.09);
@@ -125,8 +121,8 @@
      blur while the bar still reads darker than the content it covers. */
   --header: rgba(18, 18, 20, 0.66);
   --bottom-nav-bg: rgba(24, 24, 28, 0.78);
-  /* Both bars composite to within a couple of levels of the canvas here, so the scrim is
-     effectively the page colour. Kept as separate tokens so the light theme can differ. */
+  /* Both bars composite close to the canvas in dark mode; keep their fallback tokens separate
+     so light and dark glass can use different tints. */
   --chrome-solid: #121214;
   --nav-solid: #17171a;
   --border: rgba(255, 255, 255, 0.09);
@@ -342,64 +338,14 @@ html[dir="rtl"] input[inputmode="numeric"] {
     backdrop-filter: blur(20px) saturate(160%);
   }
 
-  /* ── Chrome scrims ──────────────────────────────────────────────────────────
-     Both bars sit on a physical edge, and a physical edge is where a translucent bar is at its
-     worst: anything scrolling underneath arrives at the very top of the screen — under the
-     status bar — and again at the very bottom, under the gesture bar.
-
-     Concretely, a dark segmented-control chip scrolling up under the header blurred into a soft
-     dark smudge hugging the top-left corner. Against the flat colour the OS paints above it,
-     that smudge reads as a border sitting between the header and the status bar.
-
-     So the last `inset + 22px` of each bar is painted solid `--chrome-solid` / `--nav-solid`
-     and then masked away. The bar still reads as glass — cards still show through and blur in
-     the middle — but content now dissolves as it reaches the platform bar instead of colliding
-     with it, and the top edge is one flat colour that `theme-color` can match exactly.
-
-     `z-index: -1` keeps the scrim above the bar's own fill but below its buttons and wordmark.
-     Both bars already create a stacking context (`z-20` / `z-30`), so it cannot escape. */
-  .app-header-glass::before,
-  .app-bottom-nav-glass::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-  .app-header-glass::before {
-    top: 0;
-    height: calc(env(safe-area-inset-top, 0px) + 22px);
-    background: var(--chrome-solid);
-    -webkit-mask-image: linear-gradient(
-      to bottom,
-      #000 0,
-      #000 calc(env(safe-area-inset-top, 0px) + 6px),
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to bottom,
-      #000 0,
-      #000 calc(env(safe-area-inset-top, 0px) + 6px),
-      transparent 100%
-    );
-  }
-  .app-bottom-nav-glass::before {
-    bottom: 0;
-    height: calc(env(safe-area-inset-bottom, 0px) + 22px);
-    background: var(--nav-solid);
-    -webkit-mask-image: linear-gradient(
-      to top,
-      #000 0,
-      #000 calc(env(safe-area-inset-bottom, 0px) + 6px),
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to top,
-      #000 0,
-      #000 calc(env(safe-area-inset-bottom, 0px) + 6px),
-      transparent 100%
-    );
+  /* The safe-area padding on the fixed header and bottom navigation shares their translucent
+     blur, so the app-drawn regions behind the status and gesture controls keep the same glass
+     treatment. The OS glyphs and native strip remain platform-owned. */
+  .app-bottom-nav-glass.safe-bottom {
+    /* Chrome Android's edge-to-edge chin changes the live inset while scrolling. Keep the
+       glass surface full height and move its padded portion with the chin. */
+    padding-bottom: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) - env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }
 
   .gp-card {

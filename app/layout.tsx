@@ -35,7 +35,9 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Gridhub",
-    statusBarStyle: "default",
+    // Start edge-to-edge on iOS. Providers switches to the light-icon-safe default
+    // when the active app theme is light.
+    statusBarStyle: "black-translucent",
   },
   openGraph: {
     type: "website",
@@ -57,11 +59,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  // The header's glass over the flat canvas — not the canvas itself. Reporting `--bg` left a
-  // visible step under the status bar, because a translucent header over #f7f7f2 is lighter
-  // than #f7f7f2. Providers recomputes this per theme; this is the light default first paint
-  // uses, and it must match `manifest.theme_color`.
-  themeColor: "#FCFCFA",
+  // The browser may honor the alpha in this glass tint when painting system chrome. Browsers
+  // that require opaque theme colors fall back to the same tint as an opaque color.
+  themeColor: "rgba(255, 255, 255, 0.63)",
   viewportFit: "cover",
 };
 
