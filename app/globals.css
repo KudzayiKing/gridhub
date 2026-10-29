@@ -63,11 +63,11 @@
      translucent: an opaque fill paints over whatever is underneath and the blur then has
      nothing to blur. Alpha is high enough to keep 13px labels legible over a busy card. */
   --header: rgba(255, 255, 255, 0.63);
-  --bottom-nav-bg: rgba(253, 253, 250, 0.74);
+  --bottom-nav-bg: rgba(255, 255, 255, 0.63);
   /* Native status/navigation chrome cannot render a CSS blur, so report the composited glass
      tint as its fallback colour. The in-app safe areas are painted by the glass header/footer. */
   --chrome-solid: #fcfcfa;
-  --nav-solid: #fbfbf8;
+  --nav-solid: var(--chrome-solid);
   --border: rgba(23, 26, 24, 0.09);
   --border-strong: rgba(23, 26, 24, 0.16);
   --fg: #171a18;
@@ -120,11 +120,11 @@
   /* Chrome is a wash of the canvas, not a block of it: 0.66 lets a card bleed through the
      blur while the bar still reads darker than the content it covers. */
   --header: rgba(18, 18, 20, 0.66);
-  --bottom-nav-bg: rgba(24, 24, 28, 0.78);
+  --bottom-nav-bg: rgba(18, 18, 20, 0.66);
   /* Both bars composite close to the canvas in dark mode; keep their fallback tokens separate
      so light and dark glass can use different tints. */
   --chrome-solid: #121214;
-  --nav-solid: #17171a;
+  --nav-solid: var(--chrome-solid);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.18);
   --fg: #f3f3f5;
@@ -346,6 +346,21 @@ html[dir="rtl"] input[inputmode="numeric"] {
        glass surface full height and move its padded portion with the chin. */
     padding-bottom: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
     bottom: calc(env(safe-area-inset-bottom, 0px) - env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px)));
+    isolation: isolate;
+  }
+  .app-bottom-nav-glass.safe-bottom::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset-inline: 0;
+    bottom: 0;
+    height: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
+    background: var(--nav-solid);
+    pointer-events: none;
+  }
+  .app-bottom-nav-glass.safe-bottom > div {
+    position: relative;
+    z-index: 1;
   }
 
   .gp-card {
