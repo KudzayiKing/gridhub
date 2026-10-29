@@ -236,10 +236,12 @@ export function RecordForm({
 
           <div className="mt-1 flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button type="submit" variant="primary" size="sm" disabled={saving} icon="save">
-              {saving ? "Saving…" : submitLabel}
+              {/* `submitLabel` may arrive already translated from the caller; `t` is a no-op
+                  for a string that is not a catalog key, so translating here is safe either way. */}
+              {saving ? t("Saving…") : t(submitLabel)}
             </Button>
           </div>
         </form>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useGridhubAI } from "@/components/ai/ai-provider";
 import { TOOL_MAP, TOOLS, type ToolId } from "@/lib/catalog";
 import { canUseTool } from "@/lib/ai/permission-checker";
+import { useI18n } from "@/lib/i18n";
 import { useCollection } from "@/lib/store";
 import { buildTabs } from "@/lib/tools";
 import { useToolData } from "@/lib/use-tool-data";
@@ -22,6 +23,7 @@ export function QuickAddDialog({
   onOpenChange: (open: boolean) => void;
   onAskAI?: () => void;
 }) {
+  const { t } = useI18n();
   const { ai, enabled } = useGridhubAI();
   const availableTools = React.useMemo(
     () => TOOLS.filter((tool) => canUseTool(tool.id, ai.entitlement)),
@@ -35,8 +37,8 @@ export function QuickAddDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Quick add"
-        description="Add a record directly to one of your tools."
+        title={t("Quick add")}
+        description={t("Add a record directly to one of your tools.")}
         className="max-h-[90dvh]"
       >
         {enabled && onAskAI ? (
@@ -47,7 +49,7 @@ export function QuickAddDialog({
               icon="edit"
               onClick={onAskAI}
             >
-              Ask Gridhub AI
+              {t("Ask Gridhub AI")}
             </Button>
           </div>
         ) : null}
@@ -60,7 +62,7 @@ export function QuickAddDialog({
             onClose={() => onOpenChange(false)}
           />
         ) : (
-          <p className="text-sm text-fg-muted">No tools are available on this plan yet.</p>
+          <p className="text-sm text-fg-muted">{t("No tools are available on this plan yet.")}</p>
         )}
       </DialogContent>
     </Dialog>
@@ -78,6 +80,7 @@ function QuickAddForm({
   onToolChange: (toolId: ToolId) => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const { data } = useToolData(toolId);
   const tabs = React.useMemo(() => buildTabs(toolId, data).filter((tab) => tab.fields.length > 0), [toolId, data]);
   const defaultTab = tabs.find((tab) => tab.id === "transactions") ?? tabs[0];
@@ -96,18 +99,18 @@ function QuickAddForm({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Tool" htmlFor="quick-add-tool">
+        <Field label={t("Tool")} htmlFor="quick-add-tool">
           <Select
             id="quick-add-tool"
             value={toolId}
             onChange={(event) => onToolChange(event.target.value as ToolId)}
           >
             {tools.map((tool) => (
-              <option key={tool.id} value={tool.id}>{tool.label}</option>
+              <option key={tool.id} value={tool.id}>{t(tool.label)}</option>
             ))}
           </Select>
         </Field>
-        <Field label="What to add" htmlFor="quick-add-type">
+        <Field label={t("What to add")} htmlFor="quick-add-type">
           <Select
             id="quick-add-type"
             value={selectedTab?.id ?? ""}
@@ -115,7 +118,7 @@ function QuickAddForm({
             disabled={tabs.length < 2}
           >
             {tabs.map((tab) => (
-              <option key={tab.id} value={tab.id}>{tab.addLabel ?? tab.label}</option>
+              <option key={tab.id} value={tab.id}>{t(tab.addLabel ?? tab.label)}</option>
             ))}
           </Select>
         </Field>
@@ -126,17 +129,17 @@ function QuickAddForm({
           key={`${toolId}:${selectedTab.collection}`}
           open
           embedded
-          title={selectedTab.addLabel ?? `Add ${selectedTab.label}`}
-          description={TOOL_MAP[toolId].shortName}
+          title={t(selectedTab.addLabel ?? "Add {type}", { type: t(selectedTab.label) })}
+          description={t(TOOL_MAP[toolId].shortName)}
           fields={selectedTab.fields}
           initial={selectedTab.defaults}
           onOpenChange={(next) => { if (!next) onClose(); }}
           onSubmit={handleSubmit}
-          submitLabel={selectedTab.addLabel ?? "Save record"}
+          submitLabel={t(selectedTab.addLabel ?? "Save record")}
         />
       ) : (
         <p className="rounded-xl border border-line bg-[var(--bg-subtle)] p-3 text-sm text-fg-muted">
-          This tool has no quick-add form available.
+          {t("This tool has no quick-add form available.")}
         </p>
       )}
     </div>

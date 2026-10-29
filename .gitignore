@@ -55,3 +55,6 @@ next-env.d.ts
 
 # Assistant workspace data: memory notes and verification screenshots
 /.workbuddy-ai/
+
+# Output of `node scripts/i18n-audit.mjs` — regenerate on demand
+/.i18n-audit.json
