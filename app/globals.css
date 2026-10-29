@@ -338,6 +338,30 @@ html[dir="rtl"] input[inputmode="numeric"] {
     backdrop-filter: blur(20px) saturate(160%);
   }
 
+  /* Keep scrolling content from forming a hairline at the join with the opaque native
+     status bar. The top safe area stays flush with the browser chrome, then fades into glass. */
+  .app-header-glass::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 0 auto;
+    height: calc(env(safe-area-inset-top, 0px) + 22px);
+    background: var(--chrome-solid);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(env(safe-area-inset-top, 0px) + 6px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(env(safe-area-inset-top, 0px) + 6px),
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
   /* The safe-area padding on the fixed header and bottom navigation shares their translucent
      blur, so the app-drawn regions behind the status and gesture controls keep the same glass
      treatment. The OS glyphs and native strip remain platform-owned. */
