@@ -46,9 +46,10 @@ export default function PrivacyPage() {
 
         <h2>4. Processors</h2>
         <ul>
-          <li><strong>Supabase</strong> — authentication, Postgres database and storage.</li>
-          <li><strong>Stripe</strong> — subscription billing, invoicing and the customer portal.</li>
-          <li><strong>Hosting provider</strong> — serves the application; records are not cached in shared public caches.</li>
+          {/* The separator is its own text node so each catalogue key is the sentence alone. */}
+          <li><strong>Supabase</strong>{" — "}authentication, Postgres database and storage.</li>
+          <li><strong>Stripe</strong>{" — "}subscription billing, invoicing and the customer portal.</li>
+          <li><strong>Hosting provider</strong>{" — "}serves the application; records are not cached in shared public caches.</li>
         </ul>
 
         <h2>5. Retention</h2>

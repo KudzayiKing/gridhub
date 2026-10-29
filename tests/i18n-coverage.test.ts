@@ -46,6 +46,9 @@ const IDENTICAL_OK: Record<string, { langs: string[]; why: string }> = {
   Assistant: { langs: ["fr"], why: "French word is Assistant" },
   WebAssembly: { langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"], why: "platform name" },
   WebGPU: { langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"], why: "platform name" },
+  Android: { langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"], why: "platform name" },
+  Supabase: { langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"], why: "vendor name" },
+  Stripe: { langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"], why: "vendor name" },
   "{date} · {status} {amount}": {
     langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"],
     why: "separator and placeholders only — nothing but punctuation and substituted values",
@@ -128,5 +131,81 @@ describe("interface translation coverage", () => {
       }
     }
     expect(broken, `broken placeholders:\n${broken.join("\n")}`).toEqual([]);
+  });
+});
+
+/*
+ * The second way English leaks past the guard above.
+ *
+ * `<Prose>` translates its own children at runtime (`localizeTextNodes` in
+ * components/marketing/page-parts.tsx), so the legal pages never call `t()` and the literal
+ * scanner cannot see them. That path is real but fragile: the key is the *rendered* text node,
+ * so anything the JSX compiler folds into it — a stray em dash, a non-breaking space, an
+ * `&apos;` entity — silently stops matching and the paragraph reverts to English.
+ *
+ * That is not hypothetical: the processors list on /privacy rendered English in every language
+ * because `— authentication, …` was one text node while the catalogue held the sentence alone.
+ *
+ * So scan the prose bodies the same way the browser receives them: split on tags and
+ * expressions, collapse whitespace, decode entities, then require a translation.
+ */
+const PROSE_BLOCK = /<Prose>([\s\S]*?)<\/Prose>/g;
+
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+/** Collapse a raw JSX text run exactly as the JSX compiler does. */
+function collapse(raw: string): string {
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function proseStrings(): Map<string, string[]> {
+  const found = new Map<string, string[]>();
+  for (const file of DIRS.flatMap((dir) => walk(join(ROOT, dir)))) {
+    const src = readFileSync(file, "utf8");
+    for (const block of src.matchAll(PROSE_BLOCK)) {
+      for (const piece of block[1].split(/<[^>]*>|\{[^}]*\}/)) {
+        const text = collapse(decodeEntities(piece));
+        if (!text || !/[a-zA-Z]/.test(text)) continue;
+        const rel = relative(ROOT, file);
+        found.set(text, [...(found.get(text) ?? []), rel]);
+      }
+    }
+  }
+  return found;
+}
+
+describe("prose body coverage", () => {
+  it("finds the text nodes the prose renderer translates", () => {
+    // Guards against the extractor silently matching nothing, which would make the next
+    // assertion pass without checking anything.
+    expect(proseStrings().size).toBeGreaterThan(40);
+  });
+
+  it("translates every rendered prose text node into every supported language", () => {
+    const gaps: string[] = [];
+    for (const [text, files] of proseStrings()) {
+      const allowed = IDENTICAL_OK[text]?.langs ?? [];
+      const untranslated = LANGS.filter(
+        (lang) => translate(text, lang) === text && !allowed.includes(lang),
+      );
+      if (untranslated.length) {
+        gaps.push(`${JSON.stringify(text)} — ${untranslated.join(", ")} (${files[0]})`);
+      }
+    }
+    expect(gaps, `untranslated prose:\n${gaps.join("\n")}`).toEqual([]);
   });
 });
