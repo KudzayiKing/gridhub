@@ -12,9 +12,15 @@ import {
   Tooltip,
 } from "@/components/ui/overlay";
 import { useSyncState } from "@/components/providers";
+import { useI18n } from "@/lib/i18n";
 import { runSync } from "@/lib/sync";
 import { cn } from "@/lib/utils";
 
+/**
+ * Visual metadata per sync phase. The `label` here is the English source string and
+ * doubles as the translation key, so it is resolved with `t()` at render time rather
+ * than baked in at module scope (where no locale is available).
+ */
 const PHASE_COPY = {
   local: { label: "Saved on this device", icon: "offline", tone: "text-fg-subtle" },
   offline: { label: "Offline — saved locally", icon: "offline", tone: "text-[var(--warning)]" },
@@ -26,20 +32,22 @@ const PHASE_COPY = {
 
 export function SyncIndicator({ compact = false }: { compact?: boolean }) {
   const sync = useSyncState();
+  const { t } = useI18n();
   const copy = PHASE_COPY[sync.phase];
+  const label = t(copy.label);
 
   return (
-    <Tooltip content={sync.message ?? copy.label}>
+    <Tooltip content={sync.message ?? label}>
       <button
         onClick={() => void runSync()}
         className={cn(
           "press inline-flex items-center gap-1.5 rounded-full border border-line bg-[var(--surface)] px-2.5 py-1 text-[11.5px] font-medium",
           copy.tone,
         )}
-        aria-label={`Sync status: ${copy.label}. Click to sync now.`}
+        aria-label={t("Sync status: {status}. Click to sync now.", { status: label })}
       >
         <AnimatedIcon name={copy.icon} size={13} trigger="click" />
-        {!compact ? <span className="hidden sm:inline">{copy.label}</span> : null}
+        {!compact ? <span className="hidden sm:inline">{label}</span> : null}
         {sync.pending > 0 ? (
           <span className="tnum rounded-full bg-[var(--bg-subtle)] px-1.5 text-[10px] text-fg-muted">
             {sync.pending}
@@ -69,11 +77,12 @@ function useIsClient(): boolean {
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useIsClient();
+  const { t } = useI18n();
 
   return (
     <Dropdown>
       <DropdownTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label="Change theme">
+        <Button variant="ghost" size="icon-sm" aria-label={t("Change theme")}>
           <AnimatedIcon
             name={mounted && resolvedTheme === "dark" ? "moon" : "sun"}
             size={16}
@@ -83,13 +92,13 @@ export function ThemeToggle() {
       </DropdownTrigger>
       <DropdownContent>
         <DropdownItem icon="sun" onSelect={() => setTheme("light")}>
-          Light {theme === "light" ? "✓" : ""}
+          {t("Light")} {theme === "light" ? "✓" : ""}
         </DropdownItem>
         <DropdownItem icon="moon" onSelect={() => setTheme("dark")}>
-          Dark {theme === "dark" ? "✓" : ""}
+          {t("Dark")} {theme === "dark" ? "✓" : ""}
         </DropdownItem>
         <DropdownItem icon="monitor" onSelect={() => setTheme("system")}>
-          System {theme === "system" ? "✓" : ""}
+          {t("System")} {theme === "system" ? "✓" : ""}
         </DropdownItem>
       </DropdownContent>
     </Dropdown>

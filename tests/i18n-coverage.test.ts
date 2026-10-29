@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { translate, UI_LANGUAGES } from "@/lib/i18n";
+import { BILLING_FAQ, FAQ_GROUPS, PLAN_INCLUDES } from "@/lib/marketing/faq";
 
 /*
  * Coverage guard for the interface catalog.
@@ -24,6 +25,8 @@ const LANGS = UI_LANGUAGES.filter((item) => item.code !== "en").map((item) => it
 
 const IDENTICAL_OK: Record<string, { langs: string[]; why: string }> = {
   "Gridhub AI": { langs: ["es", "zh-CN", "pt-BR", "fr", "ar"], why: "product name" },
+  "GridHub AI": { langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"], why: "product name" },
+  Collection: { langs: ["fr"], why: "French cognate" },
   "Popular": { langs: ["es", "pt-BR"], why: "cognate" },
   "Questions": { langs: ["fr", "ar"], why: "French cognate" },
   Admin: { langs: ["pt-BR"], why: "cognate" },
@@ -207,5 +210,33 @@ describe("prose body coverage", () => {
       }
     }
     expect(gaps, `untranslated prose:\n${gaps.join("\n")}`).toEqual([]);
+  });
+});
+
+/*
+ * Copy that lives in a data module rather than in JSX.
+ *
+ * The literal scanner only sees `t("…")` written at the call site; a list rendered as `t(item.q)`
+ * is invisible to it, and so is anything the FAQ JSON-LD emits. These exports are the single
+ * source for /faq and /pricing, so checking them directly is both precise and cheaper than
+ * adding another regex pass.
+ */
+describe("marketing data coverage", () => {
+  const strings = [
+    ...FAQ_GROUPS.flatMap((group) => [group.title, ...group.items.flatMap((i) => [i.q, i.a])]),
+    ...BILLING_FAQ.flatMap((item) => [item.q, item.a]),
+    ...PLAN_INCLUDES,
+  ];
+
+  it("has a translation for every marketing string", () => {
+    const gaps: string[] = [];
+    for (const text of strings) {
+      const allowed = IDENTICAL_OK[text]?.langs ?? [];
+      const untranslated = LANGS.filter(
+        (lang) => translate(text, lang) === text && !allowed.includes(lang),
+      );
+      if (untranslated.length) gaps.push(`${JSON.stringify(text)} — ${untranslated.join(", ")}`);
+    }
+    expect(gaps, `untranslated marketing copy:\n${gaps.join("\n")}`).toEqual([]);
   });
 });
