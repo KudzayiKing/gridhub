@@ -112,6 +112,25 @@ export function ChartEmptyState({ label = "No data for this period yet" }: { lab
   );
 }
 
+/**
+ * Category labels on a chart are almost always user records — a category the user named
+ * "Travel" must render as "Travel" in every language. `Uncategorized` is the single label
+ * the app itself generates when a record has no category (`lib/calc/money.ts` and the
+ * operations dashboards), so it is the only one translated here.
+ *
+ * Translating arbitrary category names would be worse than leaving them: a user category
+ * called "Income" would silently become "Доход" in Russian.
+ */
+export const SYSTEM_UNCATEGORIZED = "Uncategorized";
+
+export function useCategoryLabel() {
+  const { t } = useI18n();
+  return React.useCallback(
+    (name: string) => (name === SYSTEM_UNCATEGORIZED ? t(SYSTEM_UNCATEGORIZED) : name),
+    [t],
+  );
+}
+
 /* ----------------------------------------------------------------------------
  * ChartTooltip — shared, locale-aware tooltip. `rows` are pre-formatted
  * { label, value, color } entries so callers control formatting/currency.

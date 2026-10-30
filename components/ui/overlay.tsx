@@ -59,7 +59,7 @@ export function DialogContent({
             )}
           </div>
           <DialogPrimitive.Close asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Close dialog">
+            <Button variant="ghost" size="icon-sm" aria-label={t("Close dialog")}>
               <AnimatedIcon name="close" size={16} trigger="click" />
             </Button>
           </DialogPrimitive.Close>

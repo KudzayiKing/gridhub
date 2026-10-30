@@ -23,7 +23,12 @@ export interface FormField {
   label: string;
   type: FormFieldType;
   required?: boolean;
-  options?: { value: string; label: string }[];
+  /**
+   * Option labels are translated unless `raw` is set. `options()` in `lib/tools/shared`
+   * sets it for values sourced from user records (category, account, product names),
+   * which must render exactly as typed.
+   */
+  options?: { value: string; label: string; raw?: boolean }[];
   placeholder?: string;
   help?: string;
   step?: string;
@@ -195,10 +200,10 @@ export function RecordForm({
                     <Textarea {...common} />
                   ) : f.type === "select" ? (
                     <Select {...common}>
-                      <option value="">Select…</option>
+                      <option value="">{t("Select…")}</option>
                       {f.options?.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
+                        <option key={o.value} value={o.value} data-raw={o.raw ? "" : undefined}>
+                          {o.raw ? o.label : t(o.label)}
                         </option>
                       ))}
                     </Select>
@@ -209,7 +214,7 @@ export function RecordForm({
                         onCheckedChange={(v) => set(f.key, Boolean(v))}
                         id={id}
                       />
-                      <span className="text-fg-muted">{f.placeholder ?? "Yes"}</span>
+                      <span className="text-fg-muted">{f.placeholder ? t(f.placeholder) : t("Yes")}</span>
                     </label>
                   ) : (
                     <Input
@@ -266,9 +271,10 @@ export function AddButton({
   onClick: () => void;
   size?: "sm" | "md";
 }) {
+  const { t } = useI18n();
   return (
     <Button variant="primary" size={size} onClick={onClick} icon="plus">
-      {label}
+      {t(label)}
     </Button>
   );
 }

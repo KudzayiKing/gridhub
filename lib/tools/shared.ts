@@ -6,8 +6,16 @@ export function rows<T extends BaseRecord>(data: DataMap, collection: string): T
   return (data[collection] ?? []) as unknown as T[];
 }
 
-export function options(list: { id: string; name?: string; label?: string }[]): { value: string; label: string }[] {
-  return list.map((item) => ({ value: item.id, label: item.label ?? item.name ?? item.id }));
+/**
+ * Build select options from user records.
+ *
+ * `raw: true` marks the label as user data, not product copy. The record form translates
+ * static option labels (`{ value: "posted", label: "Posted" }`) but must leave a category
+ * or account name exactly as the user typed it — otherwise a category called "Savings"
+ * would silently render as "Сбережения" in Russian.
+ */
+export function options(list: { id: string; name?: string; label?: string }[]): { value: string; label: string; raw: true }[] {
+  return list.map((item) => ({ value: item.id, label: item.label ?? item.name ?? item.id, raw: true as const }));
 }
 
 export function sumOf<T>(list: T[], pick: (row: T) => number): number {

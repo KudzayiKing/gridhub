@@ -53,9 +53,9 @@ export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search tools…"
+              placeholder={t("Search tools…")}
               className="h-9 w-full rounded-full border border-line-strong bg-[var(--surface-strong)] pl-9 pr-3 text-[13px] sm:w-56"
-              aria-label="Search tools"
+              aria-label={t("Search tools")}
             />
           </div>
         }
@@ -84,7 +84,7 @@ export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
                 <div className="flex items-start justify-between gap-2">
                   <ToolIcon toolId={tool.id} size={20} trigger="hover" />
                   <Badge tone={on ? "accent" : "neutral"}>
-                    {on ? "Active" : tool.freeTier ? "Free" : "Inactive"}
+                    {t(on ? "Active" : tool.freeTier ? "Free" : "Inactive")}
                   </Badge>
                 </div>
 
@@ -108,15 +108,15 @@ export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
                   {on ? (
                     <>
                       <Button variant="primary" size="sm" icon="arrowRight" asChild>
-                        <Link href={tool.route}>Open</Link>
+                        <Link href={tool.route}>{t("Open")}</Link>
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => toggle(tool.id)}>
-                        Deactivate
+                        {t("Deactivate")}
                       </Button>
                     </>
                   ) : (
                     <Button variant="secondary" size="sm" icon="plus" onClick={() => toggle(tool.id)}>
-                      Activate
+                      {t("Activate")}
                     </Button>
                   )}
                 </div>
@@ -141,12 +141,12 @@ export function ToolCatalog({ mode }: { mode: "mine" | "explore" }) {
 
       {mode === "mine" ? (
         <Card className="p-4">
-          <h3 className="text-[13.5px] font-semibold">Tool access</h3>
+          <h3 className="text-[13.5px] font-semibold">{t("Tool access")}</h3>
           <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">
-            Activation here controls what appears in your workspace. Paid access is controlled separately by your
-            subscription entitlement — see{" "}
+            {t("Activation here controls what appears in your workspace.")}{" "}
+            {t("Paid access is controlled separately by your subscription entitlement — see")}{" "}
             <Link href="/app/billing" className="underline decoration-line-strong underline-offset-2">
-              Billing
+              {t("Billing")}
             </Link>
             .
           </p>

@@ -136,11 +136,12 @@ function BudgetCategoriesWidget({ currency }: { currency: string }) {
 }
 
 function SavingsGoalsWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const totals = savingsTotals(eligibleGoals, movements.rows.filter((movement) => eligibleGoals.some((goal) => goal.id === movement.goalId)));
-  if (!totals.goals.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">No goals yet</p>;
+  if (!totals.goals.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("No goals yet")}</p>;
   return (
     <ProgressChart
       items={totals.goals.map((g) => ({
@@ -149,13 +150,14 @@ function SavingsGoalsWidget({ currency }: { currency: string }) {
         value: g.balance,
         target: g.target,
         formatValue: (v) => formatMoney(v, { currency, maximumFractionDigits: 0 }),
-        caption: g.remaining <= 0 ? "Target reached" : `${formatMoney(g.remaining, { currency, maximumFractionDigits: 0 })} to go`,
+        caption: g.remaining <= 0 ? t("Target reached") : t("{amount} to go", { amount: formatMoney(g.remaining, { currency, maximumFractionDigits: 0 }) }),
       }))}
     />
   );
 }
 
 function SavingsBalanceWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const { prefs } = usePrefs();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
@@ -163,38 +165,42 @@ function SavingsBalanceWidget({ currency }: { currency: string }) {
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const history = savingsBalanceTrend(eligibleGoals, movements.rows, 12, today);
   const localizedHistory = history.map((row) => ({ ...row, month: monthLabel(row.key, prefs.uiLanguage) }));
-  return history.length ? <TrendChart data={localizedHistory} xKey="month" series={[{ key: "balance", name: "Savings balance" }]} formatValue={fmtFactory(currency)} type="area" height={190} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">No dated savings activity</p>;
+  return history.length ? <TrendChart data={localizedHistory} xKey="month" series={[{ key: "balance", name: t("Savings balance") }]} formatValue={fmtFactory(currency)} type="area" height={190} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No dated savings activity")}</p>;
 }
 
 function SavingsEmergencyWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const emergency = savingsGoalRows(eligibleGoals, movements.rows, localISODate(new Date())).find((row) => row.goal.kind === "emergency");
   const coverage = emergency?.goal.monthlyEssentials ? emergency.balance / emergency.goal.monthlyEssentials : null;
-  return <p className="py-5 text-center text-xl font-semibold">{coverage == null ? "Set essential expenses" : `${coverage.toFixed(1)} months`}{coverage != null ? <span className="block text-[10px] font-normal text-fg-subtle">{formatMoney(emergency!.balance, { currency })} emergency savings</span> : null}</p>;
+  return <p className="py-5 text-center text-xl font-semibold">{coverage == null ? t("Set essential expenses") : t("{months} months", { months: coverage.toFixed(1) })}{coverage != null ? <span className="block text-[10px] font-normal text-fg-subtle">{formatMoney(emergency!.balance, { currency })} {t("emergency savings")}</span> : null}</p>;
 }
 
 function SavingsMilestoneWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const today = localISODate(new Date());
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const next = savingsGoalRows(eligibleGoals, movements.rows, today).filter((row) => row.goal.targetDate && row.remaining > 0 && row.goal.targetDate >= today).sort((a, b) => (a.goal.targetDate ?? "").localeCompare(b.goal.targetDate ?? ""))[0];
-  return next ? <div className="py-4 text-center"><p className="text-sm font-semibold">{next.goal.name}</p><p className="text-[11px] text-fg-subtle">{next.goal.targetDate} · {formatMoney(next.remaining, { currency })} remaining</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">No upcoming target</p>;
+  return next ? <div className="py-4 text-center"><p className="text-sm font-semibold">{next.goal.name}</p><p className="text-[11px] text-fg-subtle">{next.goal.targetDate} · {t("{amount} remaining", { amount: formatMoney(next.remaining, { currency }) })}</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No upcoming target")}</p>;
 }
 
 function SavingsMonthlyNeedWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const summaries = savingsGoalRows(eligibleGoals, movements.rows, localISODate(new Date()));
   const requirements = summaries.filter((row) => row.requiredMonthly != null && row.remaining > 0);
   const total = requirements.reduce((sum, row) => sum + (row.requiredMonthly ?? 0), 0);
-  return <p className="py-5 text-center text-xl font-semibold">{requirements.length ? formatMoney(total, { currency }) : "Set target dates"}<span className="block text-[10px] font-normal text-fg-subtle">Combined monthly requirement</span></p>;
+  return <p className="py-5 text-center text-xl font-semibold">{requirements.length ? formatMoney(total, { currency }) : t("Set target dates")}<span className="block text-[10px] font-normal text-fg-subtle">{t("Combined monthly requirement")}</span></p>;
 }
 
 function NutritionWeeklyWidget() {
+  const { t } = useI18n();
   const logs = useCollection<NutritionLog>("nutrition", "logs");
   const days = React.useMemo(() => {
     const out: { label: string; value: number }[] = [];
@@ -206,13 +212,14 @@ function NutritionWeeklyWidget() {
     }
     return out;
   }, [logs.rows]);
-  return <AreaTrend data={days} format={(n) => `${Math.round(n)} kcal`} ariaLabel="Daily calories last 7 days" height={180} />;
+  return <AreaTrend data={days} format={(n) => `${Math.round(n)} kcal`} ariaLabel={t("Daily calories last 7 days")} height={180} />;
 }
 
 function ProjectsCompletionWidget() {
+  const { t } = useI18n();
   const tasks = useCollection<Task>("projects", "tasks");
   const s = projectProgress(tasks.rows);
-  if (!s.total) return <p className="py-6 text-center text-[12px] text-fg-subtle">No tasks yet</p>;
+  if (!s.total) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("No tasks yet")}</p>;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
@@ -220,8 +227,8 @@ function ProjectsCompletionWidget() {
           {Math.round(s.completionPct ?? 0)}%
         </div>
         <div>
-          <p className="text-[13px] font-medium">{s.completed} of {s.total} tasks done</p>
-          <p className="text-[11.5px] text-fg-subtle">{s.remaining} remaining · {s.overdue} overdue</p>
+          <p className="text-[13px] font-medium">{t("{completed} of {total} tasks done", { completed: s.completed, total: s.total })}</p>
+          <p className="text-[11.5px] text-fg-subtle">{t("{remaining} remaining · {overdue} overdue", { remaining: s.remaining, overdue: s.overdue })}</p>
         </div>
       </div>
     </div>
@@ -229,20 +236,22 @@ function ProjectsCompletionWidget() {
 }
 
 function InventoryLowStockWidget() {
+  const { t } = useI18n();
   const products = useCollection<BusinessProduct>("inventory", "products");
   const movements = useCollection<InventoryMovement>("inventory", "movements");
   const s = inventorySummary(products.rows, movements.rows);
-  if (!s.lowStock.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">Nothing low — all stock healthy</p>;
+  if (!s.lowStock.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("Nothing low — all stock healthy")}</p>;
   return (
     <HorizontalRankingChart
       data={s.lowStock.map((p) => ({ id: p.product.id, label: p.product.name, value: p.valuation.quantity }))}
-      formatValue={(v) => `${Math.round(Number(v ?? 0))} left`}
+      formatValue={(v) => t("{count} left", { count: Math.round(Number(v ?? 0)) })}
       height={Math.max(160, s.lowStock.length * 34 + 24)}
     />
   );
 }
 
 function BookkeepingRevenueWidget({ currency }: { currency: string }) {
+  const { language, t } = useI18n();
   const tx = useCollection<BusinessTransaction>("bookkeeping", "transactions");
   const year = currentYear();
   const monthly = React.useMemo(() => {
@@ -252,17 +261,16 @@ function BookkeepingRevenueWidget({ currency }: { currency: string }) {
       if (!t.date.startsWith(year)) continue;
       map.set(t.date.slice(0, 7), (map.get(t.date.slice(0, 7)) ?? 0) + t.amount);
     }
-    const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return Array.from({ length: 12 }, (_, i) => {
       const m = `${year}-${String(i + 1).padStart(2, "0")}`;
-      return { month: m, label: labels[i], revenue: map.get(m) ?? 0 };
+      return { month: m, label: monthLabel(m, language), revenue: map.get(m) ?? 0 };
     });
-  }, [tx.rows, year]);
+  }, [tx.rows, year, language]);
   return (
     <TrendChart
       data={monthly}
       xKey="label"
-      series={[{ key: "revenue", name: "Revenue" }]}
+      series={[{ key: "revenue", name: t("Revenue") }]}
       formatValue={(v) => formatMoney(Number(v ?? 0), { currency, maximumFractionDigits: 0 })}
       height={200}
       type="area"
@@ -271,9 +279,10 @@ function BookkeepingRevenueWidget({ currency }: { currency: string }) {
 }
 
 function DebtPayoffWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const debts = useCollection<Debt>("debt", "debts");
   const totals = debtTotals(debts.rows);
-  if (!totals.count) return <p className="py-6 text-center text-[12px] text-fg-subtle">No debts tracked</p>;
+  if (!totals.count) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("No debts tracked")}</p>;
   return (
     <HorizontalRankingChart
       data={debts.rows.map((d) => ({ id: d.id, label: d.name, value: d.openingPrincipal }))}
@@ -289,66 +298,73 @@ function DebtTotalWidget({ currency }: { currency: string }) {
 }
 
 function DebtFreeWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const debts = useCollection<Debt>("debt", "debts");
   const { prefs } = usePrefs();
   const strategy = prefs.periods?.["debt-strategy"] === "avalanche" ? "avalanche" : "snowball";
   const input = debts.rows.filter((debt) => !debt.deleted && debt.openingPrincipal > 0).map((debt) => ({ id: debt.id, name: debt.name, balance: debt.openingPrincipal, annualRate: debt.annualRate, minimumPayment: debt.minimumPayment * (debt.frequency === "biweekly" ? 26 / 12 : 1) }));
   const extra = debts.rows.filter((debt) => !debt.deleted).reduce((sum, debt) => sum + Math.max(0, debt.extraPayment ?? 0), 0);
   const simulation = simulateDebt(input, extra, strategy);
-  return <div className="py-4 text-center"><p className="text-xl font-semibold">{!input.length ? "No debts" : simulation.nonAmortizing ? "Payment too low" : simulation.payoffDate.slice(0, 7)}</p><p className="text-[11px] text-fg-subtle">{input.length && !simulation.nonAmortizing ? `${simulation.months} months · ${strategy}` : "Estimated payoff"}</p><p className="mt-1 text-[11px]">{formatMoney(simulation.totalInterest, { currency })} projected interest</p></div>;
+  return <div className="py-4 text-center"><p className="text-xl font-semibold">{!input.length ? t("No debts") : simulation.nonAmortizing ? t("Payment too low") : simulation.payoffDate.slice(0, 7)}</p><p className="text-[11px] text-fg-subtle">{input.length && !simulation.nonAmortizing ? t("{count} months · {strategy}", { count: simulation.months, strategy: t(strategy === "snowball" ? "Snowball" : "Avalanche") }) : t("Estimated payoff")}</p><p className="mt-1 text-[11px]">{t("{amount} projected interest", { amount: formatMoney(simulation.totalInterest, { currency }) })}</p></div>;
 }
 
 function DebtProjectionWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const debts = useCollection<Debt>("debt", "debts");
   const { prefs } = usePrefs();
   const strategy = prefs.periods?.["debt-strategy"] === "avalanche" ? "avalanche" : "snowball";
   const input = debts.rows.filter((debt) => !debt.deleted && debt.openingPrincipal > 0).map((debt) => ({ id: debt.id, name: debt.name, balance: debt.openingPrincipal, annualRate: debt.annualRate, minimumPayment: debt.minimumPayment * (debt.frequency === "biweekly" ? 26 / 12 : 1) }));
   const extra = debts.rows.filter((debt) => !debt.deleted).reduce((sum, debt) => sum + Math.max(0, debt.extraPayment ?? 0), 0);
   const simulation = simulateDebt(input, extra, strategy);
-  return simulation.nonAmortizing ? <p className="py-6 text-center text-[11px] text-fg-subtle">Payment does not amortise this balance</p> : <TrendChart data={[{ label: "Now", balance: input.reduce((sum, debt) => sum + debt.balance, 0) }, ...simulation.monthlyBalances.map((point) => ({ label: `M${point.month}`, balance: point.total }))]} xKey="label" series={[{ key: "balance", name: "Projected debt" }]} formatValue={fmtFactory(currency)} type="line" height={190} />;
+  return simulation.nonAmortizing ? <p className="py-6 text-center text-[11px] text-fg-subtle">{t("Payment does not amortise this balance")}</p> : <TrendChart data={[{ label: t("Now"), balance: input.reduce((sum, debt) => sum + debt.balance, 0) }, ...simulation.monthlyBalances.map((point) => ({ label: `M${point.month}`, balance: point.total }))]} xKey="label" series={[{ key: "balance", name: t("Projected debt") }]} formatValue={fmtFactory(currency)} type="line" height={190} />;
 }
 
 function DebtProgressWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const debts = useCollection<Debt>("debt", "debts");
   const payments = useCollection<DebtPayment>("debt", "payments");
   const progress = debts.rows.filter((debt) => !debt.deleted).map((debt) => estimatedDebtProgress(debt, payments.rows));
   const paid = progress.reduce((sum, row) => sum + row.principalPaid, 0);
   const original = progress.reduce((sum, row) => sum + row.estimatedOriginal, 0);
-  return <ProgressChart items={[{ id: "debt-progress", label: "Principal repaid · estimate", value: paid, target: original, formatValue: fmtFactory(currency) }]} />;
+  return <ProgressChart items={[{ id: "debt-progress", label: t("Principal repaid · estimate"), value: paid, target: original, formatValue: fmtFactory(currency) }]} />;
 }
 
 function DebtNextPaymentWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const debts = useCollection<Debt>("debt", "debts");
   const payments = useCollection<DebtPayment>("debt", "payments");
   const today = localISODate(new Date());
   const events = debtDueOccurrences(debts.rows.filter((debt) => !debt.deleted), payments.rows, today, dateAfterDays(today, 31), today)
     .filter((event) => event.status !== "paid" && event.status !== "skipped").sort((a, b) => a.date.localeCompare(b.date));
   const next = events[0];
-  return next ? <div className="py-4 text-center"><p className="text-xl font-semibold">{formatMoney(next.amount, { currency })}</p><p className="text-[11px] text-fg-subtle">{next.debtName} · {next.date}</p><p className="text-[10px] capitalize">{next.status}</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">No known upcoming date</p>;
+  return next ? <div className="py-4 text-center"><p className="text-xl font-semibold">{formatMoney(next.amount, { currency })}</p><p className="text-[11px] text-fg-subtle">{next.debtName} · {next.date}</p><p className="text-[10px] capitalize">{t(PAYMENT_STATE_LABEL[next.status] ?? next.status)}</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No known upcoming date")}</p>;
 }
 
 function DebtUpcomingWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const debts = useCollection<Debt>("debt", "debts");
   const payments = useCollection<DebtPayment>("debt", "payments");
   const today = localISODate(new Date());
   const events = debtDueOccurrences(debts.rows.filter((debt) => !debt.deleted), payments.rows, today, dateAfterDays(today, 31), today)
     .filter((event) => event.status !== "paid" && event.status !== "skipped").slice(0, 5);
-  return events.length ? <div className="flex flex-col gap-2 py-1">{events.map((event) => <div key={event.id} className="flex justify-between gap-2 text-[11px]"><span className="truncate">{event.debtName} · {event.date}</span><span className="tnum">{formatMoney(event.amount, { currency })}</span></div>)}</div> : <p className="py-6 text-center text-[11px] text-fg-subtle">No known upcoming dates</p>;
+  return events.length ? <div className="flex flex-col gap-2 py-1">{events.map((event) => <div key={event.id} className="flex justify-between gap-2 text-[11px]"><span className="truncate">{event.debtName} · {event.date}</span><span className="tnum">{formatMoney(event.amount, { currency })}</span></div>)}</div> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No known upcoming dates")}</p>;
 }
 
 function PaycheckNextWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const schedules = useCollection<PaySchedule>("paycheck", "schedules");
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
   const now = new Date();
   const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
   const schedulePay = schedules.rows.filter((s) => !s.deleted && (!s.currency || s.currency === currency)).map((s) => ({ date: nextPaydayDate(s.frequency, s.nextPayDate, today), amount: s.expectedAmount, name: s.name })).filter((item): item is { date: string; amount: number; name: string } => Boolean(item.date)).sort((a, b) => a.date.localeCompare(b.date))[0];
   const recorded = checks.rows.filter((p) => !p.deleted && p.date >= today && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).sort((a, b) => a.date.localeCompare(b.date))[0];
-  const next = schedulePay && (!recorded || schedulePay.date <= recorded.date) ? schedulePay : recorded ? { date: recorded.date, amount: recorded.expectedAmount, name: "Recorded paycheck" } : null;
-  if (!next) return <p className="py-6 text-center text-[12px] text-fg-subtle">Add a pay schedule with its next payday</p>;
-  return <div className="py-4 text-center"><p className="tnum text-2xl font-semibold">{formatMoney(next.amount, { currency })}</p><p className="mt-1 text-[12px] text-fg-muted">Expected {next.date} · {next.name}</p></div>;
+  const next = schedulePay && (!recorded || schedulePay.date <= recorded.date) ? schedulePay : recorded ? { date: recorded.date, amount: recorded.expectedAmount, name: t("Recorded paycheck") } : null;
+  if (!next) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("Add a pay schedule with its next payday")}</p>;
+  return <div className="py-4 text-center"><p className="tnum text-2xl font-semibold">{formatMoney(next.amount, { currency })}</p><p className="mt-1 text-[12px] text-fg-muted">{t("Expected {date} · {name}", { date: next.date, name: next.name })}</p></div>;
 }
 
 function PaycheckAvailableWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const schedules = useCollection<PaySchedule>("paycheck", "schedules");
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
   const accounts = useCollection<MoneyAccount>("budget", "accounts");
@@ -360,23 +376,24 @@ function PaycheckAvailableWidget({ currency }: { currency: string }) {
   const payday = schedules.rows.filter((s) => !s.deleted && (!s.currency || s.currency === currency)).map((s) => nextPaydayDate(s.frequency, s.nextPayDate, today)).filter((date): date is string => Boolean(date)).sort()[0]
     ?? checks.rows.filter((p) => !p.deleted && p.date >= today && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).map((p) => p.date).sort()[0];
   const cashAccounts = accounts.rows.filter((account) => (account.kind === "checking" || account.kind === "cash") && account.currency === currency);
-  if (!cashAccounts.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">Add a checking or cash account balance</p>;
+  if (!cashAccounts.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("Add a checking or cash account balance")}</p>;
   const balance = cashAccounts.reduce((sum, account) => sum + accountBalance(account.openingBalance, transactions.rows, account.id), 0);
   const start = new Date(today + "T00:00:00");
   const end = payday ? new Date(payday + "T00:00:00") : new Date(start.getFullYear(), start.getMonth() + 1, 1);
   const endDate = end.getFullYear() + "-" + String(end.getMonth() + 1).padStart(2, "0") + "-" + String(end.getDate()).padStart(2, "0");
   const pendingBills = monthlyBillOccurrences(bills.rows, today, endDate, checks.rows, allocations.rows).filter((bill) => !bill.paid && !transactions.rows.some((tx) => !tx.deleted && tx.status === "posted" && tx.type === "expense" && tx.date === bill.dueDate && tx.description.trim().toLocaleLowerCase() === bill.name.trim().toLocaleLowerCase()));
   const remaining = round2(balance - pendingBills.reduce((sum, bill) => sum + bill.amount, 0));
-  return <div className="py-4 text-center"><p className={"tnum text-2xl font-semibold " + (remaining < 0 ? "text-[var(--negative)]" : "text-fg")}>{formatMoney(remaining, { currency })}</p><p className="mt-1 text-[12px] text-fg-muted">Checking/cash balance less known bills before payday · estimate</p></div>;
+  return <div className="py-4 text-center"><p className={"tnum text-2xl font-semibold " + (remaining < 0 ? "text-[var(--negative)]" : "text-fg")}>{formatMoney(remaining, { currency })}</p><p className="mt-1 text-[12px] text-fg-muted">{t("Checking/cash balance less known bills before payday · estimate")}</p></div>;
 }
 
 function PaycheckAllocationWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
   const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
   const debtPayments = useCollection<DebtPayment>("debt", "payments");
   const schedules = useCollection<PaySchedule>("paycheck", "schedules");
   const check = checks.rows.filter((p) => p.date.startsWith(currentMonth()) && (!p.scheduleId || !schedules.rows.some((s) => s.id === p.scheduleId) || schedules.rows.find((s) => s.id === p.scheduleId)?.currency === currency)).sort((a, b) => b.date.localeCompare(a.date))[0];
-  if (!check) return <p className="py-6 text-center text-[12px] text-fg-subtle">No paycheck recorded this month</p>;
+  if (!check) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("No paycheck recorded this month")}</p>;
   const breakdown = paycheckAllocationBreakdown(check, allocations.rows, debtPayments.rows);
   return <CategoryBreakdownChart data={breakdown.slices} formatValue={fmtFactory(currency)} centerLabel={check.actualAmount == null ? "Expected" : "Received"} centerValue={formatMoney(breakdown.amount, { currency })} height={220} />;
 }
@@ -397,6 +414,7 @@ function PaycheckMonthlyWidget({ currency }: { currency: string }) {
 }
 
 function PaycheckBillsWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const bills = useCollection<RecurringBill>("budget", "bills");
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
   const allocations = useCollection<PaycheckAllocation>("paycheck", "allocations");
@@ -405,11 +423,12 @@ function PaycheckBillsWidget({ currency }: { currency: string }) {
   endDate.setMonth(endDate.getMonth() + 1);
   const end = endDate.getFullYear() + "-" + String(endDate.getMonth() + 1).padStart(2, "0") + "-01";
   const scheduled = monthlyBillOccurrences(bills.rows, start, end, checks.rows, allocations.rows).filter((bill) => !bill.paid);
-  if (!scheduled.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">No monthly bills marked as due</p>;
+  if (!scheduled.length) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("No monthly bills marked as due")}</p>;
   return <div className="flex flex-col gap-2">{scheduled.slice(0, 6).map((bill) => <div key={bill.id} className="flex items-center justify-between gap-2 rounded-lg border border-line px-2.5 py-2 text-[11px]"><span className="truncate">{bill.name} · {bill.dueDate}</span><span className="tnum shrink-0">{formatMoney(bill.amount, { currency })}</span></div>)}</div>;
 }
 
 function PaycheckForecastWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const schedules = useCollection<PaySchedule>("paycheck", "schedules");
   const checks = useCollection<Paycheck>("paycheck", "paychecks");
   const accounts = useCollection<MoneyAccount>("budget", "accounts");
@@ -422,15 +441,15 @@ function PaycheckForecastWidget({ currency }: { currency: string }) {
   const recordedDate = checks.rows.filter((p) => p.date >= today).map((p) => p.date).sort()[0];
   const payday = scheduleDate ?? recordedDate;
   const cashAccounts = accounts.rows.filter((account) => (account.kind === "checking" || account.kind === "cash") && account.currency === currency);
-  if (!payday || !cashAccounts.length || payday <= today) return <p className="py-6 text-center text-[12px] text-fg-subtle">Add a checking/cash balance and an upcoming payday to forecast</p>;
+  if (!payday || !cashAccounts.length || payday <= today) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("Add a checking/cash balance and an upcoming payday to forecast")}</p>;
   const days = Math.ceil((new Date(payday + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / 86400000);
-  if (days > 90) return <p className="py-6 text-center text-[12px] text-fg-subtle">Next payday is more than 90 days away</p>;
+  if (days > 90) return <p className="py-6 text-center text-[12px] text-fg-subtle">{t("Next payday is more than 90 days away")}</p>;
   const opening = cashAccounts.reduce((sum, account) => sum + accountBalance(account.openingBalance, transactions.rows, account.id), 0);
   const billsToPay = monthlyBillOccurrences(bills.rows, today, payday, checks.rows, allocations.rows).filter((bill) => !bill.paid);
   const deductions = new Map<string, number>();
   for (const bill of billsToPay) deductions.set(bill.dueDate, (deductions.get(bill.dueDate) ?? 0) + bill.amount);
   let balance = opening;
-  const points = [{ label: "Today", balance }];
+  const points = [{ label: t("Today"), balance }];
   for (let offset = 1; offset < days; offset++) {
     const day = new Date(today + "T00:00:00");
     day.setDate(day.getDate() + offset);
@@ -438,10 +457,11 @@ function PaycheckForecastWidget({ currency }: { currency: string }) {
     balance -= deductions.get(date) ?? 0;
     points.push({ label: date.slice(5), balance });
   }
-  return <><p className="mb-2 text-[10px] text-fg-subtle">Account balance less scheduled monthly bills · excludes unlinked planned expenses</p><TrendChart data={points} xKey="label" series={[{ key: "balance", name: "Estimated cash" }]} formatValue={fmtFactory(currency)} height={190} type="line" /></>;
+  return <><p className="mb-2 text-[10px] text-fg-subtle">{t("Account balance less scheduled monthly bills · excludes unlinked planned expenses")}</p><TrendChart data={points} xKey="label" series={[{ key: "balance", name: t("Estimated cash") }]} formatValue={fmtFactory(currency)} height={190} type="line" /></>;
 }
 
 function NetWorthAllocationWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const itemStore = useCollection<NetWorthItem>("net-worth", "items");
   const holdingStore = useCollection<Holding>("net-worth", "holdings");
   const allItems = itemStore.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency);
@@ -450,11 +470,11 @@ function NetWorthAllocationWidget({ currency }: { currency: string }) {
   const holdings = holdingStore.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency);
   const totals = new Map<string, number>();
   items.forEach((row) => {
-    const label = row.category?.trim() || "Uncategorized";
+    const label = row.category?.trim() || t("Uncategorized");
     totals.set(label, (totals.get(label) ?? 0) + row.value);
   });
   holdings.filter((row) => !row.parentAssetId || !assetIds.has(row.parentAssetId)).forEach((row) => {
-    const label = "Investment · " + (row.assetClass?.trim() || "Unclassified");
+    const label = t("{assetClass} · investment", { assetClass: row.assetClass?.trim() || t("Unclassified") });
     totals.set(label, (totals.get(label) ?? 0) + row.quantity * row.unitPrice);
   });
   const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
@@ -463,6 +483,7 @@ function NetWorthAllocationWidget({ currency }: { currency: string }) {
 }
 
 function NetWorthGrowthWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const itemStore = useCollection<NetWorthItem>("net-worth", "items");
   const holdingStore = useCollection<Holding>("net-worth", "holdings");
   const snapshotStore = useCollection<ValuationSnapshot>("net-worth", "snapshots");
@@ -470,45 +491,49 @@ function NetWorthGrowthWidget({ currency }: { currency: string }) {
   const summary = netWorthSummary(itemStore.rows, holdingStore.rows, snapshots, currency);
   const values = summary.history.map((row) => ({ date: row.date, netWorth: row.netWorth }));
   return values.length > 1
-    ? <TrendChart data={values} xKey="date" series={[{ key: "netWorth", name: "Net worth" }]} formatValue={fmtFactory(currency)} type="line" height={210} />
-    : <p className="py-6 text-center text-[12px] text-fg-subtle">Record another dated valuation to see net-worth growth</p>;
+    ? <TrendChart data={values} xKey="date" series={[{ key: "netWorth", name: t("Net worth") }]} formatValue={fmtFactory(currency)} type="line" height={210} />
+    : <p className="py-6 text-center text-[12px] text-fg-subtle">{t("Record another dated valuation to see net-worth growth")}</p>;
 }
 
 function SalesRevenueWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const sales = useCollection<Sale>("sales", "sales");
   const targets = useCollection<SalesTarget>("sales", "targets");
   const summary = salesSummary(sales.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency), targets.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency));
   return summary.byMonth.length
-    ? <TrendChart data={summary.byMonth.map((row) => ({ month: row.month, net: row.net }))} xKey="month" series={[{ key: "net", name: "Net sales" }]} formatValue={fmtFactory(currency)} height={210} />
-    : <p className="py-6 text-center text-[11px] text-fg-subtle">No sale records yet</p>;
+    ? <TrendChart data={summary.byMonth.map((row) => ({ month: row.month, net: row.net }))} xKey="month" series={[{ key: "net", name: t("Net sales") }]} formatValue={fmtFactory(currency)} height={210} />
+    : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No sale records yet")}</p>;
 }
 
 function InvoiceCollectionsWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const invoices = useCollection<Invoice>("invoicing", "invoices");
   const payments = useCollection<Payment>("invoicing", "payments");
   const eligible = invoices.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency);
   const invoiceIds = new Set(eligible.map((row) => row.id));
   const summary = invoicingSummary(eligible, payments.rows.filter((row) => invoiceIds.has(row.invoiceId)), localISODate(new Date()));
   const balances = [
-    { id: "current", name: "Current", value: summary.rows.filter((row) => row.totals.balanceDue > 0 && !row.totals.isOverdue).reduce((sum, row) => sum + row.totals.balanceDue, 0) },
-    { id: "overdue", name: "Overdue", value: summary.overdueAmount },
+    { id: "current", name: t("Current"), value: summary.rows.filter((row) => row.totals.balanceDue > 0 && !row.totals.isOverdue).reduce((sum, row) => sum + row.totals.balanceDue, 0) },
+    { id: "overdue", name: t("Overdue"), value: summary.overdueAmount },
   ];
   return <CategoryBreakdownChart data={balances} formatValue={fmtFactory(currency)} centerLabel="Outstanding" centerValue={formatMoney(summary.outstanding, { currency })} height={210} />;
 }
 
 function CashForecastWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const scenarios = useCollection<CashScenario>("cash-flow", "scenarios");
   const items = useCollection<CashForecastItem>("cash-flow", "items");
   const scenario = scenarios.rows.find((row) => !row.deleted);
-  if (!scenario) return <p className="py-6 text-center text-[11px] text-fg-subtle">Create a forecast scenario</p>;
+  if (!scenario) return <p className="py-6 text-center text-[11px] text-fg-subtle">{t("Create a forecast scenario")}</p>;
   const forecast = forecastCashFlow(items.rows, scenario, { weeks: 13 });
-  return <TrendChart data={forecast.weeks.map((row) => ({ week: row.label, closing: row.closing }))} xKey="week" series={[{ key: "closing", name: "Projected cash" }]} formatValue={fmtFactory(currency)} height={210} type="line" />;
+  return <TrendChart data={forecast.weeks.map((row) => ({ week: row.label, closing: row.closing }))} xKey="week" series={[{ key: "closing", name: t("Projected cash") }]} formatValue={fmtFactory(currency)} height={210} type="line" />;
 }
 
 function WeddingBudgetWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const expenses = useCollection<WeddingExpense>("wedding", "expenses");
   const data = expenses.rows.filter((row) => !row.deleted).reduce((list, row) => {
-    const name = row.category || "Uncategorized";
+    const name = row.category || t("Uncategorized");
     const existing = list.find((entry) => entry.id === name);
     if (existing) existing.value += row.committed;
     else list.push({ id: name, name, value: row.committed });
@@ -519,6 +544,7 @@ function WeddingBudgetWidget({ currency }: { currency: string }) {
 }
 
 function PropertyRevenueWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const properties = useCollection<Property>("property", "properties");
   const bookings = useCollection<PropertyBooking>("property", "bookings");
   const eligible = new Set(properties.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency).map((row) => row.id));
@@ -527,29 +553,32 @@ function PropertyRevenueWidget({ currency }: { currency: string }) {
     const month = booking.checkIn.slice(0, 7); grouped.set(month, (grouped.get(month) ?? 0) + booking.accommodation);
   }
   const data = [...grouped].sort(([a], [b]) => a.localeCompare(b)).map(([month, revenue]) => ({ month, revenue }));
-  return data.length ? <TrendChart data={data} xKey="month" series={[{ key: "revenue", name: "Accommodation revenue" }]} formatValue={fmtFactory(currency)} height={210} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">No non-cancelled bookings yet</p>;
+  return data.length ? <TrendChart data={data} xKey="month" series={[{ key: "revenue", name: t("Accommodation revenue") }]} formatValue={fmtFactory(currency)} height={210} /> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No non-cancelled bookings yet")}</p>;
 }
 
 function HabitTodayWidget() {
+  const { t } = useI18n();
   const habits = useCollection<Habit>("habits", "habits");
   const completions = useCollection<HabitCompletion>("habits", "completions");
   const summary = habitsOverview(habits.rows, completions.rows, localISODate(new Date()));
-  return <p className="py-6 text-center text-xl font-semibold">{summary.doneToday} / {summary.scheduledToday}<span className="block text-[11px] font-normal text-fg-subtle">scheduled habits done today</span></p>;
+  return <p className="py-6 text-center text-xl font-semibold">{summary.doneToday} / {summary.scheduledToday}<span className="block text-[11px] font-normal text-fg-subtle">{t("scheduled habits done today")}</span></p>;
 }
 
 function ContentPipelineWidget() {
+  const { t } = useI18n();
   const posts = useCollection<ContentPost>("content", "posts");
   const summary = contentSummary(posts.rows);
-  const status = ["idea", "draft", "scheduled", "published"].map((name) => ({ id: name, name: name[0].toUpperCase() + name.slice(1), value: posts.rows.filter((row) => !row.deleted && row.status === name).length }));
-  return <CategoryBreakdownChart data={status} formatValue={(value) => Number(value ?? 0) + " posts"} centerLabel="Publishing rate" centerValue={summary.publishingRate == null ? "N/A" : Math.round(summary.publishingRate) + "%"} height={210} />;
+  const status = ["idea", "draft", "scheduled", "published"].map((name) => ({ id: name, name: t(name[0].toUpperCase() + name.slice(1)), value: posts.rows.filter((row) => !row.deleted && row.status === name).length }));
+  return <CategoryBreakdownChart data={status} formatValue={(value) => t("{count} posts", { count: Number(value ?? 0) })} centerLabel="Publishing rate" centerValue={summary.publishingRate == null ? "N/A" : Math.round(summary.publishingRate) + "%"} height={210} />;
 }
 
 function BookkeepingExpensesWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const transactions = useCollection<BusinessTransaction>("bookkeeping", "transactions");
   const categories = useCollection<MoneyCategory>("bookkeeping", "categories");
   const totals = new Map<string, number>();
   for (const row of transactions.rows.filter((item) => !item.deleted && item.type === "expense")) {
-    const name = categories.rows.find((category) => category.id === row.categoryId)?.name ?? "Uncategorized";
+    const name = categories.rows.find((category) => category.id === row.categoryId)?.name ?? t("Uncategorized");
     totals.set(name, (totals.get(name) ?? 0) + row.amount);
   }
   const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
@@ -557,11 +586,12 @@ function BookkeepingExpensesWidget({ currency }: { currency: string }) {
 }
 
 function InventoryValueWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const products = useCollection<BusinessProduct>("inventory", "products");
   const movements = useCollection<InventoryMovement>("inventory", "movements");
   const summary = inventorySummary(products.rows, movements.rows);
   const totals = new Map<string, number>();
-  for (const row of summary.items) { const name = row.product.category || "Uncategorized"; totals.set(name, (totals.get(name) ?? 0) + row.valuation.inventoryValue); }
+  for (const row of summary.items) { const name = row.product.category || t("Uncategorized"); totals.set(name, (totals.get(name) ?? 0) + row.valuation.inventoryValue); }
   const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
   return <CategoryBreakdownChart data={data} formatValue={fmtFactory(currency)} centerLabel="At weighted cost" centerValue={formatMoney(summary.inventoryValue, { currency })} height={210} />;
 }
@@ -574,20 +604,22 @@ function SalesProductsWidget({ currency }: { currency: string }) {
 }
 
 function PropertyExpenseWidget({ currency }: { currency: string }) {
+  const { t } = useI18n();
   const properties = useCollection<Property>("property", "properties");
   const expenses = useCollection<PropertyExpense>("property", "expenses");
   const propertyIds = new Set(properties.rows.filter((row) => !row.deleted && (row.currency || "USD") === currency).map((row) => row.id));
   const totals = new Map<string, number>();
-  for (const row of expenses.rows.filter((item) => !item.deleted && propertyIds.has(item.propertyId))) totals.set(row.category || "Uncategorized", (totals.get(row.category || "Uncategorized") ?? 0) + row.amount);
+  for (const row of expenses.rows.filter((item) => !item.deleted && propertyIds.has(item.propertyId))) totals.set(row.category || t("Uncategorized"), (totals.get(row.category || t("Uncategorized")) ?? 0) + row.amount);
   const data = [...totals].map(([name, value]) => ({ id: name, name, value }));
   return <CategoryBreakdownChart data={data} formatValue={fmtFactory(currency)} centerLabel="Expenses" centerValue={formatMoney(data.reduce((sum, row) => sum + row.value, 0), { currency })} height={210} />;
 }
 
 function NutritionMacrosWidget() {
+  const { t } = useI18n();
   const logs = useCollection<NutritionLog>("nutrition", "logs");
   const totals = dailyTotals(logs.rows, localISODate(new Date()));
-  const data = [{ id: "protein", name: "Protein", value: totals.protein * 4 }, { id: "carbs", name: "Carbohydrates", value: totals.carbs * 4 }, { id: "fat", name: "Fat", value: totals.fat * 9 }];
-  return <CategoryBreakdownChart data={data} formatValue={(value) => Math.round(Number(value ?? 0)) + " kcal"} centerLabel="Logged" centerValue={Math.round(totals.kcal) + " kcal"} height={210} />;
+  const data = [{ id: "protein", name: t("Protein"), value: totals.protein * 4 }, { id: "carbs", name: t("Carbohydrates"), value: totals.carbs * 4 }, { id: "fat", name: t("Fat"), value: totals.fat * 9 }];
+  return <CategoryBreakdownChart data={data} formatValue={(value) => Math.round(Number(value ?? 0)) + " kcal"} centerLabel={t("Logged")} centerValue={Math.round(totals.kcal) + " kcal"} height={210} />;
 }
 
 function ProjectStatusWidget() {
@@ -638,6 +670,16 @@ export const CHART_WIDGETS: ChartWidgetDef[] = [
   { id: "paycheck.bills", tool: "paycheck", title: "Bills still due", description: "Paycheck Planner · monthly bill templates not marked paid", Component: PaycheckBillsWidget },
   { id: "paycheck.monthly-trend", tool: "paycheck", title: "Monthly income vs expenses", description: "Paycheck Planner · posted income and expenses", Component: PaycheckMonthlyWidget },
 ];
+
+const PAYMENT_STATE_LABEL: Record<string, string> = {
+  upcoming: "Upcoming",
+  "due-soon": "Due soon",
+  paid: "Paid",
+  partial: "Partially paid",
+  overdue: "Overdue",
+  planned: "Planned",
+  skipped: "Skipped",
+};
 
 const COLLECTION_FILTERS = ["all", "money", "business", "life", "work"] as const;
 type CollectionFilter = (typeof COLLECTION_FILTERS)[number];
@@ -739,6 +781,7 @@ function DashboardWidgetCatalog({ onClose, kpis, selectedKpis, onToggleKpi, onMo
 }
 
 export function DashboardCustomizePanel({ open, onClose, kpis, selectedKpis, onToggleKpi, onMoveKpi, onRestoreKpis }: { open: boolean; onClose: () => void; kpis: { id: string; label: string }[]; selectedKpis: string[]; onToggleKpi: (id: string) => void; onMoveKpi: (id: string, direction: -1 | 1) => void; onRestoreKpis: () => void }) {
+  const { t } = useI18n();
   const [desktop, setDesktop] = React.useState(false);
   React.useEffect(() => {
     const media = window.matchMedia("(min-width: 1280px)");
@@ -747,7 +790,7 @@ export function DashboardCustomizePanel({ open, onClose, kpis, selectedKpis, onT
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  if (desktop) return <LazyMotion features={domAnimation}><m.aside id="dashboard-customize-panel" aria-label="Dashboard customization" aria-hidden={!open} inert={!open} className="glass-strong fixed right-4 top-[calc(3.5rem+1rem)] z-30 hidden h-[calc(100dvh-5.5rem)] overflow-hidden rounded-2xl p-4 xl:flex" initial={{ width: 0, opacity: 0, x: 24 }} animate={{ width: open ? 360 : 0, opacity: open ? 1 : 0, x: open ? 0 : 24 }} transition={{ duration: 0.32, ease: "easeOut" }}><m.div className="h-full w-[328px] min-w-[328px]" initial={false} animate={{ x: open ? 0 : 380 }} transition={{ duration: 0.32, ease: "easeOut" }}><DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} /></m.div></m.aside></LazyMotion>;
+  if (desktop) return <LazyMotion features={domAnimation}><m.aside id="dashboard-customize-panel" aria-label={t("Dashboard customization")} aria-hidden={!open} inert={!open} className="glass-strong fixed right-4 top-[calc(3.5rem+1rem)] z-30 hidden h-[calc(100dvh-5.5rem)] overflow-hidden rounded-2xl p-4 xl:flex" initial={{ width: 0, opacity: 0, x: 24 }} animate={{ width: open ? 360 : 0, opacity: open ? 1 : 0, x: open ? 0 : 24 }} transition={{ duration: 0.32, ease: "easeOut" }}><m.div className="h-full w-[328px] min-w-[328px]" initial={false} animate={{ x: open ? 0 : 380 }} transition={{ duration: 0.32, ease: "easeOut" }}><DashboardWidgetCatalog onClose={onClose} kpis={kpis} selectedKpis={selectedKpis} onToggleKpi={onToggleKpi} onMoveKpi={onMoveKpi} onRestoreKpis={onRestoreKpis} /></m.div></m.aside></LazyMotion>;
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent id="dashboard-customize-panel" title="Customize Dashboard" description="Choose what matters most to you." wide hideHeader className="dashboard-panel-fly-in !box-border !fixed !left-0 !top-auto !bottom-0 !max-h-[88dvh] !w-full !max-w-none !translate-x-0 !translate-y-0 !overflow-x-hidden !rounded-b-none !rounded-t-[24px] !p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] xl:hidden">
@@ -813,6 +856,7 @@ function OfflineBadge() {
 }
 
 export function ChartWidgetCard({ pin, size = "half" }: { pin: PinnedChart; size?: "half" | "full" }) {
+  const { t } = useI18n();
   const def = getWidget(pin.id);
   const { prefs, setPrefs } = usePrefs();
   const { active } = useActiveTools();
@@ -825,7 +869,7 @@ export function ChartWidgetCard({ pin, size = "half" }: { pin: PinnedChart; size
     return (
       <ChartContainer title={def.title} subtitle={def.description} icon="lock" className={size === "full" ? "lg:col-span-2" : undefined}>
         <p className="py-6 text-center text-[12px] text-fg-subtle">
-          This chart belongs to a tool you haven&apos;t activated.
+          {t("This chart belongs to a tool you haven’t activated.")}
         </p>
       </ChartContainer>
     );
@@ -845,8 +889,8 @@ export function ChartWidgetCard({ pin, size = "half" }: { pin: PinnedChart; size
           <OfflineBadge />
           <button
             type="button"
-            aria-label={size === "full" ? "Use half-width widget" : "Use full-width widget"}
-            title={size === "full" ? "Use half width" : "Use full width"}
+            aria-label={t(size === "full" ? "Use half-width widget" : "Use full-width widget")}
+            title={t(size === "full" ? "Use half width" : "Use full width")}
             onClick={() => setPrefs({ pinnedChartSizes: { ...(prefs.pinnedChartSizes ?? {}), [pin.id]: size === "full" ? "half" : "full" } })}
             className="press grid h-7 min-w-7 place-items-center rounded-lg border border-line px-1.5 text-[10px] font-semibold text-fg-muted hover:bg-[var(--surface-strong)] hover:text-fg"
           >
@@ -854,7 +898,7 @@ export function ChartWidgetCard({ pin, size = "half" }: { pin: PinnedChart; size
           </button>
           <button
             type="button"
-            aria-label="Move widget up"
+            aria-label={t("Move widget up")}
             onClick={() => setPrefs({ pinnedCharts: movePin(pins, pin.id, -1) })}
             className="press grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted hover:bg-[var(--surface-strong)] hover:text-fg"
           >
@@ -862,7 +906,7 @@ export function ChartWidgetCard({ pin, size = "half" }: { pin: PinnedChart; size
           </button>
           <button
             type="button"
-            aria-label="Move widget down"
+            aria-label={t("Move widget down")}
             onClick={() => setPrefs({ pinnedCharts: movePin(pins, pin.id, 1) })}
             className="press grid h-7 w-7 place-items-center rounded-lg border border-line text-fg-muted hover:bg-[var(--surface-strong)] hover:text-fg"
           >

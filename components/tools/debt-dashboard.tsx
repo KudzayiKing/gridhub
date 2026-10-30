@@ -4,7 +4,7 @@ import * as React from "react";
 import { Select } from "@/components/ui/field";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { usePrefs } from "@/components/providers";
-import { ChartContainer, ChartEmptyState, CategoryBreakdownChart, ChartLegend, ProgressChart, TrendChart } from "@/components/charts";
+import { ChartContainer, ChartEmptyState, CategoryBreakdownChart, ChartLegend, ProgressChart, RechartsTooltip, TrendChart } from "@/components/charts";
 import { Button } from "@/components/ui/button";
 import { Badge, CompactMetric, InlineAlert } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/overlay";
@@ -34,6 +34,20 @@ const monday = (iso: string) => {
 };
 const statusTone = (status: string): "positive" | "warning" | "negative" | "neutral" =>
   status === "paid" ? "positive" : status === "overdue" ? "negative" : status === "due-soon" || status === "partial" ? "warning" : "neutral";
+
+/**
+ * `DebtPaymentState` values are storage keys, not copy. Map them to the English source string
+ * that doubles as a catalog key before handing them to `t()`.
+ */
+const PAYMENT_STATE_LABEL: Record<string, string> = {
+  upcoming: "Upcoming",
+  "due-soon": "Due soon",
+  paid: "Paid",
+  partial: "Partially paid",
+  overdue: "Overdue",
+  planned: "Planned",
+  skipped: "Skipped",
+};
 
 export function DebtDashboard({ currency }: { currency: string }) {
   const { prefs, setPrefs } = usePrefs();
@@ -90,6 +104,7 @@ export function DebtDashboard({ currency }: { currency: string }) {
   const baseStrategySimulation = strategyProjection;
   const proposedSimulation = simulateDebt(simulatorInput, simulatorTargetDebt ? strategyExtraFromRecords : strategyExtraFromRecords + extraAmount, strategy);
   const selectedStrategy = strategy === "snowball" ? snowball : avalanche;
+  const strategyLabel = t(strategy === "snowball" ? "Snowball" : "Avalanche");
   const strategyComparisons = [strategySnowball, strategyAvalanche] as const;
   React.useEffect(() => {
     if (selectedDebtId && !selectedDebtExists) setSelectedDebtId(null);
@@ -183,11 +198,11 @@ export function DebtDashboard({ currency }: { currency: string }) {
     const interest = paymentInterest.trim() ? Number(paymentInterest) : undefined;
     const fees = Number(paymentFees || 0);
     if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(fees) || fees < 0) {
-      setPaymentError("Enter a payment greater than zero and nonnegative fees.");
+      setPaymentError(t("Enter a payment greater than zero and nonnegative fees."));
       return;
     }
     if (!paymentSplitIsValid(total, principal, interest, fees)) {
-      setPaymentError("Principal, interest, and fees must add up to the total payment.");
+      setPaymentError(t("Principal, interest, and fees must add up to the total payment."));
       return;
     }
     const debt = debts.find((item) => item.id === paymentTarget.debtId);
@@ -209,10 +224,10 @@ export function DebtDashboard({ currency }: { currency: string }) {
       };
       if (existingPlan) await paymentState.update(existingPlan.id, actual);
       else await paymentState.add(actual);
-      setPaymentSuccess(debt.name + " payment recorded. Refresh the tracked balance from your lender statement; recording this entry does not subtract it twice.");
+      setPaymentSuccess(t("{name} payment recorded. Refresh the tracked balance from your lender statement; recording this entry does not subtract it twice.", { name: debt.name }));
       setPaymentTarget(null);
     } catch {
-      setPaymentError("Payment was not saved. Your local record remains unchanged.");
+      setPaymentError(t("Payment was not saved. Your local record remains unchanged."));
     } finally {
       setSavingPayment(false);
     }
@@ -236,7 +251,7 @@ export function DebtDashboard({ currency }: { currency: string }) {
       await debtState.update(debt.id, { reminderDaysBefore });
       setReminderError("");
     } catch {
-      setReminderError("Reminder preference could not be saved.");
+      setReminderError(t("Reminder preference could not be saved."));
     }
   };
   const reminders = todayEvents.filter((event) => {
@@ -251,7 +266,7 @@ export function DebtDashboard({ currency }: { currency: string }) {
     const plan = { debtId: debt.id, date: paymentDate, amount: round2(Number(paymentAmount)), status: "planned" as const, paycheckId: paymentPaycheck || undefined, notes: paymentNote || undefined };
     if (existingPlan) await paymentState.update(existingPlan.id, plan);
     else await paymentState.add(plan);
-    setPaymentSuccess("Planned payment saved. It is not marked as paid.");
+    setPaymentSuccess(t("Planned payment saved. It is not marked as paid."));
     setPaymentTarget(null);
   };
 
@@ -263,7 +278,7 @@ export function DebtDashboard({ currency }: { currency: string }) {
           if (nextSection !== section) setSelectedDebtId(null);
           setSection(nextSection);
         }}
-        ariaLabel="Debt payoff sections"
+        ariaLabel={t("Debt payoff sections")}
         className="no-scrollbar flex gap-1 overflow-x-auto"
         buttonClassName="px-3 py-1.5 text-[12px]"
         options={([
@@ -271,13 +286,13 @@ export function DebtDashboard({ currency }: { currency: string }) {
           ["calendar", "Payment Calendar", "calendar-days"],
           ["strategies", "Strategies", "target"],
           ["insights", "Insights", "chart-no-axes-combined"],
-        ] as const).map(([value, label]) => ({ value, label }))}
+        ] as const).map(([value, label]) => ({ value, label: t(label) }))}
       />
       {section === "strategies" ? (
         <AnimatedTabs
           value={activeSelectedDebtId ?? "all-debts"}
           onChange={(value) => setSelectedDebtId(value === "all-debts" ? null : value)}
-          ariaLabel="Debt selection"
+          ariaLabel={t("Debt selection")}
           className="no-scrollbar flex gap-1 overflow-x-auto"
           buttonClassName="px-3 py-1.5 text-[12px]"
           options={[
@@ -286,48 +301,48 @@ export function DebtDashboard({ currency }: { currency: string }) {
           ]}
         />
       ) : null}
-      {paymentSuccess ? <p role="status" className="rounded-xl border border-[var(--positive)]/30 bg-[var(--positive)]/10 px-3 py-2 text-[11px] text-[var(--positive)]">{paymentSuccess}<button className="ml-2 underline" onClick={() => setPaymentSuccess("")}>Dismiss</button></p> : null}
+      {paymentSuccess ? <p role="status" className="rounded-xl border border-[var(--positive)]/30 bg-[var(--positive)]/10 px-3 py-2 text-[11px] text-[var(--positive)]">{paymentSuccess}<button className="ml-2 underline" onClick={() => setPaymentSuccess("")}>{t("Dismiss")}</button></p> : null}
       {section === "overview" ? <>
         <div className="grid items-stretch gap-3 xl:grid-cols-2">
           <ChartContainer title="Outstanding debt" subtitle="Current tracked balance by account" icon="tag">
             {debtSlices.length ? <CategoryBreakdownChart data={debtSlices} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} centerLabel="Total debt" centerValue={formatMoney(totals.balance, { currency })} onSliceClick={(id) => setTargetDebt(id)} height={280} /> : <ChartEmptyState label="Add a positive debt balance to see the breakdown" />}
-            {targetDebt ? <p className="mt-1 text-[10px] text-fg-muted">Selected: {debts.find((debt) => debt.id === targetDebt)?.name ?? "Debt"}<button className="ml-2 underline" onClick={() => setTargetDebt("")}>Clear</button></p> : null}
+            {targetDebt ? <p className="mt-1 text-[10px] text-fg-muted">{t("Selected: {name}", { name: debts.find((debt) => debt.id === targetDebt)?.name ?? t("Debt") })}<button className="ml-2 underline" onClick={() => setTargetDebt("")}>{t("Clear")}</button></p> : null}
           </ChartContainer>
           <section className="rounded-2xl border border-line bg-[var(--surface)] p-3">
-            <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[12px] font-semibold">Debt summary</h3><span className="text-[11px] text-fg-subtle capitalize">{strategy} strategy</span></div>
+            <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[12px] font-semibold">{t("Debt summary")}</h3><span className="text-[11px] text-fg-subtle">{t("{strategy} strategy", { strategy: strategyLabel })}</span></div>
             <div className="grid auto-rows-fr grid-cols-2 gap-2">
-              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Total debt remaining" value={formatMoney(totals.balance, { currency })} hint={totals.count + " active debts"} tone="negative" /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Total debt remaining" value={formatMoney(totals.balance, { currency })} hint={t("{count} active debts", { count: totals.count })} tone="negative" /></div>
               <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Monthly payment plan" value={formatMoney(plannedThisMonth, { currency })} hint="Minimums + saved extra amounts" /></div>
-              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Estimated debt-free date" value={!totals.balance ? "Debt free" : selectedStrategy.nonAmortizing ? "Payment too low" : selectedStrategy.payoffDate.slice(0, 7)} hint={!totals.balance ? "No outstanding balance" : selectedStrategy.nonAmortizing ? "Does not cover estimated interest" : selectedStrategy.months + " months · " + strategy} /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Estimated debt-free date" value={!totals.balance ? t("Debt free") : selectedStrategy.nonAmortizing ? t("Payment too low") : selectedStrategy.payoffDate.slice(0, 7)} hint={!totals.balance ? t("No outstanding balance") : selectedStrategy.nonAmortizing ? t("Does not cover estimated interest") : t("{count} months · {strategy}", { count: selectedStrategy.months, strategy: strategyLabel })} /></div>
               <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Projected interest" value={formatMoney(selectedStrategy.totalInterest, { currency })} hint="Projection · monthly APR/12" /></div>
-              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Next payment" value={nextEvent ? formatMoney(nextEvent.amount, { currency }) : "Date not set"} hint={nextEvent ? nextEvent.debtName + " · " + dateLabel(nextEvent.date) : "Add contractual due date"} tone={nextEvent?.status === "overdue" ? "negative" : nextEvent?.status === "due-soon" ? "negative" : "neutral"} /></div>
-              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Debts paid off" value={paidOffCount + " / " + debts.length} hint={debts.length ? formatPercent(paidOffCount / debts.length * 100, 0) + " of tracked accounts" : "No debts tracked"} tone={paidOffCount > 0 ? "positive" : "neutral"} /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Next payment" value={nextEvent ? formatMoney(nextEvent.amount, { currency }) : t("Date not set")} hint={nextEvent ? nextEvent.debtName + " · " + dateLabel(nextEvent.date) : t("Add contractual due date")} tone={nextEvent?.status === "overdue" ? "negative" : nextEvent?.status === "due-soon" ? "negative" : "neutral"} /></div>
+              <div className="h-full min-h-[112px] [&>div]:h-full"><CompactMetric label="Debts paid off" value={paidOffCount + " / " + debts.length} hint={debts.length ? t("{percent} of tracked accounts", { percent: formatPercent(paidOffCount / debts.length * 100, 0) }) : t("No debts tracked")} tone={paidOffCount > 0 ? "positive" : "neutral"} /></div>
             </div>
           </section>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          <ChartContainer title="Projected debt balance" subtitle={strategy + " · estimated monthly APR/12 interest"} icon="trending-down">
-            {selectedStrategy.nonAmortizing ? <InlineAlert tone="negative" title="This plan does not amortise">Increase the payment plan; minimums and extras do not reduce estimated interest.</InlineAlert> : debts.length ? <TrendChart data={payoffSeries.map((point) => ({ label: point.month === 0 ? "Now" : "M" + point.month, value: point.balance }))} xKey="label" series={[{ key: "value", name: "Projected balance" }]} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} type="line" height={220} /> : <ChartEmptyState label="Add debt balances to project payoff" />}
+          <ChartContainer title="Projected debt balance" subtitle={t("{strategy} · estimated monthly APR/12 interest", { strategy: strategyLabel })} icon="trending-down">
+            {selectedStrategy.nonAmortizing ? <InlineAlert tone="negative" title={t("This plan does not amortise")}>{t("Increase the payment plan; minimums and extras do not reduce estimated interest.")}</InlineAlert> : debts.length ? <TrendChart data={payoffSeries.map((point) => ({ label: point.month === 0 ? t("Now") : "M" + point.month, value: point.balance }))} xKey="label" series={[{ key: "value", name: t("Projected balance") }]} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} type="line" height={220} /> : <ChartEmptyState label="Add debt balances to project payoff" />}
           </ChartContainer>
           <ChartContainer title="Debt-free progress" subtitle="Estimated from explicitly recorded principal portions" icon="gauge">
-            <ProgressChart items={[{ id: "overall", label: "Overall principal repaid", value: principalPaid, target: originalTracked, formatValue: (value) => formatMoney(Number(value ?? 0), { currency }), caption: principalPaid > 0 ? "Estimate assumes no new borrowing or balance corrections" : "Record principal portions to build tracked progress" }]} />
-            <p className="mt-1 text-center text-[11px] text-fg-muted">{formatPercent(overallProgress, 0)} tracked progress · {formatMoney(totals.balance, { currency })} remaining</p>
+            <ProgressChart items={[{ id: "overall", label: t("Overall principal repaid"), value: principalPaid, target: originalTracked, formatValue: (value) => formatMoney(Number(value ?? 0), { currency }), caption: principalPaid > 0 ? t("Estimate assumes no new borrowing or balance corrections") : t("Record principal portions to build tracked progress") }]} />
+            <p className="mt-1 text-center text-[11px] text-fg-muted">{t("{percent} tracked progress · {amount} remaining", { percent: formatPercent(overallProgress, 0), amount: formatMoney(totals.balance, { currency }) })}</p>
           </ChartContainer>
         </div>
-        <ChartContainer title="Upcoming payments" subtitle="Only user-entered contractual dates are scheduled" icon="calendar-days" action={<Button size="sm" variant="secondary" onClick={() => setSection("calendar")}>Open calendar</Button>}>
-          {nextEvents.length ? <div className="flex flex-col gap-1.5">{nextEvents.slice(0, 5).map((event) => <div key={event.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2"><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-medium">{event.debtName}</p><p className="text-[10px] text-fg-subtle">{dateLabel(event.date)} · {event.status}</p></div><span className="tnum text-[12px]">{formatMoney(event.amount, { currency })}</span><Button size="sm" variant="ghost" onClick={() => openPayment(event)}>Record</Button></div>)}</div> : <ChartEmptyState label="Set a due day or next payment date on a debt to create an upcoming payment" />}
+        <ChartContainer title="Upcoming payments" subtitle="Only user-entered contractual dates are scheduled" icon="calendar-days" action={<Button size="sm" variant="secondary" onClick={() => setSection("calendar")}>{t("Open calendar")}</Button>}>
+          {nextEvents.length ? <div className="flex flex-col gap-1.5">{nextEvents.slice(0, 5).map((event) => <div key={event.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2"><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-medium">{event.debtName}</p><p className="text-[10px] text-fg-subtle">{dateLabel(event.date)} · {t(PAYMENT_STATE_LABEL[event.status] ?? event.status)}</p></div><span className="tnum text-[12px]">{formatMoney(event.amount, { currency })}</span><Button size="sm" variant="ghost" onClick={() => openPayment(event)}>{t("Record")}</Button></div>)}</div> : <ChartEmptyState label="Set a due day or next payment date on a debt to create an upcoming payment" />}
         </ChartContainer>
       </> : null}
 
       {section === "calendar" ? <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-[var(--surface)] p-3">
-          <div className="flex items-center gap-2"><Button size="sm" variant="ghost" icon="arrowLeft" onClick={previousMonth} aria-label="Previous period" /><label className="sr-only" htmlFor="debt-calendar-date">Calendar date</label><input id="debt-calendar-date" type="date" value={calendarDate} onChange={(event) => setCalendarDate(event.target.value)} className="h-9 rounded-lg border border-line bg-[var(--surface)] px-2 text-xs"/><Button size="sm" variant="ghost" icon="arrowRight" onClick={nextMonth} aria-label="Next period" /></div>
-          <div className="flex rounded-full border border-line p-0.5" role="group" aria-label="Calendar view">
-            {(["month", "week", "agenda"] as const).map((mode) => <button key={mode} type="button" onClick={() => setCalendarMode(mode)} aria-pressed={calendarMode === mode} className={"rounded-full px-2.5 py-1 text-[11px] capitalize " + (calendarMode === mode ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "text-fg-muted")}>{mode}</button>)}
+          <div className="flex items-center gap-2"><Button size="sm" variant="ghost" icon="arrowLeft" onClick={previousMonth} aria-label={t("Previous period")} /><label className="sr-only" htmlFor="debt-calendar-date">{t("Calendar date")}</label><input id="debt-calendar-date" type="date" value={calendarDate} onChange={(event) => setCalendarDate(event.target.value)} className="h-9 rounded-lg border border-line bg-[var(--surface)] px-2 text-xs"/><Button size="sm" variant="ghost" icon="arrowRight" onClick={nextMonth} aria-label={t("Next period")} /></div>
+          <div className="flex rounded-full border border-line p-0.5" role="group" aria-label={t("Calendar view")}>
+            {(["month", "week", "agenda"] as const).map((mode) => <button key={mode} type="button" onClick={() => setCalendarMode(mode)} aria-pressed={calendarMode === mode} className={"rounded-full px-2.5 py-1 text-[11px] capitalize " + (calendarMode === mode ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "text-fg-muted")}>{t(mode === "month" ? "Month" : mode === "week" ? "Week" : "Agenda")}</button>)}
           </div>
         </div>
         {calendarMode === "month" ? <div className="grid grid-cols-7 gap-1 rounded-2xl border border-line bg-[var(--surface)] p-2">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <div key={day} className="py-1 text-center text-[10px] font-medium text-fg-subtle">{day}</div>)}
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <div key={day} className="py-1 text-center text-[10px] font-medium text-fg-subtle">{t(day)}</div>)}
           {(() => {
             const start = new Date(monthStart(calendarDate) + "T00:00:00");
             const firstOffset = (start.getDay() + 6) % 7;
@@ -345,77 +360,77 @@ export function DebtDashboard({ currency }: { currency: string }) {
         {reminders.length ? <InlineAlert tone="info" title="In-app payment reminders">{reminders.map((event) => event.debtName + " is due " + (event.date === now ? "today" : "on " + dateLabel(event.date))).join(" · ")}</InlineAlert> : null}
         {reminderError ? <p role="alert" className="text-[11px] text-[var(--negative)]">{reminderError}</p> : null}
         <div className="rounded-2xl border border-line bg-[var(--surface)] p-3">
-          <h3 className="mb-2 text-[13px] font-semibold">{calendarMode === "month" ? dateLabel(monthStart(calendarDate), { month: "long", year: "numeric" }) : calendarMode === "week" ? dateLabel(dateExtent.from) + " – " + dateLabel(dateExtent.to) : "Next 30 days"} · payments</h3>
-          <p className="mb-2 text-[10.5px] text-fg-subtle">Monthly and biweekly minimums appear only when a contractual due day or next due date is entered. Planned extra payments use their own selected date.</p>
+          <h3 className="mb-2 text-[13px] font-semibold">{calendarMode === "month" ? dateLabel(monthStart(calendarDate), { month: "long", year: "numeric" }) : calendarMode === "week" ? dateLabel(dateExtent.from) + " – " + dateLabel(dateExtent.to) : t("Next 30 days")}{" · "}{t("payments")}</h3>
+          <p className="mb-2 text-[10.5px] text-fg-subtle">{t("Monthly and biweekly minimums appear only when a contractual due day or next due date is entered. Planned extra payments use their own selected date.")}</p>
           {calendarEvents.length ? <div className="flex flex-col gap-2">{calendarEvents.map((event) => {
             const debt = debts.find((item) => item.id === event.debtId)!;
             const dueReminder = event.status !== "paid" && event.status !== "skipped" && reminderMatches(event.date, now, debt.reminderDaysBefore);
             return <article key={event.id} className="rounded-xl border border-line bg-[var(--bg-subtle)]/30 p-3">
-              <div className="flex flex-wrap items-center gap-2"><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-medium">{event.debtName}</p><p className="text-[10.5px] text-fg-subtle">{dateLabel(event.date)} · {debt.frequency === "monthly" ? "Minimum payment" : "Biweekly minimum"}{event.paycheckId ? " · paycheck assigned" : ""}</p></div><span className="tnum text-[12px]">{formatMoney(event.amount, { currency })}</span><Badge tone={statusTone(event.status)}>{event.status}</Badge>{dueReminder ? <Badge tone="warning">Reminder due</Badge> : null}<Button size="sm" variant="secondary" onClick={() => openPayment(event)}>{event.status === "paid" ? "View / add" : "Record payment"}</Button></div>
+              <div className="flex flex-wrap items-center gap-2"><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-medium">{event.debtName}</p><p className="text-[10.5px] text-fg-subtle">{dateLabel(event.date)} · {t(debt.frequency === "monthly" ? "Minimum payment" : "Biweekly minimum")}{event.paycheckId ? t(" · paycheck assigned") : ""}</p></div><span className="tnum text-[12px]">{formatMoney(event.amount, { currency })}</span><Badge tone={statusTone(event.status)}>{t(PAYMENT_STATE_LABEL[event.status] ?? event.status)}</Badge>{dueReminder ? <Badge tone="warning">{t("Reminder due")}</Badge> : null}<Button size="sm" variant="secondary" onClick={() => openPayment(event)}>{t(event.status === "paid" ? "View / add" : "Record payment")}</Button></div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-[10px] text-fg-subtle">Remind in app:</span>
-                {[7, 3, 1, 0].map((days) => <button key={days} type="button" aria-pressed={debt.reminderDaysBefore?.includes(days) ?? false} onClick={() => void toggleReminder(debt, days)} className={"rounded-full border px-2 py-1 text-[9.5px] " + (debt.reminderDaysBefore?.includes(days) ? "border-[var(--accent)] bg-[var(--accent-soft)] text-fg" : "border-line text-fg-subtle")}>{days === 0 ? "Due day" : days + " days"}</button>)}
+                <span className="mr-1 text-[10px] text-fg-subtle">{t("Remind in app:")}</span>
+                {[7, 3, 1, 0].map((days) => <button key={days} type="button" aria-pressed={debt.reminderDaysBefore?.includes(days) ?? false} onClick={() => void toggleReminder(debt, days)} className={"rounded-full border px-2 py-1 text-[9.5px] " + (debt.reminderDaysBefore?.includes(days) ? "border-[var(--accent)] bg-[var(--accent-soft)] text-fg" : "border-line text-fg-subtle")}>{days === 0 ? t("Due day") : t("{count} days", { count: days })}</button>)}
               </div>
-              {paychecks.filter((paycheck) => paycheck.date >= now && event.status !== "paid").length ? <label className="mt-2 flex max-w-sm items-center gap-2 text-[10.5px] text-fg-muted">Funding paycheck<Select value={event.paycheckId ?? ""} onChange={(input) => void createPlan({ ...event, paycheckId: input.target.value || undefined })} className="h-8 min-w-0 flex-1"><option value="">Not assigned</option>{paychecks.filter((paycheck) => paycheck.date >= now).map((paycheck) => <option key={paycheck.id} value={paycheck.id}>{dateLabel(paycheck.date)} · {formatMoney(paycheck.actualAmount ?? paycheck.expectedAmount, { currency })} {paycheck.actualAmount == null ? "expected" : "received"}</option>)}</Select></label> : <p className="mt-2 text-[10px] text-fg-subtle">Add a future paycheck in the Paycheck Planner to assign funding.</p>}
+              {paychecks.filter((paycheck) => paycheck.date >= now && event.status !== "paid").length ? <label className="mt-2 flex max-w-sm items-center gap-2 text-[10.5px] text-fg-muted">{t("Funding paycheck")}<Select value={event.paycheckId ?? ""} onChange={(input) => void createPlan({ ...event, paycheckId: input.target.value || undefined })} className="h-8 min-w-0 flex-1"><option value="">{t("Not assigned")}</option>{paychecks.filter((paycheck) => paycheck.date >= now).map((paycheck) => <option key={paycheck.id} value={paycheck.id}>{dateLabel(paycheck.date)} · {formatMoney(paycheck.actualAmount ?? paycheck.expectedAmount, { currency })} {t(paycheck.actualAmount == null ? "expected" : "received")}</option>)}</Select></label> : <p className="mt-2 text-[10px] text-fg-subtle">{t("Add a future paycheck in the Paycheck Planner to assign funding.")}</p>}
             </article>;
           })}</div> : <ChartEmptyState label="No known debt payment dates in this view. Enter due dates on debt records to populate the calendar." />}
         </div>
         {paymentTarget ? <section className="rounded-2xl border border-line bg-[var(--surface)] p-3">
-          <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[13px] font-semibold">Record payment · {paymentTarget.debtName}</h3><button onClick={() => setPaymentTarget(null)} className="text-[11px] text-fg-muted underline">Close</button></div>
+          <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[13px] font-semibold">{t("Record payment · {name}", { name: paymentTarget.debtName })}</h3><button onClick={() => setPaymentTarget(null)} className="text-[11px] text-fg-muted underline">{t("Close")}</button></div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="text-[10.5px] text-fg-muted">Payment date<input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} className="mt-1 h-9 w-full"/></label>
-            <label className="text-[10.5px] text-fg-muted">Total payment<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="mt-1 h-9 w-full"/></label>
-            <label className="text-[10.5px] text-fg-muted">Fees<input type="number" min="0" step="0.01" value={paymentFees} onChange={(event) => setPaymentFees(event.target.value)} className="mt-1 h-9 w-full"/></label>
-            <label className="text-[10.5px] text-fg-muted">Principal portion (optional)<input type="number" min="0" step="0.01" value={paymentPrincipal} onChange={(event) => setPaymentPrincipal(event.target.value)} className="mt-1 h-9 w-full"/></label>
-            <label className="text-[10.5px] text-fg-muted">Interest portion (optional)<input type="number" min="0" step="0.01" value={paymentInterest} onChange={(event) => setPaymentInterest(event.target.value)} className="mt-1 h-9 w-full"/></label>
-            <label className="text-[10.5px] text-fg-muted">Funding paycheck (optional)<Select value={paymentPaycheck} onChange={(event) => setPaymentPaycheck(event.target.value)} className="mt-1 h-9 w-full"><option value="">None</option>{paychecks.map((paycheck) => <option key={paycheck.id} value={paycheck.id}>{dateLabel(paycheck.date)} · {formatMoney(paycheck.actualAmount ?? paycheck.expectedAmount, { currency })}</option>)}</Select></label>
-            <label className="text-[10.5px] text-fg-muted sm:col-span-2 lg:col-span-3">Notes<input value={paymentNote} onChange={(event) => setPaymentNote(event.target.value)} className="mt-1 h-9 w-full"/></label>
+            <label className="text-[10.5px] text-fg-muted">{t("Payment date")}<input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} className="mt-1 h-9 w-full"/></label>
+            <label className="text-[10.5px] text-fg-muted">{t("Total payment")}<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="mt-1 h-9 w-full"/></label>
+            <label className="text-[10.5px] text-fg-muted">{t("Fees")}<input type="number" min="0" step="0.01" value={paymentFees} onChange={(event) => setPaymentFees(event.target.value)} className="mt-1 h-9 w-full"/></label>
+            <label className="text-[10.5px] text-fg-muted">{t("Principal portion (optional)")}<input type="number" min="0" step="0.01" value={paymentPrincipal} onChange={(event) => setPaymentPrincipal(event.target.value)} className="mt-1 h-9 w-full"/></label>
+            <label className="text-[10.5px] text-fg-muted">{t("Interest portion (optional)")}<input type="number" min="0" step="0.01" value={paymentInterest} onChange={(event) => setPaymentInterest(event.target.value)} className="mt-1 h-9 w-full"/></label>
+            <label className="text-[10.5px] text-fg-muted">{t("Funding paycheck (optional)")}<Select value={paymentPaycheck} onChange={(event) => setPaymentPaycheck(event.target.value)} className="mt-1 h-9 w-full"><option value="">{t("None")}</option>{paychecks.map((paycheck) => <option key={paycheck.id} value={paycheck.id}>{dateLabel(paycheck.date)} · {formatMoney(paycheck.actualAmount ?? paycheck.expectedAmount, { currency })}</option>)}</Select></label>
+            <label className="text-[10.5px] text-fg-muted sm:col-span-2 lg:col-span-3">{t("Notes")}<input value={paymentNote} onChange={(event) => setPaymentNote(event.target.value)} className="mt-1 h-9 w-full"/></label>
           </div>
-          {paymentPrincipal === "" || paymentInterest === "" ? <p className="mt-2 text-[10px] text-fg-subtle">Split not provided. Estimated monthly interest is {formatMoney(round2((debts.find((debt) => debt.id === paymentTarget.debtId)?.openingPrincipal ?? 0) * (debts.find((debt) => debt.id === paymentTarget.debtId)?.annualRate ?? 0) / 1200), { currency })}; this estimate is not saved as lender-confirmed data.</p> : null}
+          {paymentPrincipal === "" || paymentInterest === "" ? <p className="mt-2 text-[10px] text-fg-subtle">{t("Split not provided. Estimated monthly interest is {amount}; this estimate is not saved as lender-confirmed data.", { amount: formatMoney(round2((debts.find((debt) => debt.id === paymentTarget.debtId)?.openingPrincipal ?? 0) * (debts.find((debt) => debt.id === paymentTarget.debtId)?.annualRate ?? 0) / 1200), { currency }) })}</p> : null}
           {paymentError ? <p role="alert" className="mt-2 text-[11px] text-[var(--negative)]">{paymentError}</p> : null}
-          <div className="mt-3 flex flex-wrap justify-end gap-2"><Button size="sm" variant="ghost" disabled={savingPayment} onClick={saveCustomPlan}>Save as planned</Button><Button size="sm" variant="primary" disabled={savingPayment} onClick={() => void savePayment()}>{savingPayment ? "Saving…" : "Record actual payment"}</Button></div>
+          <div className="mt-3 flex flex-wrap justify-end gap-2"><Button size="sm" variant="ghost" disabled={savingPayment} onClick={saveCustomPlan}>{t("Save as planned")}</Button><Button size="sm" variant="primary" disabled={savingPayment} onClick={() => void savePayment()}>{t(savingPayment ? "Saving…" : "Record actual payment")}</Button></div>
         </section> : null}
         <section className="rounded-2xl border border-line bg-[var(--surface)] p-3">
-          <h3 className="mb-2 text-[13px] font-semibold">Reminder settings</h3>
-          <p className="text-[10.5px] text-fg-subtle">These are in-app reminders shown when you open this tool. Push and email delivery are not configured; no browser permission is requested.</p>
+          <h3 className="mb-2 text-[13px] font-semibold">{t("Reminder settings")}</h3>
+          <p className="text-[10.5px] text-fg-subtle">{t("These are in-app reminders shown when you open this tool. Push and email delivery are not configured; no browser permission is requested.")}</p>
           {reminderError ? <p role="alert" className="mt-1 text-[10px] text-[var(--negative)]">{reminderError}</p> : null}
         </section>
       </div> : null}
 
       {section === "strategies" ? <div className="flex min-w-0 flex-col gap-3">
         <div className="grid min-w-0 gap-3 rounded-2xl border border-line bg-[var(--surface)] p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="min-w-0"><h3 className="text-[13px] font-semibold">Active projection strategy</h3><p className="text-[10.5px] text-fg-muted">Changing this preference changes estimates only; confirm before switching.</p></div>
+          <div className="min-w-0"><h3 className="text-[13px] font-semibold">{t("Active projection strategy")}</h3><p className="text-[10.5px] text-fg-muted">{t("Changing this preference changes estimates only; confirm before switching.")}</p></div>
           <div className="flex min-w-0 w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">{(["snowball", "avalanche"] as const).map((item) => <Button key={item} size="sm" variant={strategy === item ? "primary" : "secondary"} className="box-border h-auto min-h-8 min-w-0 w-full max-w-full justify-start whitespace-normal py-2 text-left leading-tight sm:w-auto sm:justify-center sm:whitespace-nowrap sm:py-0" onClick={(event) => changeStrategy(item, event)}><span className="block min-w-0 max-w-full whitespace-normal break-words">{t(item === "snowball" ? "Snowball · smallest balance" : "Avalanche · highest APR")}</span></Button>)}</div>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          {strategyComparisons.map((result) => <section key={result.strategy} className="rounded-2xl border border-line bg-[var(--surface)] p-3"><h3 className="text-[13px] font-semibold capitalize">{result.strategy} comparison{activeSelectedDebtId ? " · " + (debts.find((debt) => debt.id === activeSelectedDebtId)?.name ?? "") : " · " + t("All Debts")}</h3><div className="mt-2 grid grid-cols-2 gap-2"><CompactMetric label="Debt-free date" value={result.nonAmortizing ? "Payment too low" : result.payoffDate.slice(0, 7)} hint={result.months + " months"} /><CompactMetric label="Projected interest" value={formatMoney(result.totalInterest, { currency })} /><CompactMetric label="Total repayment" value={formatMoney(result.totalPaid, { currency })} /><CompactMetric label="First payoff" value={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.name ?? "No milestone"} hint={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.payoffDate ?? "Insufficient payments"} /></div></section>)}
+          {strategyComparisons.map((result) => <section key={result.strategy} className="rounded-2xl border border-line bg-[var(--surface)] p-3"><h3 className="text-[13px] font-semibold capitalize">{t("{strategy} comparison", { strategy: result.strategy === "snowball" ? t("Snowball") : t("Avalanche") })}{activeSelectedDebtId ? " · " + (debts.find((debt) => debt.id === activeSelectedDebtId)?.name ?? "") : " · " + t("All Debts")}</h3><div className="mt-2 grid grid-cols-2 gap-2"><CompactMetric label="Debt-free date" value={result.nonAmortizing ? t("Payment too low") : result.payoffDate.slice(0, 7)} hint={t("{count} months", { count: result.months })} /><CompactMetric label="Projected interest" value={formatMoney(result.totalInterest, { currency })} /><CompactMetric label="Total repayment" value={formatMoney(result.totalPaid, { currency })} /><CompactMetric label="First payoff" value={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.name ?? t("No milestone")} hint={result.perDebt.filter((item) => item.payoffMonth > 0).sort((a, b) => a.payoffMonth - b.payoffMonth)[0]?.payoffDate ?? t("Insufficient payments")} /></div></section>)}
         </div>
         <ChartContainer title="Extra payment impact simulator" subtitle="Preview only · saved debt payment schedules are unchanged" icon="target">
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_16rem]">
-            <div className="space-y-3"><label className="block text-[11px] text-fg-muted">Additional monthly amount<input type="number" min="0" step="10" value={extraAmount} onChange={(event) => setExtraAmount(Math.max(0, Number(event.target.value) || 0))} className="mt-1 h-10 w-full rounded-lg border border-line bg-[var(--surface)] px-3 text-sm"/></label><input aria-label="Extra monthly payment slider" type="range" min="0" max={Math.max(1000, extraFromRecords * 3, totals.minimums * 2)} step="10" value={Math.min(extraAmount, Math.max(1000, extraFromRecords * 3, totals.minimums * 2))} onChange={(event) => setExtraAmount(Number(event.target.value))} className="w-full accent-[var(--accent)]"/><label className="block text-[11px] text-fg-muted">Apply extra to<Select value={simulatorTargetDebt ?? ""} onChange={(event) => setTargetDebt(event.target.value)} className="mt-1 h-10 w-full"><option value="">Selected strategy target</option>{strategyDebts.map((debt) => <option key={debt.id} value={debt.id}>{debt.name}</option>)}</Select></label><p className="text-[10px] text-fg-subtle">Each debt accrues estimated monthly interest at APR ÷ 12. The simulation caps each final payment at the remaining balance and does not create a payment record.</p></div>
-            <div className="grid grid-cols-2 gap-2"><CompactMetric label="Current payoff" value={baseStrategySimulation.nonAmortizing ? "Insufficient" : baseStrategySimulation.months + " mo"} hint={formatMoney(baseStrategySimulation.totalInterest, { currency }) + " interest"} /><CompactMetric label="Proposed payoff" value={proposedSimulation.nonAmortizing ? "Insufficient" : proposedSimulation.months + " mo"} hint={formatMoney(proposedSimulation.totalInterest, { currency }) + " interest"} tone="positive" /><CompactMetric label="Months saved" value={baseStrategySimulation.nonAmortizing ? "—" : Math.max(0, baseStrategySimulation.months - proposedSimulation.months) + " mo"} /><CompactMetric label="Interest saved" value={formatMoney(Math.max(0, baseStrategySimulation.totalInterest - proposedSimulation.totalInterest), { currency })} tone="positive" /></div>
+            <div className="space-y-3"><label className="block text-[11px] text-fg-muted">{t("Additional monthly amount")}<input type="number" min="0" step="10" value={extraAmount} onChange={(event) => setExtraAmount(Math.max(0, Number(event.target.value) || 0))} className="mt-1 h-10 w-full rounded-lg border border-line bg-[var(--surface)] px-3 text-sm"/></label><input aria-label={t("Extra monthly payment slider")} type="range" min="0" max={Math.max(1000, extraFromRecords * 3, totals.minimums * 2)} step="10" value={Math.min(extraAmount, Math.max(1000, extraFromRecords * 3, totals.minimums * 2))} onChange={(event) => setExtraAmount(Number(event.target.value))} className="w-full accent-[var(--accent)]"/><label className="block text-[11px] text-fg-muted">{t("Apply extra to")}<Select value={simulatorTargetDebt ?? ""} onChange={(event) => setTargetDebt(event.target.value)} className="mt-1 h-10 w-full"><option value="">{t("Selected strategy target")}</option>{strategyDebts.map((debt) => <option key={debt.id} value={debt.id}>{debt.name}</option>)}</Select></label><p className="text-[10px] text-fg-subtle">{t("Each debt accrues estimated monthly interest at APR ÷ 12. The simulation caps each final payment at the remaining balance and does not create a payment record.")}</p></div>
+            <div className="grid grid-cols-2 gap-2"><CompactMetric label="Current payoff" value={baseStrategySimulation.nonAmortizing ? t("Insufficient") : t("{count} mo", { count: baseStrategySimulation.months })} hint={t("{amount} interest", { amount: formatMoney(baseStrategySimulation.totalInterest, { currency }) })} /><CompactMetric label="Proposed payoff" value={proposedSimulation.nonAmortizing ? t("Insufficient") : t("{count} mo", { count: proposedSimulation.months })} hint={t("{amount} interest", { amount: formatMoney(proposedSimulation.totalInterest, { currency }) })} tone="positive" /><CompactMetric label="Months saved" value={baseStrategySimulation.nonAmortizing ? "—" : t("{count} mo", { count: Math.max(0, baseStrategySimulation.months - proposedSimulation.months) })} /><CompactMetric label="Interest saved" value={formatMoney(Math.max(0, baseStrategySimulation.totalInterest - proposedSimulation.totalInterest), { currency })} tone="positive" /></div>
           </div>
         </ChartContainer>
-        <ChartContainer title="Projected payoff milestones" subtitle={"Calculated by the " + strategy + " amortization simulation"} icon="calendar-range">
-          {strategyProjection.perDebt.length ? <div className="flex flex-col gap-2">{[...strategyProjection.perDebt].sort((a, b) => a.payoffMonth - b.payoffMonth).map((milestone) => <div key={milestone.debtId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-line p-2.5"><div className="min-w-0"><p className="truncate text-[12px] font-medium">{milestone.name}</p><p className="text-[10px] text-fg-subtle">{milestone.payoffMonth ? dateLabel(milestone.payoffDate, { month: "long", year: "numeric" }) : "No payoff month projected"}</p></div><div className="w-24"><div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full bg-[var(--accent)]" style={{ width: strategyProjection.months ? Math.min(100, milestone.payoffMonth / strategyProjection.months * 100) + "%" : "0%" }} /></div></div></div>)}</div> : <ChartEmptyState label="Add debts to calculate payoff milestones" />}
+        <ChartContainer title="Projected payoff milestones" subtitle={t("Calculated by the {strategy} amortization simulation", { strategy: strategyLabel })} icon="calendar-range">
+          {strategyProjection.perDebt.length ? <div className="flex flex-col gap-2">{[...strategyProjection.perDebt].sort((a, b) => a.payoffMonth - b.payoffMonth).map((milestone) => <div key={milestone.debtId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-line p-2.5"><div className="min-w-0"><p className="truncate text-[12px] font-medium">{milestone.name}</p><p className="text-[10px] text-fg-subtle">{milestone.payoffMonth ? dateLabel(milestone.payoffDate, { month: "long", year: "numeric" }) : t("No payoff month projected")}</p></div><div className="w-24"><div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full bg-[var(--accent)]" style={{ width: strategyProjection.months ? Math.min(100, milestone.payoffMonth / strategyProjection.months * 100) + "%" : "0%" }} /></div></div></div>)}</div> : <ChartEmptyState label="Add debts to calculate payoff milestones" />}
         </ChartContainer>
       </div> : null}
 
       {section === "insights" ? <div className="grid gap-3 lg:grid-cols-2">
         <ChartContainer title="Actual monthly payments" subtitle="Recorded amounts only · planned entries are excluded" icon="chart-column" action={<div className="flex gap-1">{[3, 6, 12].map((range) => <button key={range} type="button" aria-pressed={historyRange === range} onClick={() => setHistoryRange(range)} className={"rounded-full px-2 py-1 text-[10px] " + (historyRange === range ? "bg-[var(--accent)] text-[var(--accent-fg)]" : "text-fg-muted")}>{range}M</button>)}</div>}>
-          <div className="relative h-[230px] min-w-0 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={months} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" tick={{ fill: "var(--fg-subtle)", fontSize: 9 }}/><YAxis width={60} tick={{ fill: "var(--fg-subtle)", fontSize: 9 }} tickFormatter={(value) => formatMoney(Number(value), { currency, maximumFractionDigits: 0 })}/><Tooltip formatter={(value) => formatMoney(Number(value), { currency })}/><Bar dataKey="actual" name="Actual payments" fill="var(--accent)" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+          <div className="relative h-[230px] min-w-0 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={months} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" tick={{ fill: "var(--fg-subtle)", fontSize: 9 }}/><YAxis width={60} tick={{ fill: "var(--fg-subtle)", fontSize: 9 }} tickFormatter={(value) => formatMoney(Number(value), { currency, maximumFractionDigits: 0 })}/><Tooltip content={<RechartsTooltip format={(value) => formatMoney(Number(value), { currency })} />}/><Bar dataKey="actual" name="Actual payments" fill="var(--accent)" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
           <ChartLegend items={[{ label: "Recorded actual payments", color: "var(--accent)" }]} />
-          {!recordedPaid.length ? <p className="text-center text-[10px] text-fg-subtle">No actual payments recorded yet.</p> : null}
+          {!recordedPaid.length ? <p className="text-center text-[10px] text-fg-subtle">{t("No actual payments recorded yet.")}</p> : null}
         </ChartContainer>
         <ChartContainer title="Principal vs interest and fees" subtitle="Only user-entered payment splits; no estimated amounts are mixed in" icon="chart-column">
-          {monthPayments.some((payment) => payment.principal != null || payment.interest != null || (payment.fees ?? 0) > 0) ? <div className="relative h-[230px] min-w-0 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={months} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" tick={{ fill: "var(--fg-subtle)", fontSize: 9 }}/><YAxis width={60} tick={{ fill: "var(--fg-subtle)", fontSize: 9 }}/><Tooltip formatter={(value) => formatMoney(Number(value), { currency })}/><Bar dataKey="principal" name="Principal" stackId="payment" fill="var(--positive)" /><Bar dataKey="interest" name="Interest" stackId="payment" fill="var(--warning)" /><Bar dataKey="fees" name="Fees" stackId="payment" fill="var(--negative)" radius={[4, 4, 0, 0]}/></BarChart></ResponsiveContainer></div> : <ChartEmptyState label="Record principal, interest, or fees from lender statements to see this breakdown" />}
+          {monthPayments.some((payment) => payment.principal != null || payment.interest != null || (payment.fees ?? 0) > 0) ? <div className="relative h-[230px] min-w-0 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={months} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}><CartesianGrid stroke="var(--border)" vertical={false}/><XAxis dataKey="month" tick={{ fill: "var(--fg-subtle)", fontSize: 9 }}/><YAxis width={60} tick={{ fill: "var(--fg-subtle)", fontSize: 9 }}/><Tooltip content={<RechartsTooltip format={(value) => formatMoney(Number(value), { currency })} />}/><Bar dataKey="principal" name="Principal" stackId="payment" fill="var(--positive)" /><Bar dataKey="interest" name="Interest" stackId="payment" fill="var(--warning)" /><Bar dataKey="fees" name="Fees" stackId="payment" fill="var(--negative)" radius={[4, 4, 0, 0]}/></BarChart></ResponsiveContainer></div> : <ChartEmptyState label="Record principal, interest, or fees from lender statements to see this breakdown" />}
           <ChartLegend items={[{ label: "Principal", color: "var(--positive)" }, { label: "Interest", color: "var(--warning)" }, { label: "Fees", color: "var(--negative)" }]} />
         </ChartContainer>
         <ChartContainer title="Tracked progress by debt" subtitle="Estimated original = current tracked balance + recorded principal paid" icon="gauge">
-          {progress.length ? <div className="flex flex-col gap-2">{progress.map((row) => <div key={row.debt.id} className="rounded-xl border border-line p-2.5"><div className="mb-1 flex items-center justify-between gap-2"><span className="truncate text-[11px] font-medium">{row.debt.name}</span><span className="text-[10px] text-fg-muted">{formatPercent(row.progressPercent, 0)}{row.estimate ? " · est." : " · no principal history"}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full bg-[var(--accent)]" style={{ width: row.progressPercent + "%" }} /></div><p className="mt-1 text-[10px] text-fg-subtle">{formatMoney(row.principalPaid, { currency })} principal recorded · {formatMoney(row.current, { currency })} current tracked</p></div>)}</div> : <ChartEmptyState label="Add debts to track principal progress" />}
+          {progress.length ? <div className="flex flex-col gap-2">{progress.map((row) => <div key={row.debt.id} className="rounded-xl border border-line p-2.5"><div className="mb-1 flex items-center justify-between gap-2"><span className="truncate text-[11px] font-medium">{row.debt.name}</span><span className="text-[10px] text-fg-muted">{formatPercent(row.progressPercent, 0)}{t(row.estimate ? " · est." : " · no principal history")}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full bg-[var(--accent)]" style={{ width: row.progressPercent + "%" }} /></div><p className="mt-1 text-[10px] text-fg-subtle">{t("{paid} principal recorded · {current} current tracked", { paid: formatMoney(row.principalPaid, { currency }), current: formatMoney(row.current, { currency }) })}</p></div>)}</div> : <ChartEmptyState label="Add debts to track principal progress" />}
         </ChartContainer>
         <ChartContainer title="Payment activity" subtitle="Recorded actuals with optional principal / interest history" icon="receipt">
-          {payments.length ? <div className="max-h-64 overflow-y-auto">{[...payments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map((payment) => <div key={payment.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0"><div className="min-w-0"><p className="truncate text-[11px]">{debts.find((debt) => debt.id === payment.debtId)?.name ?? "Debt"} · {dateLabel(payment.date)}</p><p className="text-[9.5px] text-fg-subtle capitalize">{payment.status ?? "paid"}{payment.transactionId ? " · linked transaction" : ""}</p></div><span className="tnum text-[11px]">{formatMoney(payment.amount, { currency })}</span></div>)}</div> : <ChartEmptyState label="Payment history will appear here when you record lender payments" />}
+          {payments.length ? <div className="max-h-64 overflow-y-auto">{[...payments].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20).map((payment) => <div key={payment.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0"><div className="min-w-0"><p className="truncate text-[11px]">{debts.find((debt) => debt.id === payment.debtId)?.name ?? t("Debt")} · {dateLabel(payment.date)}</p><p className="text-[9.5px] text-fg-subtle capitalize">{t(PAYMENT_STATE_LABEL[payment.status ?? "paid"] ?? payment.status ?? "paid")}{payment.transactionId ? t(" · linked transaction") : ""}</p></div><span className="tnum text-[11px]">{formatMoney(payment.amount, { currency })}</span></div>)}</div> : <ChartEmptyState label="Payment history will appear here when you record lender payments" />}
         </ChartContainer>
       </div> : null}
 

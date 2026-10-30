@@ -856,7 +856,7 @@ function ProjectsBoard({ data }: { data: DataMap }) {
                     </div>
                   </div>
                 ))}
-                {!items.length ? <p className="px-1 py-3 text-[11.5px] text-fg-subtle">Empty</p> : null}
+                {!items.length ? <p className="px-1 py-3 text-[11.5px] text-fg-subtle">{t("Empty")}</p> : null}
               </div>
             </div>
           );

@@ -147,16 +147,23 @@ export const Select = React.forwardRef<
               const rawValue = String(option.props.value ?? index);
               const value = rawValue === "" ? "__gridhub_empty__" : rawValue;
               const label = option.props.children;
+              /**
+               * `<option data-raw>` marks the label as user data (a category,
+               * account or product the person typed), not product copy. Those
+               * must be shown verbatim — translating them would rename the
+               * user's own records on screen.
+               */
+              const isRaw = (option.props as Record<string, unknown>)["data-raw"] !== undefined;
               return (
                 <SelectPrimitive.Item
                   key={option.key === null ? value : String(option.key)}
                   value={value}
                   disabled={option.props.disabled}
-                  textValue={typeof label === "string" ? t(label) : undefined}
+                  textValue={typeof label === "string" && !isRaw ? t(label) : undefined}
                   className="relative flex min-h-9 cursor-pointer select-none items-center rounded-lg py-2 pl-3 pr-9 text-fg outline-none data-[highlighted]:bg-[var(--bg-subtle)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40"
                 >
                   <SelectPrimitive.ItemText>
-                    {typeof label === "string" ? t(label) : label}
+                    {typeof label === "string" && !isRaw ? t(label) : label}
                   </SelectPrimitive.ItemText>
                   <SelectPrimitive.ItemIndicator className="absolute right-3 text-[var(--accent)]">
                     <AnimatedIcon name="check" size={14} trigger="none" />

@@ -71,6 +71,7 @@ const sum = (values: number[]) => round2(values.reduce((a, b) => a + (Number.isF
 
 /** Signature visualization for non-Money tools, sourced from their existing domain records. */
 export function OperationsHero({ toolId, data, currency }: { toolId: ToolId; data: DataMap; currency: string }) {
+  const { t } = useI18n();
   const fmt = (value: number | string | undefined) => formatMoney(Number(value ?? 0), { currency });
   let name = "Record breakdown";
   let value = 0;
@@ -143,5 +144,5 @@ export function OperationsHero({ toolId, data, currency }: { toolId: ToolId; dat
     const items = ["idea", "draft", "scheduled", "published"].map((status) => ({ id: status, name: status[0].toUpperCase() + status.slice(1), value: posts.filter((row) => row.status === status).length }));
     chart = <CategoryBreakdownChart data={asSlices(items)} formatValue={(amount) => Number(amount ?? 0) + " posts"} centerLabel="Publishing rate" centerValue={summary.publishingRate == null ? "—" : Math.round(summary.publishingRate) + "%"} height={290} />;
   }
-  return <div><p className="mb-1 text-[11px] font-medium text-fg-muted">{name}</p>{chart ?? <ChartEmptyState label="No records available yet." />}</div>;
+  return <div><p className="mb-1 text-[11px] font-medium text-fg-muted">{t(name)}</p>{chart ?? <ChartEmptyState label="No records available yet." />}</div>;
 }

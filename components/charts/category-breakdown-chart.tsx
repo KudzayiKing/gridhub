@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { ChartEmptyState, ChartLegend, RechartsTooltip, chartColor, useMounted } from "./chart-kit";
+import { ChartEmptyState, ChartLegend, RechartsTooltip, chartColor, useCategoryLabel, useMounted } from "./chart-kit";
 import { useI18n } from "@/lib/i18n";
 
 export interface CategorySlice {
@@ -35,12 +35,14 @@ export function CategoryBreakdownChart({
   showLegend?: boolean;
 }) {
   const { t } = useI18n();
+  const categoryLabel = useCategoryLabel();
   const mounted = useMounted();
   if (!mounted) return <div style={{ height }} />;
   const total = data.reduce((s, d) => s + Math.max(0, d.value), 0);
   if (!data.length || total <= 0) return <ChartEmptyState label="No recorded values to display yet." />;
 
-  const rows = data.map((d, i) => ({ ...d, fill: d.color ?? chartColor(i) }));
+  // Slice names are user categories; only the app's own "Uncategorized" fallback is translated.
+  const rows = data.map((d, i) => ({ ...d, name: categoryLabel(d.name), fill: d.color ?? chartColor(i) }));
 
   return (
     <div className="min-w-0 w-full">

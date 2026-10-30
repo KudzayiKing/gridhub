@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartEmptyState, ChartLegend, RechartsTooltip, useMounted } from "./chart-kit";
+import { useI18n } from "@/lib/i18n";
+import { ChartEmptyState, ChartLegend, RechartsTooltip, useCategoryLabel, useMounted } from "./chart-kit";
 
 export interface BudgetActualRow {
   category: string;
@@ -26,10 +27,18 @@ export function BudgetVsActualChart({
   onCategoryClick?: (category: string) => void;
 }) {
   const mounted = useMounted();
+  const categoryLabel = useCategoryLabel();
+  const { t } = useI18n();
   if (!mounted) return <div style={{ height: height ?? Math.max(160, data.length * 34 + 24) }} />;
   if (!data.length) return <ChartEmptyState label="No budgets to compare yet" />;
 
   const h = height ?? Math.max(160, data.length * 34 + 24);
+  /*
+   * `label` is display-only; `category` stays raw so `onCategoryClick` can still match the
+   * user's actual category record. Translating `category` in place would break the drill-down
+   * for "Uncategorized" and any future system label.
+   */
+  const rows = data.map((row) => ({ ...row, label: categoryLabel(row.category) }));
 
   return (
     <div className="min-w-0 w-full">
@@ -37,7 +46,7 @@ export function BudgetVsActualChart({
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           layout="vertical"
-          data={data}
+          data={rows}
           margin={{ top: 4, right: 8, bottom: 4, left: 4 }}
           barGap={2}
         >
@@ -51,7 +60,7 @@ export function BudgetVsActualChart({
           />
           <YAxis
             type="category"
-            dataKey="category"
+            dataKey="label"
             width={120}
             tickLine={false}
             axisLine={false}
@@ -61,16 +70,16 @@ export function BudgetVsActualChart({
             cursor={{ fill: "var(--bg-subtle)", opacity: 0.5 }}
             content={<RechartsTooltip format={(v) => formatValue(v)} />}
           />
-          <Bar dataKey="budget" name="Budget" fill="var(--border)" radius={[0, 4, 4, 0]} maxBarSize={14} />
+          <Bar dataKey="budget" name={t("Budget")} fill="var(--border)" radius={[0, 4, 4, 0]} maxBarSize={14} />
           <Bar
             dataKey="actual"
-            name="Actual"
+            name={t("Actual")}
             radius={[0, 4, 4, 0]}
             maxBarSize={14}
             className="cursor-pointer"
             onClick={(datum) => onCategoryClick?.(datum?.payload?.category)}
           >
-            {data.map((r, i) => (
+            {rows.map((r, i) => (
               <Cell key={i} fill={r.actual > r.budget ? "var(--negative)" : "var(--positive)"} />
             ))}
           </Bar>

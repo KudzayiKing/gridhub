@@ -56,10 +56,18 @@ const IDENTICAL_OK: Record<string, { langs: string[]; why: string }> = {
     langs: ["es", "zh-CN", "pt-BR", "fr", "ru", "ar"],
     why: "separator and placeholders only — nothing but punctuation and substituted values",
   },
+  Notes: { langs: ["fr"], why: "French word is Notes" },
+  Budget: { langs: ["fr"], why: "French word is Budget" },
+  Actual: { langs: ["fr"], why: "French word is Actual" },
+  Type: { langs: ["fr"], why: "French word is Type" },
+  Status: { langs: ["fr"], why: "French word is Statut — the catalog keeps Status for fr" },
+  Date: { langs: ["fr"], why: "French word is Date" },
+  Description: { langs: ["fr"], why: "French word is Description" },
+  FAQ: { langs: ["fr"], why: "the acronym FAQ is used unchanged in French" },
 };
 
 const ROOT = process.cwd();
-const DIRS = ["app", "components"];
+const DIRS = ["app", "components", "lib"];
 const SKIP = /(^|\/)(node_modules|\.next|tests)(\/|$)/;
 
 function walk(dir: string, out: string[] = []): string[] {

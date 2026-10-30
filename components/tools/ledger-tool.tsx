@@ -120,12 +120,12 @@ function TabPanel({
         onDelete={(row) => remove(row.id)}
         emptyAction={
           <Button variant="primary" size="sm" icon="plus" onClick={openNew}>
-            {tab.addLabel ?? `Add ${singular}`}
+            {tab.addLabel ? t(tab.addLabel) : t("Add {item}", { item: t(singularLabel) })}
           </Button>
         }
         toolbar={
           <Button variant="secondary" size="sm" icon="plus" onClick={openNew}>
-            {tab.addLabel ?? "Add"}
+            {tab.addLabel ? t(tab.addLabel) : t("Add")}
           </Button>
         }
       />
@@ -236,7 +236,7 @@ export function LedgerTool({
           {headerExtra}
           <Dropdown>
             <DropdownTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Tool options">
+              <Button variant="ghost" size="icon-sm" aria-label={translateText("Tool options")}>
                 <AnimatedIcon name="more" size={16} trigger="click" />
               </Button>
             </DropdownTrigger>

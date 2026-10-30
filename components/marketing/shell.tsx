@@ -85,7 +85,7 @@ export function SiteHeader() {
             variant="ghost"
             size="icon-sm"
             className="md:hidden"
-            aria-label="Open menu"
+            aria-label={t("Open menu")}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
@@ -148,7 +148,7 @@ export function SiteFooter() {
           <ul className="flex flex-col gap-1.5 text-[12.5px] text-fg-muted">
             <li><Link className="hover:text-fg" href="/about">{t("About")}</Link></li>
             <li><Link className="hover:text-fg" href="/how-it-works">{t("How it works")}</Link></li>
-            <li><Link className="hover:text-fg" href="/faq">FAQ</Link></li>
+            <li><Link className="hover:text-fg" href="/faq">{t("FAQ")}</Link></li>
             <li><Link className="hover:text-fg" href="/contact">{t("Contact")}</Link></li>
             <li><a className="hover:text-fg" href="mailto:support@gridhub.online">support@gridhub.online</a></li>
           </ul>

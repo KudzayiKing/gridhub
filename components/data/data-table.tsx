@@ -193,7 +193,7 @@ export function DataTable<T extends { id: string }>({
           {toolbar}
           <Dropdown>
             <DropdownTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Choose columns">
+              <Button variant="ghost" size="icon-sm" aria-label={t("Choose columns")}>
                 <AnimatedIcon name="table" size={15} trigger="click" />
               </Button>
             </DropdownTrigger>
@@ -217,7 +217,7 @@ export function DataTable<T extends { id: string }>({
             </DropdownContent>
           </Dropdown>
           {exportName ? (
-            <Button variant="ghost" size="icon-sm" onClick={handleExport} aria-label="Export CSV">
+            <Button variant="ghost" size="icon-sm" onClick={handleExport} aria-label={t("Export CSV")}>
               <AnimatedIcon name="download" size={15} trigger="click" />
             </Button>
           ) : null}
@@ -300,7 +300,7 @@ export function DataTable<T extends { id: string }>({
                   <td className="px-2 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <Dropdown>
                       <DropdownTrigger asChild>
-                        <Button variant="ghost" size="icon-sm" aria-label="Row actions">
+                        <Button variant="ghost" size="icon-sm" aria-label={t("Row actions")}>
                           <AnimatedIcon name="more" size={15} trigger="click" />
                         </Button>
                       </DropdownTrigger>
@@ -343,12 +343,12 @@ export function DataTable<T extends { id: string }>({
                 <div className="min-w-0 text-[13px] font-medium">{primary?.render(row)}</div>
                 <div className="flex shrink-0 items-center gap-0.5">
                   {onEdit ? (
-                    <Button variant="ghost" size="icon-sm" aria-label="Edit" onClick={() => onEdit(row)}>
+                    <Button variant="ghost" size="icon-sm" aria-label={t("Edit")} onClick={() => onEdit(row)}>
                       <AnimatedIcon name="edit" size={14} trigger="click" />
                     </Button>
                   ) : null}
                   {onDelete ? (
-                    <Button variant="ghost" size="icon-sm" aria-label="Delete" onClick={() => setPendingDelete(row)}>
+                    <Button variant="ghost" size="icon-sm" aria-label={t("Delete")} onClick={() => setPendingDelete(row)}>
                       <AnimatedIcon name="trash" size={14} trigger="click" />
                     </Button>
                   ) : null}

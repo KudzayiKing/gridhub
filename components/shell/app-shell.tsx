@@ -171,7 +171,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
   const sidebar = (onNavigate?: () => void) => (
     <div className="flex h-full flex-col gap-4 p-3">
       <div className="flex items-center justify-between px-1 pt-1">
-        <Link href="/app" aria-label="Gridhub home" className="press" onClick={onNavigate}>
+        <Link href="/app" aria-label={t("Gridhub home")} className="press" onClick={onNavigate}>
           <LogoMark size={28} />
         </Link>
       </div>
@@ -185,7 +185,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
         <kbd className="rounded border border-line px-1 text-[10px] text-fg-subtle">⌘K</kbd>
       </button>
 
-      <nav className="flex flex-col gap-0.5" aria-label="Main">
+      <nav className="flex flex-col gap-0.5" aria-label={t("Main")}>
         {PRIMARY_NAV.map((item) => (
           <NavLink
             key={item.href}
@@ -264,8 +264,8 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-medium text-fg">{user?.name ?? "Local workspace"}</p>
-            <p className="truncate text-[10.5px] text-fg-subtle">{user?.email ?? "Not signed in"}</p>
+            <p className="truncate text-[12px] font-medium text-fg">{user?.name ?? t("Local workspace")}</p>
+            <p className="truncate text-[10.5px] text-fg-subtle">{user?.email ?? t("Not signed in")}</p>
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
           <button
             className="absolute inset-0 bg-[rgba(0,0,0,0.55)] backdrop-blur-[2px]"
             onClick={() => setMobileNavOpen(false)}
-            aria-label="Close navigation"
+            aria-label={t("Close navigation")}
           />
           <div className="app-mobile-sidebar sidebar-fly-in-left glass-strong absolute inset-y-0 left-0 w-[280px]">
             {sidebar(() => setMobileNavOpen(false))}
@@ -330,7 +330,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
               variant="ghost"
               size="icon-sm"
               className="lg:hidden"
-              aria-label="Open navigation"
+              aria-label={t("Open navigation")}
               onClick={() => setMobileNavOpen(true)}
             >
               <AnimatedIcon name="menu" size={18} trigger="click" />
@@ -355,10 +355,10 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
               <button
                 onClick={() => setCommandOpen(true)}
                 className="press hidden items-center gap-1.5 rounded-full border border-line bg-[var(--surface-strong)] px-2.5 py-1 text-[11.5px] text-fg-subtle sm:flex"
-                aria-label="Search tools"
+                aria-label={t("Search tools")}
               >
                 <AnimatedIcon name="search" size={13} trigger="hover" />
-                Search
+                {t("Search")}
               </button>
               <SyncIndicator />
               <ThemeToggle />
@@ -366,7 +366,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
                 <DropdownTrigger asChild>
                   <button
                     className="press grid h-8 w-8 place-items-center rounded-full bg-[var(--accent)] text-[12px] font-semibold text-[var(--accent-fg)]"
-                    aria-label="Account menu"
+                    aria-label={t("Account menu")}
                   >
                     {initials}
                   </button>
@@ -378,14 +378,14 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
                   </div>
                   <DropdownSeparator />
                   <DropdownItem icon="settings" onSelect={() => router.push("/app/settings")}>
-                    Settings
+                    {t("Settings")}
                   </DropdownItem>
                   <DropdownItem icon="billing" onSelect={() => router.push("/app/billing")}>
-                    Subscription
+                    {t("Subscription")}
                   </DropdownItem>
                   <DropdownSeparator />
                   <DropdownItem icon="logout" danger onSelect={() => void signOut()}>
-                    Sign out
+                    {t("Sign out")}
                   </DropdownItem>
                 </DropdownContent>
               </Dropdown>
@@ -401,7 +401,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
       {/* Mobile bottom navigation */}
       <nav
         className="safe-bottom app-bottom-nav-glass fixed inset-x-0 bottom-0 z-30 border-t border-line lg:hidden"
-        aria-label="Primary"
+        aria-label={t("Primary")}
       >
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-1">
           {mobileNav.map((item) => {
@@ -422,7 +422,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
                   trigger="both"
                   className={current ? "text-[var(--accent)]" : ""}
                 />
-                {item.label}
+                {t(item.label)}
               </Link>
             );
           })}
@@ -431,14 +431,14 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
 
       {/* Command menu */}
       <Dialog open={commandOpen} onOpenChange={setCommandOpen}>
-        <DialogContent title="Jump to" description="Search your tools and workspace.">
+        <DialogContent title={t("Jump to")} description={t("Search your tools and workspace.")}>
           <Input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tools, e.g. budget, invoice, habit…"
+            placeholder={t("Search tools, e.g. budget, invoice, habit…")}
             className="mb-3"
-            aria-label="Search"
+            aria-label={t("Search")}
           />
           <div className="flex max-h-[50vh] flex-col gap-1 overflow-y-auto thin-scroll">
             {results.map((tool) => (
@@ -456,7 +456,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
                   <span className="block truncate text-[13px] font-medium text-fg">{t(tool.name)}</span>
                   <span className="block truncate text-[11.5px] text-fg-subtle">{t(tool.tagline)}</span>
                 </span>
-                {!active.includes(tool.id) ? <Badge tone="neutral">Inactive</Badge> : null}
+                {!active.includes(tool.id) ? <Badge tone="neutral">{t("Inactive")}</Badge> : null}
               </button>
             ))}
             {!results.length ? (

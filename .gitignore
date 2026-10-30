@@ -58,3 +58,9 @@ next-env.d.ts
 
 # Output of `node scripts/i18n-audit.mjs` — regenerate on demand
 /.i18n-audit.json
+
+# Output of `tests/i18n-ui-audit.test.ts` — a report, not a fixture
+/.i18n-ui-audit.json
+
+# Draft articles written by the journal tool at runtime
+/journal-drafts/
