@@ -5,7 +5,6 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/overlay";
 import { useMeta } from "@/lib/store";
-import { flattenOver } from "@/lib/color";
 import { runSync, subscribeSync, type SyncState } from "@/lib/sync";
 import { deviceTimeZone } from "@/lib/utils";
 import type { UserPreferences } from "@/lib/types";
@@ -76,17 +75,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [prefs, setStoredPrefs, prefsLoading] = useMeta<UserPreferences>("prefs", DEFAULT_PREFS);
   const [sync, setSync] = React.useState<SyncState>({ phase: "local", pending: 0, lastSyncedAt: null });
 
-  // Offer the translucent header tint to browsers that allow alpha in theme-color. Browsers
-  // that ignore alpha still get a close, theme-matched color. iOS standalone PWA status glyphs
-  // are switched to white only in dark mode so they remain legible over the glass.
+  // Use a solid theme-matched color for native browser/system chrome. CSS blur remains on the
+  // app-drawn glass surfaces; alpha in theme-color is ignored by some installed PWA shells.
+  // iOS standalone PWA status glyphs switch to white only in dark mode for legibility.
   React.useLayoutEffect(() => {
     const root = document.documentElement;
     const syncPlatformChrome = () => {
       const styles = getComputedStyle(root);
-      const page = styles.getPropertyValue("--bg").trim();
       const solid = styles.getPropertyValue("--chrome-solid").trim();
-      const header = styles.getPropertyValue("--header").trim();
-      const color = header || solid || flattenOver(header, page) || page;
+      const color = solid;
       if (!color) return;
       document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
         if (meta.content !== color || meta.media) {

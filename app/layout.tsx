@@ -59,9 +59,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  // The browser may honor the alpha in this glass tint when painting system chrome. Browsers
-  // that require opaque theme colors fall back to the same tint as an opaque color.
-  themeColor: "rgba(255, 255, 255, 0.63)",
+  // Native browser/system bars need a solid fallback. The client updates this to the active
+  // light or dark chrome token after the selected theme is available.
+  themeColor: "#fcfcfa",
   viewportFit: "cover",
 };
 
