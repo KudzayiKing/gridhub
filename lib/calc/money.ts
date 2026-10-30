@@ -521,6 +521,8 @@ export function debtPaymentsTotal(payments: DebtPayment[]) {
 export interface GoalSummary {
   id: string;
   name: string;
+  /** Carried through so the UI can translate the seeded emergency-fund name only. */
+  kind: SavingsGoal["kind"];
   target: number;
   balance: number;
   remaining: number;
@@ -564,6 +566,8 @@ export function goalSummary(goal: SavingsGoal, movements: GoalMovement[], today 
   return {
     id: goal.id,
     name: goal.name,
+    /** Carried through so the UI can translate the seeded emergency-fund name only. */
+    kind: goal.kind,
     target,
     balance,
     remaining,

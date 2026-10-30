@@ -48,6 +48,22 @@ export function TrendChart({
   if (!mounted) return <div style={{ height }} />;
   if (!data.length || !series.length) return <ChartEmptyState label="No trend data yet" />;
 
+  /*
+   * Recharts reserves a fixed width for the Y axis, and a fixed 60px clipped currency ticks
+   * like "$60,000.00" — the leading character disappeared behind the card edge. Measure the
+   * widest formatted tick instead of guessing: ~6px per character at fontSize 10 plus padding.
+   * Capped so a long label cannot eat a narrow phone card.
+   */
+  let widestTick = 0;
+  for (const row of data) {
+    for (const s of series) {
+      const value = row[s.key];
+      if (value === null || value === undefined || value === "") continue;
+      widestTick = Math.max(widestTick, formatValue(value).length);
+    }
+  }
+  const yAxisWidth = Math.min(104, Math.max(44, widestTick * 6 + 14));
+
   const axis = (
     <>
       <XAxis
@@ -61,7 +77,7 @@ export function TrendChart({
       <YAxis
         tickLine={false}
         axisLine={false}
-        width={60}
+        width={yAxisWidth}
         tick={{ fill: "var(--fg-subtle)", fontSize: 10 }}
         tickFormatter={(v) => formatValue(v)}
       />
@@ -72,7 +88,7 @@ export function TrendChart({
     <div className="min-w-0 w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         {type === "area" ? (
-          <AreaChart data={data} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 6, left: 0 }}>
             {showGrid ? <CartesianGrid stroke="var(--border)" vertical={false} /> : null}
             {axis}
             <Tooltip
@@ -98,7 +114,7 @@ export function TrendChart({
             })}
           </AreaChart>
         ) : (
-          <LineChart data={data} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
+          <LineChart data={data} margin={{ top: 8, right: 16, bottom: 6, left: 0 }}>
             {showGrid ? <CartesianGrid stroke="var(--border)" vertical={false} /> : null}
             {axis}
             <Tooltip

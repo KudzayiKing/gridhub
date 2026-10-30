@@ -19,6 +19,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
+import { PHASE_COPY } from "@/components/shell/sync-indicator";
+
+/** Theme choices. `label` is the English source string, resolved with `t()` at render time. */
+const THEME_OPTIONS = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+] as const;
 
 export default function SettingsPage() {
   const { prefs, setPrefs } = usePrefs();
@@ -82,20 +90,23 @@ export default function SettingsPage() {
           <p className="mt-0.5 text-[12px] text-fg-muted">{t("Theme and motion.")}</p>
           <div className="mt-3 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="text-[13px]">Theme</span>
+              <span className="text-[13px]">{t("Theme")}</span>
               <div className="flex gap-1">
-                {(["light", "dark", "system"] as const).map((t) => (
+                {/*
+                 * The loop variable used to be named `t`, shadowing the translator, so the
+                 * buttons rendered the raw keys "light" / "dark" / "system" in every language.
+                 */}
+                {THEME_OPTIONS.map((option) => (
                   <Button
-                    key={t}
+                    key={option.value}
                     size="sm"
-                    variant={theme === t ? "primary" : "outline"}
+                    variant={theme === option.value ? "primary" : "outline"}
                     onClick={() => {
-                      setTheme(t);
-                      void setPrefs({ theme: t });
+                      setTheme(option.value);
+                      void setPrefs({ theme: option.value });
                     }}
-                    className="capitalize"
                   >
-                    {t}
+                    {t(option.label)}
                   </Button>
                 ))}
               </div>
@@ -105,7 +116,7 @@ export default function SettingsPage() {
                 <p className="text-[13px]">{t("Reduce motion")}</p>
                 <p className="text-[11.5px] text-fg-subtle">{t("Icon animations and transitions are disabled.")}</p>
               </div>
-              <Switch checked={prefs.reducedMotion} onCheckedChange={(v) => void setPrefs({ reducedMotion: v })} aria-label="Reduce motion" />
+              <Switch checked={prefs.reducedMotion} onCheckedChange={(v) => void setPrefs({ reducedMotion: v })} aria-label={t("Reduce motion")} />
             </div>
           </div>
         </Card>
@@ -151,7 +162,7 @@ export default function SettingsPage() {
           <h2 className="text-[14px] font-semibold">{t("My tools")}</h2>
           <p className="mt-0.5 text-[12px] text-fg-muted">{active.length} {t("tools activated.")}</p>
           <Button variant="secondary" size="sm" className="mt-3" icon="tools" asChild>
-            <Link href="/app/tools">Manage tools</Link>
+            <Link href="/app/tools">{t("Manage tools")}</Link>
           </Button>
         </Card>
 
@@ -161,7 +172,7 @@ export default function SettingsPage() {
             {t("Voice and natural-language commands, running on this device.")}
           </p>
           <Button variant="secondary" size="sm" className="mt-3" icon="settings" asChild>
-            <Link href="/app/settings/ai">Manage Gridhub AI</Link>
+            <Link href="/app/settings/ai">{t("Manage Gridhub AI")}</Link>
           </Button>
         </Card>
 
@@ -172,18 +183,18 @@ export default function SettingsPage() {
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" icon="download" onClick={() => void exportAll()}>
-              Export all data
+              {t("Export all data")}
             </Button>
             <Button variant="ghost" size="sm" icon="sync" onClick={() => void runSync()}>
-              Sync now
+              {t("Sync now")}
             </Button>
             <Button variant="ghost" size="sm" icon="trash" onClick={() => setConfirmClear(true)}>
-              Clear local cache
+              {t("Clear local cache")}
             </Button>
           </div>
           <div className="mt-3 flex items-center gap-2 text-[11.5px] text-fg-subtle">
-            <Badge tone={sync.phase === "synced" ? "positive" : "neutral"}>{sync.phase}</Badge>
-            {sync.pending > 0 ? <span>{sync.pending} changes waiting to sync</span> : <span>No pending changes</span>}
+            <Badge tone={sync.phase === "synced" ? "positive" : "neutral"}>{t(PHASE_COPY[sync.phase].label)}</Badge>
+            {sync.pending > 0 ? <span>{sync.pending} {t("changes waiting to sync")}</span> : <span>{t("No pending changes")}</span>}
           </div>
         </Card>
       </div>
@@ -205,10 +216,10 @@ export default function SettingsPage() {
               router.push("/");
             }}
           >
-            Sign out
+            {t("Sign out")}
           </Button>
           <Button variant="ghost" size="sm" icon="alert" className="text-[var(--negative)]" onClick={() => setConfirmDelete(true)}>
-            Delete account
+            {t("Delete account")}
           </Button>
         </div>
       <InlineAlert tone="info" title="What deletion does" >

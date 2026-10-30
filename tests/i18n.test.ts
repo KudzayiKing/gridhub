@@ -24,8 +24,14 @@ describe("fixed interface translations", () => {
 
   it("uses natural Russian labels for the billing screen and tool navigation", () => {
     expect(translate("Billing", "ru")).toBe("Оплата");
-    expect(translate("Single", "ru")).toBe("1 инструмент");
-    expect(translate("Unlimited", "ru")).toBe("Без ограничений");
+    // Plan names are localised everywhere they appear, including inside the billing prose.
+    expect(translate("Single", "ru")).toBe("Сингл");
+    expect(translate("Plus", "ru")).toBe("Плюс");
+    expect(translate("Pro", "ru")).toBe("Про");
+    expect(translate("Unlimited", "ru")).toBe("Безлимит");
+    expect(translate("Single includes any one paid tool, Plus three, Pro six, Unlimited all sixteen.", "ru")).not.toMatch(
+      /Single|Plus|Pro|Unlimited/,
+    );
     expect(translate("Money", "ru")).toBe("Деньги");
     expect(translate("Wedding", "ru")).toBe("Свадьба");
     expect(translate("Property", "ru")).toBe("Недвижимость");

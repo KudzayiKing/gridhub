@@ -15,6 +15,7 @@ import { PanelLeftOpenIcon, PanelRightOpenIcon } from "@/components/icons/panel-
 import { formatMoney, formatPercent } from "@/lib/money";
 import { TOOL_MAP } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n";
+import { useGoalLabel } from "@/lib/goal-label";
 import { monthLabel } from "@/components/charts/chart-kit";
 
 /*
@@ -33,6 +34,7 @@ const QUICK_ACTIONS = [
 
 export default function DashboardPage() {
   const { t } = useI18n();
+  const goalLabel = useGoalLabel();
   const { prefs, setPrefs, loading: prefsLoading } = usePrefs();
   const { active, loading: toolsLoading } = useActiveTools();
   const data = useDashboardData();
@@ -205,14 +207,14 @@ export default function DashboardPage() {
                 <div key={goal.id} className="flex items-center gap-4">
                   <span
                     role="img"
-                    aria-label={`${Math.round(goal.progressPct ?? 0)} percent saved`}
+                    aria-label={t("{percent} percent saved", { percent: Math.round(goal.progressPct ?? 0) })}
                     className="h-20 w-20 shrink-0 rounded-full sm:h-28 sm:w-28 lg:h-36 lg:w-36 xl:h-40 xl:w-40"
                     style={{ background: `conic-gradient(var(--accent) ${Math.max(0, Math.min(100, goal.progressPct ?? 0))}%, var(--bg-subtle) 0)` }}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-medium">{goal.name}</p>
+                    <p className="truncate text-[12.5px] font-medium">{goalLabel(goal)}</p>
                     <p className="text-[11px] text-fg-subtle">
-                      {formatMoney(goal.balance, { currency })} of {formatMoney(goal.target, { currency })}
+                      {t("{saved} of {target}", { saved: formatMoney(goal.balance, { currency }), target: formatMoney(goal.target, { currency }) })}
                     </p>
                   </div>
                   <span className="tnum text-[12px] text-fg-muted">{formatPercent(goal.progressPct)}</span>

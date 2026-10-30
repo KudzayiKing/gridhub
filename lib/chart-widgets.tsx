@@ -46,6 +46,7 @@ import { netWorthSummary } from "@/lib/calc/money";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/overlay";
 import { useI18n } from "@/lib/i18n";
+import { useGoalLabel } from "@/lib/goal-label";
 import { toast } from "sonner";
 
 function dateAfterDays(date: string, days: number) {
@@ -137,6 +138,7 @@ function BudgetCategoriesWidget({ currency }: { currency: string }) {
 
 function SavingsGoalsWidget({ currency }: { currency: string }) {
   const { t } = useI18n();
+  const goalLabel = useGoalLabel();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
@@ -146,7 +148,7 @@ function SavingsGoalsWidget({ currency }: { currency: string }) {
     <ProgressChart
       items={totals.goals.map((g) => ({
         id: g.id,
-        label: g.name,
+        label: goalLabel(g),
         value: g.balance,
         target: g.target,
         formatValue: (v) => formatMoney(v, { currency, maximumFractionDigits: 0 }),
@@ -180,12 +182,13 @@ function SavingsEmergencyWidget({ currency }: { currency: string }) {
 
 function SavingsMilestoneWidget({ currency }: { currency: string }) {
   const { t } = useI18n();
+  const goalLabel = useGoalLabel();
   const goals = useCollection<SavingsGoal>("savings", "goals");
   const movements = useCollection<GoalMovement>("savings", "movements");
   const today = localISODate(new Date());
   const eligibleGoals = goals.rows.filter((goal) => !goal.deleted && (!goal.currency || goal.currency === currency));
   const next = savingsGoalRows(eligibleGoals, movements.rows, today).filter((row) => row.goal.targetDate && row.remaining > 0 && row.goal.targetDate >= today).sort((a, b) => (a.goal.targetDate ?? "").localeCompare(b.goal.targetDate ?? ""))[0];
-  return next ? <div className="py-4 text-center"><p className="text-sm font-semibold">{next.goal.name}</p><p className="text-[11px] text-fg-subtle">{next.goal.targetDate} · {t("{amount} remaining", { amount: formatMoney(next.remaining, { currency }) })}</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No upcoming target")}</p>;
+  return next ? <div className="py-4 text-center"><p className="text-sm font-semibold">{goalLabel(next.goal)}</p><p className="text-[11px] text-fg-subtle">{next.goal.targetDate} · {t("{amount} remaining", { amount: formatMoney(next.remaining, { currency }) })}</p></div> : <p className="py-6 text-center text-[11px] text-fg-subtle">{t("No upcoming target")}</p>;
 }
 
 function SavingsMonthlyNeedWidget({ currency }: { currency: string }) {

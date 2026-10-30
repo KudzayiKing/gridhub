@@ -17,6 +17,7 @@ import type { DebtPayment, GoalMovement, MoneyAccount, MoneyBudget, MoneyCategor
 import { PinChartButton } from "@/lib/chart-widgets";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { useI18n } from "@/lib/i18n";
+import { useGoalLabel } from "@/lib/goal-label";
 
 type Mode = "monthly" | "paycheck";
 const localDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -28,6 +29,7 @@ const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.tr
 export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data: DataMap; currency: string; onOpenAllocations: () => void }) {
   const { prefs, setPrefs } = usePrefs();
   const { t } = useI18n();
+  const goalLabel = useGoalLabel();
   const transactions = useCollection<MoneyTransaction>("budget", "transactions");
   const categories = useCollection<MoneyCategory>("budget", "categories");
   const budgets = useCollection<MoneyBudget>("budget", "budgets");
@@ -270,7 +272,7 @@ export function PaycheckDashboard({ data, currency, onOpenAllocations }: { data:
           </ChartContainer>
           <ChartContainer title={t("Savings allocation progress")} subtitle={t("Recorded contributions compared with the selected month's planned savings")} icon="piggy-bank">
             {savingsTarget > 0 ? <ProgressChart items={[{ id: "monthly-savings", label: t("Monthly savings"), value: actualSavings, target: savingsTarget, formatValue: fmt, caption: t("{amount} remaining", { amount: fmt(Math.max(0, savingsTarget - actualSavings)) }) + (actualSavings > savingsTarget ? t(" · goal exceeded") : "") }]} /> : <ChartEmptyState label={t("Assign savings to a paycheck to define a monthly target")} />}
-            {goals.rows.length ? <div className="mt-3 border-t border-line pt-2">{goals.rows.filter((goal) => !goal.deleted).slice(0, 4).map((goal) => { const current = goalSummary(goal, movements.rows); return <p key={goal.id} className="flex justify-between gap-2 py-1 text-[11px]"><span className="truncate">{goal.name}</span><span className="tnum shrink-0">{fmt(current.balance)} / {fmt(goal.targetAmount)}</span></p>; })}</div> : null}
+            {goals.rows.length ? <div className="mt-3 border-t border-line pt-2">{goals.rows.filter((goal) => !goal.deleted).slice(0, 4).map((goal) => { const current = goalSummary(goal, movements.rows); return <p key={goal.id} className="flex justify-between gap-2 py-1 text-[11px]"><span className="truncate">{goalLabel(goal)}</span><span className="tnum shrink-0">{fmt(current.balance)} / {fmt(goal.targetAmount)}</span></p>; })}</div> : null}
           </ChartContainer>
           <ChartContainer title={t("Monthly spending breakdown")} subtitle={t("{amount} actual posted expenses · tap a slice to inspect transactions", { amount: fmt(monthly.expenses) })} icon="tag">
             <CategoryBreakdownChart data={categoryDonut} formatValue={fmt} centerLabel={t("Spent")} centerValue={fmt(selectedCategory ? categoryDonut.reduce((s, row) => s + row.value, 0) : monthly.expenses)} onSliceClick={(id) => setSelectedCategory(id === selectedCategory ? "" : id)} height={220} />

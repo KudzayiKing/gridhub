@@ -9,7 +9,7 @@
  * exactly the defects reported here, so they are verified at the DOM level.
  */
 import * as React from "react";
-import { act, render } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 /*
@@ -81,6 +81,7 @@ const { CategoryBreakdownChart } = await import("@/components/charts/category-br
 const { RecordForm } = await import("@/components/data/record-form");
 const { OperationsHero } = await import("@/components/tools/operations-dashboard");
 const { TooltipProvider } = await import("@/components/ui/overlay");
+const { useGoalLabel } = await import("@/lib/goal-label");
 
 /**
  * Charts gate their first paint behind `useMounted()` (one `requestAnimationFrame`) so the
@@ -196,5 +197,24 @@ describe("reported screens render in Russian", () => {
     expect(text).toContain("Без категории");
     expect(text).toContain("Holiday");
     expect(text).toContain("Всего накоплено");
+  });
+});
+
+describe("savings goal labels", () => {
+  it("(4) translates the seeded emergency-fund name and leaves every other name alone", () => {
+    const { result } = renderHook(() => useGoalLabel());
+    const label = result.current;
+
+    // The app's own default, so it is translated…
+    expect(label({ name: "Emergency Fund", kind: "emergency" })).toBe("Подушка безопасности");
+    // …including the casing/spacing variants a person may have typed over it.
+    expect(label({ name: " emergency fund ", kind: "emergency" })).toBe("Подушка безопасности");
+
+    // A renamed emergency goal is the person's own words and must survive verbatim.
+    expect(label({ name: "Чёрный день", kind: "emergency" })).toBe("Чёрный день");
+    // A normal goal that happens to share the default name is user data too.
+    expect(label({ name: "Emergency Fund", kind: "goal" })).toBe("Emergency Fund");
+    // And an ordinary goal name is never translated.
+    expect(label({ name: "Holiday", kind: "goal" })).toBe("Holiday");
   });
 });

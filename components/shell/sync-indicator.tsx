@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  * doubles as the translation key, so it is resolved with `t()` at render time rather
  * than baked in at module scope (where no locale is available).
  */
-const PHASE_COPY = {
+export const PHASE_COPY = {
   local: { label: "Saved on this device", icon: "offline", tone: "text-fg-subtle" },
   offline: { label: "Offline — saved locally", icon: "offline", tone: "text-[var(--warning)]" },
   pending: { label: "Waiting to sync", icon: "sync", tone: "text-[var(--warning)]" },

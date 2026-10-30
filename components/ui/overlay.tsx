@@ -104,7 +104,7 @@ export function ConfirmDialog({
           <div className="mt-5 flex justify-end gap-2">
             <AlertDialogPrimitive.Cancel asChild>
               <Button variant="secondary" size="sm">
-                Cancel
+                {t("Cancel")}
               </Button>
             </AlertDialogPrimitive.Cancel>
             <AlertDialogPrimitive.Action asChild>
@@ -114,7 +114,7 @@ export function ConfirmDialog({
                 onClick={onConfirm}
                 icon={destructive ? "trash" : "check"}
               >
-                {confirmLabel}
+                {t(confirmLabel)}
               </Button>
             </AlertDialogPrimitive.Action>
           </div>
