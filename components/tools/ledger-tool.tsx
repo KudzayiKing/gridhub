@@ -54,12 +54,14 @@ export function defineTab<T extends BaseRecord>(
 function TabPanel({
   toolId,
   tab,
+  showToolbarAdd = true,
   onClearFilter,
   addRequest,
   onAddRequestHandled,
 }: {
   toolId: ToolId;
   tab: LedgerTab;
+  showToolbarAdd?: boolean;
   onClearFilter?: () => void;
   addRequest?: { tabId: string; id: number } | null;
   onAddRequestHandled?: (id: number) => void;
@@ -123,11 +125,11 @@ function TabPanel({
             {tab.addLabel ? t(tab.addLabel) : t("Add {item}", { item: t(singularLabel) })}
           </Button>
         }
-        toolbar={
+        toolbar={showToolbarAdd ? (
           <Button variant="secondary" size="sm" icon="plus" onClick={openNew}>
             {tab.addLabel ? t(tab.addLabel) : t("Add")}
           </Button>
-        }
+        ) : null}
       />
 
       <RecordForm
@@ -318,6 +320,7 @@ export function LedgerTool({
                 key={`modal:${activeTab.id}:${addRequest?.tabId === activeTab.id ? addRequest.id : ""}`}
                 toolId={toolId}
                 tab={activeTab}
+                showToolbarAdd={false}
                 onClearFilter={onClearFilter}
                 addRequest={addRequest}
                 onAddRequestHandled={onAddRequestHandled}
