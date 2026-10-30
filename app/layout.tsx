@@ -59,9 +59,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  // Native browser/system bars need a solid fallback. The client updates this to the active
-  // light or dark chrome token after the selected theme is available.
-  themeColor: "#fcfcfa",
+  // Give Android an opaque first-paint color for either system appearance. The client updates
+  // these to the active app theme once the saved theme preference is available.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcfcfa" },
+    { media: "(prefers-color-scheme: dark)", color: "#121214" },
+  ],
   viewportFit: "cover",
 };
 

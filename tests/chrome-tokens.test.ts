@@ -62,12 +62,15 @@ describe("chrome solid tokens", () => {
     );
   });
 
-  it("reports the light chrome colour as the first-paint theme-color", () => {
-    // The server-rendered default has to match the token, or the PWA flashes the wrong colour
-    // until the effect runs.
+  it("reports opaque light and dark chrome colors for first paint", () => {
+    // Android can choose the right native color before client theme synchronization runs.
     const layout = readFileSync(join(ROOT, "app/layout.tsx"), "utf8");
-    const expected = token(light, "chrome-solid").toLowerCase();
-    expect(layout.toLowerCase()).toContain(`themecolor: "${expected}"`);
+    expect(layout.toLowerCase()).toContain(
+      `{ media: "(prefers-color-scheme: light)", color: "${token(light, "chrome-solid").toLowerCase()}" }`,
+    );
+    expect(layout.toLowerCase()).toContain(
+      `{ media: "(prefers-color-scheme: dark)", color: "${token(dark, "chrome-solid").toLowerCase()}" }`,
+    );
   });
 
   it("keeps the manifest theme_color in step with the token", () => {
