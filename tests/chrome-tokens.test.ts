@@ -73,9 +73,8 @@ describe("chrome solid tokens", () => {
     );
   });
 
-  it("keeps the manifest theme_color in step with the token", () => {
+  it("does not pin installed PWAs to a static manifest theme color", () => {
     const manifest = readFileSync(join(ROOT, "app/manifest.ts"), "utf8");
-    const expected = token(light, "chrome-solid").toLowerCase();
-    expect(manifest.toLowerCase()).toContain(`theme_color: "${expected}"`);
+    expect(manifest.toLowerCase()).not.toMatch(/theme_color\s*:/);
   });
 });

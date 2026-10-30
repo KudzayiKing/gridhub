@@ -12,10 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
     orientation: "any",
-    // The install-time color must be opaque; runtime theme-color metadata follows the selected
-    // app theme once the page has loaded.
+    // Leave theme_color to the page-level light/dark theme-color metadata. A manifest has only
+    // one static value, which would pin installed Android PWAs to the wrong theme.
     background_color: "#F7F7F2",
-    theme_color: "#fcfcfa",
     categories: ["productivity", "finance", "business"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
