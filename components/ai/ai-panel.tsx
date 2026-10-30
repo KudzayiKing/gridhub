@@ -86,17 +86,17 @@ export function GridhubAIPanel() {
             </span>
             <div className="min-w-0 flex-1">
               <DialogPrimitive.Title className="text-[13.5px] font-semibold leading-tight text-fg">
-                Gridhub AI
+                {t("Gridhub AI")}
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="text-[10.5px] leading-tight text-fg-subtle">
-                Text commands · works offline
+                {t("Text commands · works offline")}
               </DialogPrimitive.Description>
             </div>
-            <Badge tone="positive">Local commands</Badge>
+            <Badge tone="positive">{t("Local commands")}</Badge>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Close Gridhub AI"
+              aria-label={t("Close Gridhub AI")}
               onClick={() => ai.closePanel()}
             >
               <AnimatedIcon name="close" size={15} trigger="click" />
@@ -108,31 +108,30 @@ export function GridhubAIPanel() {
             {ai.phase === "idle" ? (
               <div className="space-y-3">
                 <p className="text-[12.5px] leading-relaxed text-fg-muted">
-                  Type a command in plain language. I can look up supported summaries and prepare
-                  changes for your review. Use Quick add for records outside the command list.
+                  {t("Type a command in plain language. I can look up supported summaries and prepare changes for your review. Use Quick add for records outside the command list.")}
                 </p>
                 {ai.examples.length ? (
                   <div className="space-y-1.5">
-                    <p className="eyebrow text-[10px]">Try</p>
+                    <p className="eyebrow text-[10px]">{t("Try")}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {ai.examples.map((example) => (
                         <span
                           key={example}
                           className="rounded-full border border-line bg-[var(--surface-strong)] px-2.5 py-1 text-left text-[11.5px] text-fg-muted"
                         >
-                          {example}
+                          {t(example)}
                         </span>
                       ))}
                     </div>
                   </div>
                 ) : (
                   <p className="text-[12px] text-fg-subtle">
-                    Activate a tool to see what I can do with it.
+                    {t("Activate a tool to see what I can do with it.")}
                   </p>
                 )}
                 {ai.history.length ? (
                   <div className="space-y-1">
-                    <p className="eyebrow text-[10px]">Recent</p>
+                    <p className="eyebrow text-[10px]">{t("Recent")}</p>
                     <ul className="space-y-0.5">
                       {ai.history.slice(0, 3).map((entry) => (
                         <li key={entry.id} className="truncate text-[11.5px] text-fg-subtle">
@@ -149,13 +148,13 @@ export function GridhubAIPanel() {
               <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-[var(--surface-strong)]/70 px-3 py-3">
                 <AnimatedIcon name="loader" size={16} trigger="mount" className="animate-spin text-[var(--brand)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12.5px] font-medium text-fg">Working it out on this device</p>
+                  <p className="text-[12.5px] font-medium text-fg">{t("Working it out on this device")}</p>
                   <p className="text-[11px] text-fg-subtle">
-                    Nothing is being uploaded. This can take a moment on a phone.
+                    {t("Nothing is being uploaded. This can take a moment on a phone.")}
                   </p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={ai.cancel}>
-                  Stop
+                  {t("Stop")}
                 </Button>
               </div>
             ) : null}
@@ -171,7 +170,7 @@ export function GridhubAIPanel() {
 
             {ai.phase === "review" && ai.clarification ? (
               <div className="rounded-2xl border border-line bg-[var(--surface-strong)]/70 p-3">
-                <p className="text-[12.5px] font-medium text-fg">{ai.clarification.question}</p>
+                <p className="text-[12.5px] font-medium text-fg">{t(ai.clarification.question)}</p>
                 {ai.clarification.options?.length ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {ai.clarification.options.map((option) => (
@@ -188,7 +187,7 @@ export function GridhubAIPanel() {
                 ) : null}
                 <div className="mt-2.5 flex justify-end">
                   <Button variant="ghost" size="sm" onClick={ai.discard}>
-                    Never mind
+                    {t("Never mind")}
                   </Button>
                 </div>
               </div>
@@ -196,11 +195,17 @@ export function GridhubAIPanel() {
 
             {ai.phase === "done" && ai.query ? (
               <div className="rounded-2xl border border-line bg-[var(--surface-strong)]/70 p-3">
-                <p className="mb-1.5 text-[13px] font-semibold text-fg">{ai.query.title}</p>
+                <p className="mb-1.5 text-[13px] font-semibold text-fg">
+                  {ai.query.title.includes(" · ")
+                    ? `${t(ai.query.title.split(" · ")[0])} · ${ai.query.title.split(" · ").slice(1).join(" · ")}`
+                    : t(ai.query.title)}
+                </p>
                 <ul className="space-y-1">
                   {ai.query.lines.map((line) => (
                     <li key={line} className="text-[12.5px] leading-relaxed text-fg-muted">
-                      {line}
+                      {line.includes(": ")
+                        ? `${t(line.split(": ")[0])}: ${line.split(": ").slice(1).join(": ")}`
+                        : t(line)}
                     </li>
                   ))}
                 </ul>
@@ -217,14 +222,14 @@ export function GridhubAIPanel() {
                     className="mt-0.5 text-[var(--positive)]"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12.5px] font-medium text-fg">{ai.result.message}</p>
+                    <p className="text-[12.5px] font-medium text-fg">{t(ai.result.message)}</p>
                     <p className="mt-0.5 text-[11px] text-fg-subtle">
-                      Local · will sync when you&apos;re online
+                      {t("Local · will sync when you're online")}
                     </p>
                   </div>
                   {ai.result.undo ? (
                     <Button variant="ghost" size="sm" icon="undo" onClick={() => void ai.undo()}>
-                      Undo
+                      {t("Undo")}
                     </Button>
                   ) : null}
                 </div>
@@ -233,16 +238,15 @@ export function GridhubAIPanel() {
 
             {ai.note ? (
               <div className="rounded-2xl border border-line bg-[var(--surface-strong)]/70 px-3 py-2.5">
-                <p className="text-[12.5px] leading-relaxed text-fg-muted">{ai.note}</p>
+                <p className="text-[12.5px] leading-relaxed text-fg-muted">{t(ai.note)}</p>
               </div>
             ) : null}
 
             {ai.error ? (
               <div className="rounded-2xl border border-[var(--negative)]/30 bg-[var(--negative)]/5 px-3 py-2.5">
-                <p className="text-[12.5px] leading-relaxed text-fg">{ai.error}</p>
+                <p className="text-[12.5px] leading-relaxed text-fg">{t(ai.error)}</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-fg-muted">
-                  You can still type a simple command such as “Add $40 for groceries” or enter it
-                  in the tool directly. Any AI change still waits for your confirmation.
+                  {t("You can still type a simple command such as “Add $40 for groceries” or enter it in the tool directly. Any AI change still waits for your confirmation.")}
                 </p>
                 <div className="mt-1.5 flex gap-2">
                   <Button
@@ -251,10 +255,10 @@ export function GridhubAIPanel() {
                     icon="refresh"
                   onClick={() => void ai.submit(ai.lastCommand)}
                   >
-                    Try again
+                    {t("Try again")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={ai.reset}>
-                    Dismiss
+                    {t("Dismiss")}
                   </Button>
                 </div>
               </div>
@@ -281,10 +285,8 @@ export function GridhubAIPanel() {
                 ref={inputRef}
                 value={ai.transcript}
                 onChange={(event) => ai.setTranscript(event.target.value)}
-                placeholder={
-                  "Try: add salary 1000"
-                }
-                aria-label="Ask Gridhub AI"
+                placeholder={t("Try: add salary 1000")}
+                aria-label={t("Ask Gridhub AI")}
                 className="h-9 flex-1"
                 autoComplete="off"
                 enterKeyHint="send"
@@ -294,7 +296,7 @@ export function GridhubAIPanel() {
                 type="submit"
                 size="icon"
                 variant="primary"
-                aria-label="Send"
+                aria-label={t("Send")}
                 disabled={ai.busy || !ai.transcript.trim()}
                 className="h-9 w-9"
               >
@@ -303,7 +305,7 @@ export function GridhubAIPanel() {
             </div>
 
             <p className="mt-1.5 px-1 text-[10px] leading-relaxed text-fg-subtle">
-              Runs on this device. Gridhub AI proposes changes; you confirm them.
+              {t("Runs on this device. Gridhub AI proposes changes; you confirm them.")}
             </p>
           </form>
         </DialogPrimitive.Content>

@@ -31,12 +31,10 @@ export interface AISettings {
 }
 
 /**
- * Languages the assistant actually supports. English only: the action registry, prompts and
- * speech hints are written in English, and a non-English `locale` would mis-hint the recognizer
- * without making the model any better at the language. Stored settings are clamped to this list
- * so an old saved value cannot quietly drive inference.
+ * Locales recognized by the on-device command parser. Voice recognition remains a separate,
+ * currently unavailable capability; this list is used for the text command language preference.
  */
-export const SUPPORTED_AI_LOCALES = ["en"] as const;
+export const SUPPORTED_AI_LOCALES = ["en", "es", "zh-CN", "pt-BR", "fr", "ru", "ar"] as const;
 
 const HISTORY_KEY = "gridhub.ai.history";
 const SETTINGS_KEY = "gridhub.ai.settings";

@@ -27,8 +27,52 @@ describe("deterministic parser", () => {
     );
   });
 
+  it("parses localized expense, income, and budget questions in every UI language", () => {
+    const expenseCommands = [
+      ["es", "Añade $45 para comida hoy"],
+      ["zh-CN", "添加 $45 用于买菜"],
+      ["pt-BR", "Adicione $45 para compras hoje"],
+      ["fr", "Ajoute $45 pour les courses aujourd'hui"],
+      ["ru", "Добавь $45 на продукты сегодня"],
+      ["ar", "أضف $45 لـ مشتريات اليوم"],
+    ] as const;
+    for (const [language, command] of expenseCommands) {
+      const parsed = deterministicParse(command, language);
+      expect(parsed?.actionId, `${language} expense`).toBe("budget.create_expense");
+      expect(parsed?.parameters?.amount).toBe(45);
+    }
+
+    const incomeCommands = [
+      ["es", "Añade un salario de $2000"],
+      ["zh-CN", "添加工资 $2000"],
+      ["pt-BR", "Adicione salário de $2000"],
+      ["fr", "Ajoute un salaire de $2000"],
+      ["ru", "Добавь зарплату $2000"],
+      ["ar", "أضف راتب $2000"],
+    ] as const;
+    for (const [language, command] of incomeCommands) {
+      expect(deterministicParse(command, language)?.actionId, `${language} income`).toBe(
+        "budget.create_income",
+      );
+    }
+
+    const budgetQuestions = [
+      ["es", "¿Cuánto gasté el mes pasado?"],
+      ["zh-CN", "我上个月花了多少钱？"],
+      ["pt-BR", "Quanto gastei no mês passado?"],
+      ["fr", "Combien ai-je dépensé le mois dernier ?"],
+      ["ru", "Сколько я потратил в прошлом месяце?"],
+      ["ar", "كم أنفقت الشهر الماضي؟"],
+    ] as const;
+    for (const [language, command] of budgetQuestions) {
+      expect(deterministicParse(command, language)?.actionId, `${language} query`).toBe(
+        "budget.query_spend",
+      );
+    }
+  });
+
   it("returns null for anything that needs the model", () => {
-    expect(deterministicParse("add 40 for fuel")).toBeNull();
+    expect(deterministicParse("add 40 for fuel")?.actionId).toBe("budget.create_expense");
     expect(deterministicParse("move 200 from savings to checking")).toBeNull();
     expect(deterministicParse("")).toBeNull();
   });

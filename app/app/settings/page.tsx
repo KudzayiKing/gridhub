@@ -153,7 +153,7 @@ export default function SettingsPage() {
               <Select id="uiLanguage" value={prefs.uiLanguage ?? "en"} onChange={(e) => void setPrefs({ uiLanguage: e.target.value as typeof prefs.uiLanguage })}>
                 {UI_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.nativeName}</option>)}
               </Select>
-              <p className="text-[11.5px] text-fg-subtle">{t("AI responses remain in English for now.")}</p>
+              <p className="text-[11.5px] text-fg-subtle">{t("Text commands recognize supported phrases in your interface language.")}</p>
             </Field>
           </div>
         </Card>
