@@ -3,7 +3,6 @@
 import * as React from "react";
 import { CategoryBreakdownChart, ChartContainer, ChartEmptyState, TrendChart } from "@/components/charts";
 import { CompactMetric } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { PinChartButton } from "@/lib/chart-widgets";
 import { formatMoney, round2 } from "@/lib/money";
 import { rows, type DataMap } from "@/lib/tools/shared";
@@ -29,7 +28,6 @@ export function OperationsDashboard({
   kpis,
   hero,
   children,
-  action,
   pin,
 }: {
   title: string;
@@ -37,7 +35,6 @@ export function OperationsDashboard({
   kpis: DashboardKpi[];
   hero: React.ReactNode;
   children?: React.ReactNode;
-  action?: React.ReactNode;
   pin?: { chartId: string; title: string; tool: ToolId };
 }) {
   const { t } = useI18n();
@@ -45,7 +42,6 @@ export function OperationsDashboard({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div><h2 className="text-[16px] font-semibold">{t(title)}</h2><p className="text-[11px] text-fg-muted">{t(description)}</p></div>
-        {action}
       </div>
       <div className="grid items-stretch gap-3 lg:grid-cols-2">
         <ChartContainer title="Signature visualization" subtitle="A current breakdown or projection from saved records" icon="chart-column" action={pin ? <PinChartButton {...pin} /> : undefined}>{hero}</ChartContainer>
@@ -56,11 +52,6 @@ export function OperationsDashboard({
       {children ? <div className="grid gap-3 lg:grid-cols-2">{children}</div> : null}
     </div>
   );
-}
-
-export function DashboardAction({ label, onClick }: { label: string; onClick: () => void }) {
-  const { t } = useI18n();
-  return <Button size="sm" variant="primary" icon="plus" onClick={onClick}>{t(label)}</Button>;
 }
 
 const colors = ["var(--positive)", "var(--accent)", "var(--warning)", "var(--negative)", "#76a8c9", "#b39ddb"];

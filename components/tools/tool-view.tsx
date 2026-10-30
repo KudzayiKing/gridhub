@@ -50,7 +50,7 @@ import { PaycheckDashboard } from "./paycheck-dashboard";
 import { DebtDashboard } from "./debt-dashboard";
 import { SavingsDashboard } from "./savings-dashboard";
 import { NetWorthDashboard } from "./net-worth-dashboard";
-import { OperationsDashboard, OperationsHero, DashboardAction } from "./operations-dashboard";
+import { OperationsDashboard, OperationsHero } from "./operations-dashboard";
 import type { ToolId } from "@/lib/catalog";
 import type { DataMap } from "@/lib/tools/shared";
 import type { BaseRecord } from "@/lib/types";
@@ -232,7 +232,6 @@ function Overview({
         kpis={dashboardMetrics}
         hero={<OperationsHero toolId={toolId} data={data} currency={currency} />}
         pin={{ chartId: operationsWidgetId(toolId), title: t(operationsWidgetTitle(toolId)), tool: toolId }}
-        action={<DashboardAction label={t(operationsActionLabel(toolId))} onClick={() => onOpenTab(operationsDefaultTab(toolId))} />}
       />
       <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} />
     </div>;
@@ -242,12 +241,6 @@ function Overview({
 
 function operationsDashboardTitle(toolId: ToolId) {
   return ({ bookkeeping: "Bookkeeping dashboard", inventory: "Inventory dashboard", sales: "Sales dashboard", invoicing: "Invoice and collections dashboard", "cash-flow": "Cash flow forecast", wedding: "Wedding command center", property: "Rental portfolio dashboard", nutrition: "Nutrition dashboard", projects: "Project dashboard", habits: "Habit dashboard", content: "Content planning dashboard" } as Partial<Record<ToolId, string>>)[toolId] ?? "Dashboard";
-}
-function operationsDefaultTab(toolId: ToolId) {
-  return ({ bookkeeping: "transactions", inventory: "products", sales: "sales", invoicing: "invoices", "cash-flow": "items", wedding: "expenses", property: "bookings", nutrition: "logs", projects: "tasks", habits: "completions", content: "posts" } as Partial<Record<ToolId, string>>)[toolId] ?? "transactions";
-}
-function operationsActionLabel(toolId: ToolId) {
-  return ({ bookkeeping: "Add transaction", inventory: "Add product", sales: "Record sale", invoicing: "Create invoice", "cash-flow": "Add forecast item", wedding: "Add expense", property: "Add booking", nutrition: "Log meal", projects: "Create task", habits: "Check in", content: "Create post" } as Partial<Record<ToolId, string>>)[toolId] ?? "Add record";
 }
 function operationsWidgetId(toolId: ToolId) {
   return ({ bookkeeping: "bookkeeping.expenses", inventory: "inventory.value", sales: "sales.products", invoicing: "invoicing.outstanding", "cash-flow": "cash-flow.forecast", wedding: "wedding.budget", property: "property.expenses", nutrition: "nutrition.macros", projects: "projects.status", habits: "habits.today", content: "content.pipeline" } as Partial<Record<ToolId, string>>)[toolId] ?? "";
