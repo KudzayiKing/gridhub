@@ -19,6 +19,7 @@ import {
 import { dailyTotals } from "@/lib/calc/life";
 import type {
   BaseRecord,
+  Business,
   BusinessContact,
   BusinessProduct,
   CashForecastItem,
@@ -502,7 +503,8 @@ export async function prepareAction(
     case "inventory.receive": {
       const p = ACTION_SCHEMAS["inventory.receive"].parse(parameters);
       const products = await recs<BusinessProduct>("inventory", "products");
-      const product = resolveOrClarify(products, p.product, (x) => x.name, "product");
+      const assignedProducts = products.filter((item) => item.businessId);
+      const product = resolveOrClarify(assignedProducts, p.product, (x) => x.name, "product");
       if (isClarification(product)) return product;
       const quantity = round2(p.quantity);
       return prepared(
@@ -519,6 +521,7 @@ export async function prepareAction(
             "movements",
             {
               productId: product.id,
+              businessId: product.businessId,
               date: ctx.today,
               type: "receipt",
               quantity,
@@ -532,19 +535,32 @@ export async function prepareAction(
 
     case "sales.create_sale": {
       const p = ACTION_SCHEMAS["sales.create_sale"].parse(parameters);
-      const [products, contacts] = await Promise.all([
+      const [products, contacts, businesses] = await Promise.all([
         recs<BusinessProduct>("sales", "products"),
         recs<BusinessContact>("sales", "contacts"),
+        recs<Business>("bookkeeping", "businesses"),
       ]);
+      const activeBusinesses = businesses.filter((business) => !business.deleted);
+      let business: Business | undefined;
+      if (p.business) {
+        const result = resolveByName(activeBusinesses, p.business, (item) => item.name);
+        if (result.status !== "match") return { kind: "clarification", question: "Which business should own this sale?", options: activeBusinesses.map((item) => item.name) };
+        business = result.record;
+      } else if (activeBusinesses.length === 1) business = activeBusinesses[0];
+      else return { kind: "clarification", question: activeBusinesses.length ? "Which business should own this sale?" : "Create a business before recording a sale.", options: activeBusinesses.map((item) => item.name) };
+      const businessProducts = products.filter((product) => product.businessId === business?.id);
+      const businessContacts = contacts.filter((contact) => contact.businessId === business?.id);
       let productId: string | undefined;
       if (p.product) {
-        const res = resolveByName(products, p.product, (x) => x.name);
+        const res = resolveByName(businessProducts, p.product, (x) => x.name);
         if (res.status === "match") productId = res.record.id;
+        else return { kind: "clarification", question: `Choose a product from ${business.name}.`, options: businessProducts.map((item) => item.name) };
       }
       let customerId: string | undefined;
       if (p.customer) {
-        const res = resolveByName(contacts, p.customer, (c) => c.name);
+        const res = resolveByName(businessContacts, p.customer, (c) => c.name);
         if (res.status === "match") customerId = res.record.id;
+        else return { kind: "clarification", question: `Choose a customer from ${business.name}.`, options: businessContacts.map((item) => item.name) };
       }
       const date = dateOrClarify(p.date, ctx.today);
       if (isClarification(date)) return date;
@@ -554,6 +570,7 @@ export async function prepareAction(
         [
           { label: "Tool", value: "Sales" },
           { label: "Action", value: "Record sale" },
+          { label: "Business", value: business.name },
           { label: "Description", value: p.description },
           { label: "Quantity", value: `${p.quantity}` },
           { label: "Total", value: formatMoney(total, { currency: ctx.currency }) },
@@ -571,7 +588,8 @@ export async function prepareAction(
               returned: 0,
               taxRate: 0,
               status: "order",
-              currency: ctx.currency,
+              currency: business.currency || ctx.currency,
+              businessId: business.id,
               productId,
               customerId,
             },
@@ -583,21 +601,33 @@ export async function prepareAction(
 
     case "invoicing.prepare_invoice": {
       const p = ACTION_SCHEMAS["invoicing.prepare_invoice"].parse(parameters);
-      const [invoices, contacts] = await Promise.all([
+      const [invoices, contacts, businesses] = await Promise.all([
         recs<Invoice>("invoicing", "invoices"),
         recs<BusinessContact>("invoicing", "contacts"),
+        recs<Business>("bookkeeping", "businesses"),
       ]);
-      const customer = resolveOrClarify(contacts, p.customer, (c) => c.name, "customer");
+      const activeBusinesses = businesses.filter((business) => !business.deleted);
+      let business: Business | undefined;
+      if (p.business) {
+        const result = resolveByName(activeBusinesses, p.business, (item) => item.name);
+        if (result.status !== "match") return { kind: "clarification", question: "Which business should own this invoice?", options: activeBusinesses.map((item) => item.name) };
+        business = result.record;
+      } else if (activeBusinesses.length === 1) business = activeBusinesses[0];
+      else return { kind: "clarification", question: activeBusinesses.length ? "Which business should own this invoice?" : "Create a business before preparing an invoice.", options: activeBusinesses.map((item) => item.name) };
+      const businessInvoices = invoices.filter((invoice) => invoice.businessId === business?.id);
+      const businessContacts = contacts.filter((contact) => contact.businessId === business?.id);
+      const customer = resolveOrClarify(businessContacts, p.customer, (c) => c.name, "customer");
       if (isClarification(customer)) return customer;
       const amount = round2(p.amount);
       const dueDate = dateOrClarify(p.dueDate, ctx.today);
       if (isClarification(dueDate)) return dueDate;
-      const number = nextInvoiceNumber(invoices);
+      const number = nextInvoiceNumber(businessInvoices);
       return prepared(
         meta,
         [
           { label: "Tool", value: "Invoicing" },
           { label: "Action", value: "Draft invoice" },
+          { label: "Business", value: business.name },
           { label: "Customer", value: customer.name },
           { label: "Amount", value: formatMoney(amount, { currency: ctx.currency }) },
           { label: "Due", value: dueDate },
@@ -614,7 +644,8 @@ export async function prepareAction(
               status: "draft",
               taxRate: p.taxRate ?? 0,
               discount: 0,
-              currency: ctx.currency,
+              currency: business.currency || ctx.currency,
+              businessId: business.id,
               lines: [
                 {
                   id: uid("line"),
@@ -991,30 +1022,31 @@ export async function runQuery(
         lines: unpaid.length
           ? unpaid.map(
               (r) =>
-                `${r.invoice.number}: ${formatMoney(r.totals.balanceDue, { currency: ctx.currency })} due ${r.invoice.dueDate}`,
+                `${r.invoice.number}: ${formatMoney(r.totals.balanceDue, { currency: r.invoice.currency || ctx.currency })} due ${r.invoice.dueDate}`,
             )
           : ["No outstanding invoices."],
       };
     }
 
     case "cash-flow.query_forecast": {
-      const [items, scenarios] = await Promise.all([
+      const [items, scenarios, businesses] = await Promise.all([
         recs<CashForecastItem>("cash-flow", "items"),
         recs<CashScenario>("cash-flow", "scenarios"),
+        recs<Business>("bookkeeping", "businesses"),
       ]);
-      const scenario = scenarios[0] ?? { openingCash: 0, minimumCash: 0 };
-      const forecast = forecastCashFlow(items, scenario, { startDate: ctx.today });
+      const activeScenarios = scenarios.filter((scenario) => !scenario.deleted);
       return {
         title: "Cash forecast",
-        lines: [
-          `Closing cash (13 weeks): ${formatMoney(forecast.closingCash, { currency: ctx.currency })}`,
-          forecast.runwayMonths != null
-            ? `Runway: ${forecast.runwayMonths.toFixed(1)} months`
-            : "Runway: not enough data",
-          forecast.shortfall > 0
-            ? `Shortfall: ${formatMoney(forecast.shortfall, { currency: ctx.currency })}`
-            : "No shortfall projected.",
-        ],
+        lines: activeScenarios.length ? activeScenarios.flatMap((scenario) => {
+          const currency = businesses.find((business) => business.id === scenario.businessId)?.currency ?? ctx.currency;
+          const scenarioItems = items.filter((item) => item.scenarioId === scenario.id);
+          const forecast = forecastCashFlow(scenarioItems, scenario, { startDate: ctx.today });
+          return [
+            `${scenario.name} · ${currency}: Closing cash (13 weeks): ${formatMoney(forecast.closingCash, { currency })}`,
+            forecast.runwayMonths != null ? `Runway: ${forecast.runwayMonths.toFixed(1)} months` : "Runway: not enough data",
+            forecast.shortfall > 0 ? `Shortfall: ${formatMoney(forecast.shortfall, { currency })}` : "No shortfall projected.",
+          ];
+        }) : ["No forecast scenarios have been set up yet."],
       };
     }
 

@@ -28,7 +28,7 @@ export interface FormField {
    * sets it for values sourced from user records (category, account, product names),
    * which must render exactly as typed.
    */
-  options?: { value: string; label: string; raw?: boolean }[];
+  options?: { value: string; label: string; raw?: boolean; disabled?: boolean }[];
   placeholder?: string;
   help?: string;
   step?: string;
@@ -102,17 +102,17 @@ export function RecordForm({
    */
   const signature = `${open ? "open" : "closed"}:${initial ? JSON.stringify(initial) : "new"}`;
   const [lastSignature, setLastSignature] = React.useState(signature);
-  const [submitError, setSubmitError] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   if (signature !== lastSignature) {
     setLastSignature(signature);
     setValues(initialValues(fields, initial));
     setErrors({});
-    setSubmitError(false);
+    setSubmitError(null);
   }
 
   const set = (key: string, value: unknown) => {
     setValues((v) => ({ ...v, [key]: value }));
-    setSubmitError(false);
+    setSubmitError(null);
     setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
   };
 
@@ -162,8 +162,26 @@ export function RecordForm({
       }
       await onSubmit(payload);
       onOpenChange(false);
-    } catch {
-      setSubmitError(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setSubmitError(
+        [
+          "Choose an account from the selected business.",
+          "Choose a contact from the selected business.",
+          "Choose a record from the selected business.",
+          "Choose a valid business for this record.",
+          "Choose a related record from the same business.",
+          "Invoice number already exists for this business.",
+          "Choose an issued invoice for this payment.",
+          "Enter a business name.",
+          "Enter a 3-letter currency code.",
+          "Choose a valid wedding for this record.",
+          "Choose a vendor from the same wedding.",
+          "Choose a table from the same wedding.",
+        ].includes(message)
+          ? message
+          : "Could not save this record. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -202,7 +220,7 @@ export function RecordForm({
                     <Select {...common}>
                       <option value="">{t("Select…")}</option>
                       {f.options?.map((o) => (
-                        <option key={o.value} value={o.value} data-raw={o.raw ? "" : undefined}>
+                        <option key={o.value} value={o.value} disabled={o.disabled} data-raw={o.raw ? "" : undefined}>
                           {o.raw ? o.label : t(o.label)}
                         </option>
                       ))}
@@ -235,7 +253,7 @@ export function RecordForm({
 
           {submitError ? (
             <p className="text-xs text-[var(--negative)]" role="alert">
-              {t("Could not save this record. Please try again.")}
+              {t(submitError)}
             </p>
           ) : null}
 

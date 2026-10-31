@@ -33,17 +33,21 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
   const goalState = useCollection<SavingsGoal>("savings", "goals");
   const today = todayISO();
   const summaries = savingsGoalRows(goals, movements, today);
-  const [selectedId, setSelectedId] = React.useState(goals[0]?.id ?? "");
+  // "" is the portfolio view. Never choose a goal by its current array position.
+  const [selectedId, setSelectedId] = React.useState("");
   const [range, setRange] = React.useState<Range>(12);
   const [inspectedMonth, setInspectedMonth] = React.useState("");
   const [chartGoalId, setChartGoalId] = React.useState("");
   const [segmentMessage, setSegmentMessage] = React.useState("");
-  const selected = summaries.find((row) => row.goal.id === selectedId) ?? summaries[0];
+  const selected = summaries.find((row) => row.goal.id === selectedId);
   const totalSaved = summaries.reduce((sum, row) => sum + row.balance, 0);
   const totalTarget = summaries.reduce((sum, row) => sum + row.target, 0);
   const totalRemaining = summaries.reduce((sum, row) => sum + row.remaining, 0);
   const nextTarget = summaries.filter((row) => row.goal.targetDate && row.remaining > 0 && row.goal.targetDate >= today).sort((a, b) => (a.goal.targetDate ?? "").localeCompare(b.goal.targetDate ?? ""))[0];
-  const monthsNeeded = selected?.requiredMonthly ?? null;
+  const combinedMonthlyNeeded = !summaries.length || summaries.some((row) => row.remaining > 0 && row.requiredMonthly == null)
+    ? null
+    : summaries.reduce((sum, row) => sum + (row.requiredMonthly ?? 0), 0);
+  const monthsNeeded = selected?.requiredMonthly ?? combinedMonthlyNeeded;
   const emergency = summaries.find((row) => row.goal.kind === "emergency");
   const coverage = emergency?.goal.monthlyEssentials && emergency.goal.monthlyEssentials > 0
     ? emergency.balance / emergency.goal.monthlyEssentials
@@ -53,18 +57,17 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
   const monthlyActivity = savingsMovementMonths(movements, range, today, chartGoalId || undefined);
   const monthlyRequirement = chartGoalId
     ? summaries.find((row) => row.goal.id === chartGoalId)?.requiredMonthly ?? null
-    : !summaries.length || summaries.some((row) => row.remaining > 0 && row.requiredMonthly == null)
-      ? null
-      : summaries.reduce((sum, row) => sum + (row.requiredMonthly ?? 0), 0);
+    : combinedMonthlyNeeded;
   const monthlyRequirementLabel = chartGoalId ? t("Selected goal's current requirement") : t("Combined current requirement");
   const actualMonthly = monthlyActivity;
   const selectedMovements = movements.filter((movement) => movement.goalId === selected?.goal.id).sort((a, b) => b.date.localeCompare(a.date));
   const targetDays = nextTarget?.goal.targetDate ? Math.max(0, Math.ceil((new Date(nextTarget.goal.targetDate + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / 86400000)) : null;
-  const donutTarget = selected?.target ?? 0;
-  const visualSaved = selected ? Math.min(selected.balance, donutTarget) : 0;
-  const visualRemaining = selected ? Math.max(0, donutTarget - visualSaved) : 0;
-  const truePercent = selected?.percent ?? 0;
-  const donutData = selected && donutTarget > 0 ? [
+  const progressTarget = selected?.target ?? totalTarget;
+  const progressBalance = selected?.balance ?? totalSaved;
+  const visualSaved = Math.min(progressBalance, progressTarget);
+  const visualRemaining = Math.max(0, progressTarget - visualSaved);
+  const truePercent = progressTarget > 0 ? (progressBalance / progressTarget) * 100 : 0;
+  const donutData = progressTarget > 0 ? [
     { id: "saved", name: t("Saved · {amount}", { amount: formatMoney(visualSaved, { currency }) }), value: visualSaved, color: "var(--positive)" },
     { id: "remaining", name: t("Remaining · {amount}", { amount: formatMoney(visualRemaining, { currency }) }), value: visualRemaining, color: "var(--bg-subtle)" },
   ].filter((item) => item.value > 0) : [];
@@ -85,10 +88,10 @@ export function SavingsDashboard({ data, currency, onOpenTab }: { data: DataMap;
       </div>
 
       <div className="grid items-stretch gap-3 xl:grid-cols-2">
-        <ChartContainer title={selected ? t("{name} · goal progress", { name: goalLabel(selected.goal) }) : t("Goal progress")} subtitle={t("Saved and remaining amounts · target track is capped at 100%")} icon="chart-column">
-          {summaries.length && donutTarget > 0 ? <>
-            <div className="mb-1 flex items-center gap-2"><label htmlFor="savings-goal-progress-select" className="shrink-0 text-[11px] text-fg-muted">{t("Selected goal")}</label><Select id="savings-goal-progress-select" value={selected?.goal.id ?? ""} onChange={(event) => { setSelectedId(event.target.value); setSegmentMessage(""); }} className="h-9 min-w-0 flex-1">{summaries.map((row) => <option key={row.goal.id} value={row.goal.id} data-raw="">{goalLabel(row.goal)}</option>)}</Select>{selected ? <Badge tone={statusTone(selected.status)}>{t(selected.status)}</Badge> : null}</div>
-            <CategoryBreakdownChart data={donutData} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} centerValue={formatPercent(Math.min(100, Math.max(0, truePercent)), 0)} centerLabel={t("Saved {amount}", { amount: formatMoney(selected?.balance ?? 0, { currency }) })} onSliceClick={(id) => setSegmentMessage(id === "saved" ? t("Saved amount is the current balance from opening balance plus recorded contributions minus withdrawals.") : t("Remaining is the positive difference between this goal's target and current recorded balance."))} height={340} />
+        <ChartContainer title={selected ? t("{name} · goal progress", { name: goalLabel(selected.goal) }) : t("All goals · combined progress")} subtitle={t("Saved and remaining amounts · target track is capped at 100%")} icon="chart-column">
+          {summaries.length && progressTarget > 0 ? <>
+            <div className="mb-1 flex items-center gap-2"><label htmlFor="savings-goal-progress-select" className="shrink-0 text-[11px] text-fg-muted">{t("Selected goal")}</label><Select id="savings-goal-progress-select" value={selected?.goal.id ?? "all-goals"} onChange={(event) => { setSelectedId(event.target.value === "all-goals" ? "" : event.target.value); setSegmentMessage(""); }} className="h-9 min-w-0 flex-1"><option value="all-goals">{t("All goals")}</option>{summaries.map((row) => <option key={row.goal.id} value={row.goal.id} data-raw="">{goalLabel(row.goal)}</option>)}</Select>{selected ? <Badge tone={statusTone(selected.status)}>{t(selected.status)}</Badge> : null}</div>
+            <CategoryBreakdownChart data={donutData} formatValue={(value) => formatMoney(Number(value ?? 0), { currency })} centerValue={formatPercent(Math.min(100, Math.max(0, truePercent)), 0)} centerLabel={t("Saved {amount}", { amount: formatMoney(progressBalance, { currency }) })} onSliceClick={(id) => setSegmentMessage(id === "saved" ? t("Saved amount is the current balance from opening balance plus recorded contributions minus withdrawals.") : t("Remaining is the positive difference between this goal's target and current recorded balance."))} height={340} />
             {selected && selected.balance > selected.target ? <p className="text-center text-[11px] text-[var(--positive)]">{t("True funding: {percent} · {amount} above target", { percent: formatPercent(truePercent, 0), amount: formatMoney(selected.balance - selected.target, { currency }) })}</p> : null}
             {segmentMessage ? <p role="status" className="text-center text-[10px] text-fg-muted">{segmentMessage}</p> : null}
           </> : summaries.length ? <ChartEmptyState label={t("Set a positive target amount to display the goal donut.")} /> : <ChartEmptyState label={t("Create a savings goal to display its progress.")} />}

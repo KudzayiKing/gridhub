@@ -45,6 +45,9 @@ export interface DataTableProps<T extends { id: string }> {
   filters?: FilterDef<T>[];
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  canEdit?: (row: T) => boolean;
+  canDelete?: (row: T) => boolean;
+  deleteConfirmation?: { title: string; description: string; confirmLabel: string };
   onRowClick?: (row: T) => void;
   exportName?: string;
   emptyTitle?: string;
@@ -66,6 +69,9 @@ export function DataTable<T extends { id: string }>({
   filters,
   onEdit,
   onDelete,
+  canEdit,
+  canDelete,
+  deleteConfirmation,
   onRowClick,
   exportName,
   emptyTitle = "Nothing here yet",
@@ -87,6 +93,9 @@ export function DataTable<T extends { id: string }>({
   const [pendingDelete, setPendingDelete] = React.useState<T | null>(null);
 
   const visibleColumns = columns.filter((c) => !hidden.includes(c.key));
+  const rowHasActions = (row: T) => Boolean(
+    (onEdit && canEdit?.(row) !== false) || (onDelete && canDelete?.(row) !== false) || onRowClick,
+  );
 
   const filtered = React.useMemo(() => {
     let out = rows;
@@ -296,7 +305,7 @@ export function DataTable<T extends { id: string }>({
                     {c.render(row)}
                   </td>
                 ))}
-                {(onEdit || onDelete || onRowClick) && (
+                {rowHasActions(row) && (
                   <td className="px-2 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <Dropdown>
                       <DropdownTrigger asChild>
@@ -305,12 +314,12 @@ export function DataTable<T extends { id: string }>({
                         </Button>
                       </DropdownTrigger>
                       <DropdownContent>
-                        {onEdit ? (
+                        {onEdit && canEdit?.(row) !== false ? (
                           <DropdownItem icon="edit" onSelect={() => onEdit(row)}>
                             Edit
                           </DropdownItem>
                         ) : null}
-                        {onDelete ? (
+                        {onDelete && canDelete?.(row) !== false ? (
                           <>
                             <DropdownSeparator />
                             <DropdownItem icon="trash" danger onSelect={() => setPendingDelete(row)}>
@@ -342,12 +351,12 @@ export function DataTable<T extends { id: string }>({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 text-[13px] font-medium">{primary?.render(row)}</div>
                 <div className="flex shrink-0 items-center gap-0.5">
-                  {onEdit ? (
+                  {onEdit && canEdit?.(row) !== false ? (
                     <Button variant="ghost" size="icon-sm" aria-label={t("Edit")} onClick={() => onEdit(row)}>
                       <AnimatedIcon name="edit" size={14} trigger="click" />
                     </Button>
                   ) : null}
-                  {onDelete ? (
+                  {onDelete && canDelete?.(row) !== false ? (
                     <Button variant="ghost" size="icon-sm" aria-label={t("Delete")} onClick={() => setPendingDelete(row)}>
                       <AnimatedIcon name="trash" size={14} trigger="click" />
                     </Button>
@@ -399,9 +408,9 @@ export function DataTable<T extends { id: string }>({
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(v) => !v && setPendingDelete(null)}
-        title="Delete this record?"
-        description="It will be removed from your workspace and from the cloud on the next sync. Export first if you may need it."
-        confirmLabel="Delete"
+        title={deleteConfirmation?.title ?? "Delete this record?"}
+        description={deleteConfirmation?.description ?? "It will be removed from your workspace and from the cloud on the next sync. Export first if you may need it."}
+        confirmLabel={deleteConfirmation?.confirmLabel ?? "Delete"}
         onConfirm={() => {
           if (pendingDelete) onDelete?.(pendingDelete);
           setPendingDelete(null);

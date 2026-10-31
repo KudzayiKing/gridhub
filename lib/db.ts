@@ -30,6 +30,11 @@ class GridhubDB extends Dexie {
       outbox: "id, recordId, createdAt, toolId",
       meta: "key",
     });
+    this.version(2).stores({
+      records: "id, workspaceId, ownerUserId, toolId, collection, updatedAt, dirty, [toolId+collection], [workspaceId+toolId+collection], [workspaceId+updatedAt]",
+      outbox: "id, workspaceId, ownerUserId, recordId, createdAt, toolId, [workspaceId+createdAt]",
+      meta: "key",
+    });
   }
 }
 

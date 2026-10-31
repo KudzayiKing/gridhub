@@ -35,7 +35,11 @@ const ENTITY_SOURCES: Partial<Record<ToolId, EntitySource[]>> = {
     { collection: "tasks", field: "title", label: "tasks" },
   ],
   habits: [{ collection: "habits", field: "name", label: "habits" }],
-  content: [{ collection: "campaigns", field: "name", label: "campaigns" }],
+  content: [
+    { collection: "plans", field: "name", label: "content plans" },
+    { collection: "channels", field: "name", label: "channel accounts" },
+    { collection: "campaigns", field: "name", label: "campaigns" },
+  ],
   property: [{ collection: "properties", field: "name", label: "properties" }],
   nutrition: [{ collection: "foods", field: "name", label: "saved foods" }],
   wedding: [{ collection: "vendors", field: "name", label: "vendors" }],

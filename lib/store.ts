@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getDB, dbAvailable } from "./db";
 import type { BaseRecord, LocalRecord } from "./types";
 import { uid } from "./utils";
+import { belongsToWorkspaceScope, getWorkspaceScope, subscribeWorkspaceScope } from "./workspaces/context";
 
 /* ==========================================================================
    Change notification — a tiny pub/sub so every mounted table refreshes
@@ -46,19 +47,37 @@ export async function listRecords<T extends BaseRecord>(
   collection: string,
 ): Promise<T[]> {
   if (!dbAvailable()) return [];
-  const rows = await getDB()
-    .records.where("[toolId+collection]")
-    .equals([toolId, collection])
+  const { workspaceId, ownerUserId } = getWorkspaceScope();
+  const rows = await getDB().records
+    .where("[workspaceId+toolId+collection]")
+    .equals([workspaceId, toolId, collection])
     .toArray();
   return rows
-    .filter((r) => !r.deleted)
+    .filter((r) => !r.deleted && belongsToWorkspaceScope(r, { workspaceId, ownerUserId }))
     .map((r) => r.data as unknown as T)
+    .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+}
+
+/** List only archived rows for an explicit restore UI, within the active workspace. */
+export async function listArchivedRecords<T extends BaseRecord>(toolId: string, collection: string): Promise<T[]> {
+  if (!dbAvailable()) return [];
+  const { workspaceId, ownerUserId } = getWorkspaceScope();
+  const rows = await getDB().records
+    .where("[workspaceId+toolId+collection]")
+    .equals([workspaceId, toolId, collection])
+    .toArray();
+  return rows
+    .filter((row) => Boolean(row.deleted) && belongsToWorkspaceScope(row, { workspaceId, ownerUserId }))
+    .map((row) => ({ ...(row.data as unknown as T), deleted: true }))
     .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
 }
 
 export async function listAll(toolId: string): Promise<LocalRecord[]> {
   if (!dbAvailable()) return [];
-  return getDB().records.where("toolId").equals(toolId).toArray();
+  const scope = getWorkspaceScope();
+  return getDB().records.where("toolId").equals(toolId).filter(
+    (row) => belongsToWorkspaceScope(row, scope),
+  ).toArray();
 }
 
 export async function getRecord<T extends BaseRecord>(
@@ -66,7 +85,10 @@ export async function getRecord<T extends BaseRecord>(
 ): Promise<T | null> {
   if (!dbAvailable()) return null;
   const row = await getDB().records.get(id);
-  return row && !row.deleted ? (row.data as unknown as T) : null;
+  const scope = getWorkspaceScope();
+  return row && belongsToWorkspaceScope(row, scope) && !row.deleted
+    ? (row.data as unknown as T)
+    : null;
 }
 
 export async function createRecord<T extends BaseRecord>(
@@ -113,6 +135,18 @@ export async function removeRecord(toolId: string, collection: string, id: strin
   await writeRecord(toolId, collection, { ...existing, updatedAt: new Date().toISOString() } as BaseRecord, "delete");
 }
 
+/** Restore an archived row without bypassing its workspace ownership boundary. */
+export async function restoreRecord<T extends BaseRecord>(toolId: string, collection: string, id: string): Promise<T | null> {
+  if (!dbAvailable()) return null;
+  const row = await getDB().records.get(id);
+  const scope = getWorkspaceScope();
+  if (!row || !row.deleted || !belongsToWorkspaceScope(row, scope) || row.toolId !== toolId || row.collection !== collection) return null;
+  const existing = row.data as unknown as T;
+  const restored = { ...existing, id, deleted: false, updatedAt: new Date().toISOString(), version: (existing.version ?? row.version ?? 1) + 1 } as T;
+  await writeRecord(toolId, collection, restored, "upsert");
+  return restored;
+}
+
 async function writeRecord<T extends BaseRecord>(
   toolId: string,
   collection: string,
@@ -121,9 +155,12 @@ async function writeRecord<T extends BaseRecord>(
 ) {
   if (!dbAvailable()) throw new Error("Local storage unavailable");
   const db = getDB();
+  const scope = getWorkspaceScope();
   const now = new Date().toISOString();
   const row: LocalRecord = {
     id: record.id,
+    workspaceId: scope.workspaceId,
+    ownerUserId: scope.ownerUserId,
     toolId,
     collection,
     data: record as unknown as Record<string, unknown>,
@@ -135,9 +172,15 @@ async function writeRecord<T extends BaseRecord>(
   };
 
   await db.transaction("rw", db.records, db.outbox, async () => {
+    const previous = await db.records.get(record.id);
+    if (previous && !belongsToWorkspaceScope(previous, scope)) {
+      throw new Error("This record ID already belongs to another workspace. Choose a new record ID.");
+    }
     await db.records.put(row);
     await db.outbox.add({
       id: uid("mut"),
+      workspaceId: scope.workspaceId,
+      ownerUserId: scope.ownerUserId,
       toolId,
       collection,
       recordId: record.id,
@@ -215,11 +258,12 @@ export function useCollection<T extends BaseRecord>(
     };
     load();
     const unsub = subscribe(toolId, collection, load);
+    const unsubScope = subscribeWorkspaceScope(load);
     return () => {
       alive = false;
       unsub();
+      unsubScope();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolId, collection]);
 
   return {
@@ -231,6 +275,58 @@ export function useCollection<T extends BaseRecord>(
     remove: (id) => removeRecord(toolId, collection, id),
     replaceAll: (items) => replaceCollection<T>(toolId, collection, items),
   };
+}
+
+/** Count pre-workspace rows that have not been attributed to an account/workspace. */
+export async function countLegacyLocalRows(): Promise<{ records: number; mutations: number }> {
+  if (!dbAvailable()) return { records: 0, mutations: 0 };
+  const db = getDB();
+  const [records, mutations] = await Promise.all([
+    db.records.filter((row) => !row.workspaceId).count(),
+    db.outbox.filter((row) => !row.workspaceId).count(),
+  ]);
+  return { records, mutations };
+}
+
+/**
+ * Explicitly associate pre-workspace local rows with the workspace selected by the user.
+ * No data is copied or discarded; all pending mutations are retained and scoped together.
+ */
+export async function attachLegacyLocalRows(workspaceId: string, ownerUserId: string | null): Promise<number> {
+  if (!dbAvailable()) return 0;
+  const db = getDB();
+  let count = 0;
+  await db.transaction("rw", db.records, db.outbox, async () => {
+    const legacyRows = await db.records.filter((row) => !row.workspaceId).toArray();
+    const legacyMutations = await db.outbox.filter((row) => !row.workspaceId).toArray();
+    for (const row of legacyRows) {
+      const collision = await db.records.get(row.id);
+      if (collision && collision.workspaceId) {
+        throw new Error("A legacy record conflicts with a record already in this workspace. No legacy rows were moved.");
+      }
+      await db.records.update(row.id, { workspaceId, ownerUserId });
+    }
+    for (const mutation of legacyMutations) {
+      await db.outbox.update(mutation.id, { workspaceId, ownerUserId });
+    }
+    count = legacyRows.length;
+  });
+  return count;
+}
+
+/** Bind a device-only workspace to its authenticated server identity after explicit user action. */
+export async function claimLocalWorkspaceRows(workspaceId: string, ownerUserId: string): Promise<number> {
+  if (!dbAvailable()) return 0;
+  const db = getDB();
+  let count = 0;
+  await db.transaction("rw", db.records, db.outbox, async () => {
+    const rows = await db.records.where("workspaceId").equals(workspaceId).filter((row) => row.ownerUserId == null).toArray();
+    const mutations = await db.outbox.where("workspaceId").equals(workspaceId).filter((row) => row.ownerUserId == null).toArray();
+    for (const row of rows) await db.records.update(row.id, { ownerUserId });
+    for (const mutation of mutations) await db.outbox.update(mutation.id, { ownerUserId });
+    count = rows.length;
+  });
+  return count;
 }
 
 /* ==========================================================================

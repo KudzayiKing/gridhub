@@ -118,6 +118,7 @@ export const ICON_ALIASES: Record<string, string[]> = {
   cart: ["ShoppingCartIcon"],
   swap: ["ArrowLeftRightIcon", "ArrowRightLeftIcon"],
   link: ["LinkIcon"],
+  share: ["ShareIcon"],
   archive: ["ArchiveIcon"],
   globe: ["GlobeIcon"],
   zap: ["ZapIcon"],

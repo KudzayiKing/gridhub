@@ -3,6 +3,10 @@ import { formatDate } from "@/lib/utils";
 import type {
   ContentCampaign,
   ContentPost,
+  ContentBrand,
+  ContentPlan,
+  ChannelAccount,
+  ContentPublication,
   Habit,
   HabitCompletion,
   Milestone,
@@ -185,8 +189,12 @@ const PLATFORMS = [
   { value: "blog", label: "Blog" },
 ];
 
-export function contentTabs(data: DataMap): LedgerTab[] {
+export function contentTabs(data: DataMap, selectedPlanId?: string | null): LedgerTab[] {
   const campaigns = rows<ContentCampaign>(data, "campaigns");
+  const plans = rows<ContentPlan>(data, "plans");
+  const brands = rows<ContentBrand>(data, "brands");
+  const channels = rows<ChannelAccount>(data, "channels");
+  const posts = rows<ContentPost>(data, "posts");
   return [
     defineTab<ContentPost>({
       id: "posts",
@@ -197,9 +205,11 @@ export function contentTabs(data: DataMap): LedgerTab[] {
       emptyTitle: "No content planned",
       emptyDescription: "Capture ideas, drafts and scheduled posts. Nothing is marked published until you confirm it.",
       searchText: (r) => `${r.title} ${r.notes ?? ""} ${r.campaign ?? ""}`,
-      defaults: { status: "idea", platform: "instagram", contentType: "post", metricBasis: "reach" },
+      defaults: { status: "idea", platform: "instagram", contentType: "post", metricBasis: "reach", planId: selectedPlanId ?? "" },
       fields: [
         { key: "title", label: "Title", type: "text", required: true },
+        { key: "planId", label: "Content plan", type: "select", options: options(plans), required: true },
+        { key: "category", label: "Category", type: "text" },
         { key: "platform", label: "Platform", type: "select", options: PLATFORMS, required: true },
         { key: "contentType", label: "Format", type: "select", options: [{ value: "post", label: "Post" }, { value: "story", label: "Story" }, { value: "reel", label: "Reel" }, { value: "video", label: "Video" }, { value: "article", label: "Article" }, { value: "newsletter", label: "Newsletter" }], defaultValue: "post" },
         { key: "status", label: "Status", type: "select", options: [{ value: "idea", label: "Idea" }, { value: "draft", label: "Draft" }, { value: "scheduled", label: "Scheduled" }, { value: "published", label: "Published" }], defaultValue: "idea" },
@@ -213,9 +223,87 @@ export function contentTabs(data: DataMap): LedgerTab[] {
       ],
       columns: [
         { key: "title", header: "Title", primary: true, value: (r) => r.title, render: (r) => r.title },
+        { key: "planId", header: "Content plan", value: (r) => plans.find((p) => p.id === r.planId)?.name ?? "—", render: (r) => plans.find((p) => p.id === r.planId)?.name ?? "—" },
+        { key: "category", header: "Category", value: (r) => r.category ?? "", render: (r) => r.category ?? "—" },
         { key: "platform", header: "Platform", value: (r) => r.platform, render: (r) => <span className="capitalize">{r.platform}</span> },
         { key: "status", header: "Status", value: (r) => r.status, render: (r) => <span className="capitalize text-fg-muted">{r.status}</span> },
         { key: "scheduledDate", header: "Scheduled", value: (r) => r.scheduledDate ?? "", render: (r) => formatDate(r.scheduledDate) },
+      ],
+    }),
+    defineTab<ContentPlan>({
+      id: "plans", label: "Content plans", icon: "calendar-range", collection: "plans",
+      addLabel: "Add content plan", emptyTitle: "No content plans", emptyDescription: "Create a plan before adding new content.",
+      fields: [
+        { key: "name", label: "Plan name", type: "text", required: true },
+        { key: "brandId", label: "Brand", type: "select", options: options(brands) },
+        { key: "description", label: "Description", type: "textarea", span: 2 },
+        { key: "startDate", label: "Start date", type: "date" },
+        { key: "endDate", label: "End date", type: "date" },
+        { key: "archived", label: "Archived", type: "checkbox" },
+      ],
+      columns: [
+        { key: "name", header: "Plan name", primary: true, value: (r) => r.name, render: (r) => r.name },
+        { key: "brandId", header: "Brand", value: (r) => brands.find((brand) => brand.id === r.brandId)?.name ?? "—", render: (r) => brands.find((brand) => brand.id === r.brandId)?.name ?? "—" },
+        { key: "startDate", header: "Start", value: (r) => r.startDate ?? "", render: (r) => formatDate(r.startDate) },
+        { key: "archived", header: "Status", value: (r) => r.archived ? 0 : 1, render: (r) => r.archived ? "Archived" : "Active" },
+      ],
+    }),
+    defineTab<ContentBrand>({
+      id: "brands", label: "Brands", icon: "building", collection: "brands",
+      addLabel: "Add brand", emptyTitle: "No brands", emptyDescription: "Add a brand identity to organize plans and channel accounts.",
+      fields: [
+        { key: "name", label: "Brand name", type: "text", required: true },
+        { key: "website", label: "Website", type: "text" },
+        { key: "description", label: "Description", type: "textarea", span: 2 },
+      ],
+      columns: [
+        { key: "name", header: "Brand name", primary: true, value: (r) => r.name, render: (r) => r.name },
+        { key: "website", header: "Website", value: (r) => r.website ?? "", render: (r) => r.website ?? "—" },
+        { key: "description", header: "Description", value: (r) => r.description ?? "", render: (r) => r.description ?? "—" },
+      ],
+    }),
+    defineTab<ChannelAccount>({
+      id: "channels", label: "Channel accounts", icon: "share", collection: "channels",
+      addLabel: "Add channel account", emptyTitle: "No channel accounts", emptyDescription: "Add each specific account separately, including multiple accounts on the same platform.",
+      defaults: { platform: "instagram", active: true },
+      fields: [
+        { key: "name", label: "Account name", type: "text", required: true },
+        { key: "platform", label: "Platform", type: "select", options: PLATFORMS, required: true },
+        { key: "handle", label: "Handle or channel URL", type: "text" },
+        { key: "brandId", label: "Brand", type: "select", options: options(brands) },
+        { key: "active", label: "Active", type: "checkbox" },
+      ],
+      columns: [
+        { key: "name", header: "Account name", primary: true, value: (r) => r.name, render: (r) => r.name },
+        { key: "platform", header: "Platform", value: (r) => r.platform, render: (r) => <span className="capitalize">{r.platform}</span> },
+        { key: "handle", header: "Handle", value: (r) => r.handle ?? "", render: (r) => r.handle ?? "—" },
+        { key: "brandId", header: "Brand", value: (r) => brands.find((brand) => brand.id === r.brandId)?.name ?? "—", render: (r) => brands.find((brand) => brand.id === r.brandId)?.name ?? "—" },
+      ],
+    }),
+    defineTab<ContentPublication>({
+      id: "publications", label: "Publications", icon: "send", collection: "publications",
+      addLabel: "Add publication", emptyTitle: "No publication destinations", emptyDescription: "Connect one content item to one channel account per destination. The content itself stays shared.",
+      defaults: { status: "draft", metricBasis: "reach" },
+      fields: [
+        { key: "contentId", label: "Content item", type: "select", options: options(posts.map((post) => ({ id: post.id, name: post.title }))), required: true },
+        { key: "channelAccountId", label: "Channel account", type: "select", options: options(channels), required: true },
+        { key: "status", label: "Status", type: "select", options: [{ value: "draft", label: "Draft" }, { value: "scheduled", label: "Scheduled" }, { value: "published", label: "Published" }], defaultValue: "draft" },
+        { key: "scheduledDate", label: "Scheduled date", type: "date" },
+        { key: "publishedDate", label: "Published date", type: "date" },
+        { key: "url", label: "Published URL", type: "text" },
+        { key: "reach", label: "Reach", type: "number", min: 0 },
+        { key: "engagements", label: "Engagements", type: "number", min: 0 },
+        { key: "metricBasis", label: "Metric basis", type: "select", options: [{ value: "reach", label: "Reach" }, { value: "impressions", label: "Impressions" }, { value: "followers", label: "Followers" }] },
+        { key: "notes", label: "Platform-specific notes", type: "textarea", span: 2 },
+      ],
+      columns: [
+        { key: "contentId", header: "Content item", primary: true, value: (r) => posts.find((post) => post.id === r.contentId)?.title ?? "—", render: (r) => posts.find((post) => post.id === r.contentId)?.title ?? "—" },
+        { key: "channelAccountId", header: "Channel account", value: (r) => channels.find((channel) => channel.id === r.channelAccountId)?.name ?? "—", render: (r) => channels.find((channel) => channel.id === r.channelAccountId)?.name ?? "—" },
+        { key: "status", header: "Status", value: (r) => r.status, render: (r) => <span className="capitalize">{r.status}</span> },
+        { key: "scheduledDate", header: "Scheduled", value: (r) => r.scheduledDate ?? "", render: (r) => formatDate(r.scheduledDate) },
+        { key: "reach", header: "Reach", value: (r) => r.reach ?? 0, render: (r) => r.reach?.toLocaleString() ?? "—" },
+        { key: "engagements", header: "Engagements", value: (r) => r.engagements ?? 0, render: (r) => r.engagements?.toLocaleString() ?? "—" },
+        { key: "url", header: "Published URL", value: (r) => r.url ?? "", render: (r) => r.url ?? "—" },
       ],
     }),
     defineTab<ContentCampaign>({

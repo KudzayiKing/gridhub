@@ -3,6 +3,7 @@
 import { getDB, dbAvailable } from "./db";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "./supabase/client";
 import { getMeta, setMeta } from "./store";
+import { belongsToWorkspaceScope, getWorkspaceScope } from "./workspaces/context";
 
 export type SyncPhase = "local" | "offline" | "syncing" | "synced" | "pending" | "error";
 
@@ -29,25 +30,19 @@ function emit(patch: Partial<SyncState>) {
 
 export async function pendingCount(): Promise<number> {
   if (!dbAvailable()) return 0;
-  return getDB().outbox.count();
+  const scope = getWorkspaceScope();
+  return getDB().outbox.where("workspaceId").equals(scope.workspaceId)
+    .filter((row) => row.ownerUserId === scope.ownerUserId).count();
 }
 
 export async function refreshPending() {
   const pending = await pendingCount();
-  const lastSyncedAt = await getMeta<string | null>("sync:last", null);
-  if (!navigator.onLine) emit({ phase: "offline", pending, lastSyncedAt });
+  const scope = getWorkspaceScope();
+  const lastSyncedAt = await getMeta<string | null>(`sync:last:${scope.ownerUserId ?? "local"}:${scope.workspaceId}`, null);
+  if (!scope.ownerUserId) emit({ phase: "local", pending, lastSyncedAt });
+  else if (!navigator.onLine) emit({ phase: "offline", pending, lastSyncedAt });
   else if (pending > 0) emit({ phase: "pending", pending, lastSyncedAt });
   else emit({ phase: isSupabaseConfigured() ? "synced" : "local", pending, lastSyncedAt });
-}
-
-interface Mutation {
-  id: string;
-  toolId: string;
-  collection: string;
-  recordId: string;
-  op: "upsert" | "delete";
-  payload: string;
-  createdAt: string;
 }
 
 /**
@@ -60,6 +55,12 @@ interface Mutation {
  */
 export async function flushOutbox(): Promise<SyncState> {
   if (!dbAvailable()) return state;
+  const scope = getWorkspaceScope();
+
+  if (!scope.ownerUserId) {
+    emit({ phase: "local", pending: await pendingCount(), message: undefined });
+    return state;
+  }
 
   if (!isSupabaseConfigured()) {
     const pending = await pendingCount();
@@ -84,10 +85,16 @@ export async function flushOutbox(): Promise<SyncState> {
     return state;
   }
 
+  if (session.user.id !== scope.ownerUserId) {
+    emit({ phase: "local", pending: await pendingCount(), message: "The selected workspace belongs to a different signed-in account." });
+    return state;
+  }
+
   const db = getDB();
-  const batch = await db.outbox.orderBy("createdAt").limit(50).toArray();
+  const batch = (await db.outbox.where("workspaceId").equals(scope.workspaceId)
+    .filter((row) => row.ownerUserId === scope.ownerUserId).sortBy("createdAt")).slice(0, 50);
   if (!batch.length) {
-    emit({ phase: "synced", pending: 0, lastSyncedAt: await getMeta<string | null>("sync:last", null) });
+    emit({ phase: "synced", pending: 0, lastSyncedAt: await getMeta<string | null>(`sync:last:${scope.ownerUserId}:${scope.workspaceId}`, null) });
     return state;
   }
 
@@ -101,6 +108,8 @@ export async function flushOutbox(): Promise<SyncState> {
         authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
+        protocolVersion: 2,
+        workspaceId: scope.workspaceId,
         mutations: batch.map((m) => ({
           id: m.id,
           toolId: m.toolId,
@@ -126,12 +135,14 @@ export async function flushOutbox(): Promise<SyncState> {
         if (!acked.has(m.id)) continue;
         await db.outbox.delete(m.id);
         const row = await db.records.get(m.recordId);
-        if (row) await db.records.update(m.recordId, { dirty: 0 });
+        if (row && belongsToWorkspaceScope(row, scope)) {
+          await db.records.update(m.recordId, { dirty: 0 });
+        }
       }
     });
 
     const now = result.serverTime ?? new Date().toISOString();
-    await setMeta("sync:last", now);
+    await setMeta(`sync:last:${scope.ownerUserId}:${scope.workspaceId}`, now);
     const pending = await pendingCount();
     emit({
       phase: pending > 0 ? "pending" : "synced",
@@ -168,9 +179,12 @@ export async function pullChanges(): Promise<number> {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) return 0;
+  const scope = getWorkspaceScope();
+  if (!scope.ownerUserId || scope.ownerUserId !== session.user.id) return 0;
 
-  const cursor = await getMeta<string | null>("sync:cursor", null);
-  const res = await fetch(`/api/sync?since=${encodeURIComponent(cursor ?? "")}`, {
+  const cursorKey = `sync:cursor:${scope.ownerUserId}:${scope.workspaceId}`;
+  const cursor = await getMeta<string | null>(cursorKey, null);
+  const res = await fetch(`/api/sync?workspaceId=${encodeURIComponent(scope.workspaceId)}&since=${encodeURIComponent(cursor ?? "")}`, {
     headers: { authorization: `Bearer ${session.access_token}` },
   });
   if (!res.ok) return 0;
@@ -194,12 +208,17 @@ export async function pullChanges(): Promise<number> {
   await db.transaction("rw", db.records, async () => {
     for (const change of body.changes ?? []) {
       const local = await db.records.get(change.id);
+      // A pre-workspace or other-workspace row with a coincident ID must never be
+      // replaced by a pull into the active workspace.
+      if (local && !belongsToWorkspaceScope(local, scope)) continue;
       // Never overwrite a local record with unsynced edits — that is a conflict,
       // and financial records must not be silently replaced.
       if (local && local.dirty === 1) continue;
       if (local && local.version > change.version) continue;
       await db.records.put({
         id: change.id,
+        workspaceId: scope.workspaceId,
+        ownerUserId: scope.ownerUserId,
         toolId: change.toolId,
         collection: change.collection,
         data: change.data,
@@ -213,7 +232,7 @@ export async function pullChanges(): Promise<number> {
     }
   });
 
-  if (body.cursor) await setMeta("sync:cursor", body.cursor);
+  if (body.cursor) await setMeta(cursorKey, body.cursor);
   return merged;
 }
 

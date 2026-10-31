@@ -1,4 +1,5 @@
 import { defineTab, type LedgerTab } from "@/components/tools/ledger-tool";
+import type { FormField } from "@/components/data/record-form";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import type {
@@ -6,14 +7,21 @@ import type {
   BusinessContact,
   BusinessProduct,
   BusinessTransaction,
+  Business,
+  BaseRecord,
   CashForecastItem,
   CashScenario,
+  Invoice,
+  InvoiceLine,
   InventoryMovement,
   Payment,
   Sale,
   SalesTarget,
 } from "@/lib/types";
+import { invoiceTotals, nextInvoiceNumber } from "@/lib/calc/business";
 import { options, rows, today, type DataMap } from "./shared";
+import { BookkeepingIntegrationPanel } from "@/components/tools/bookkeeping-integration-panel";
+import { useI18n } from "@/lib/i18n";
 
 const BIZ_TX_TYPES = [
   { value: "revenue", label: "Revenue received" },
@@ -34,9 +42,29 @@ const MOVEMENT_TYPES = [
   { value: "writeoff", label: "Write-off" },
 ];
 
-export function bookkeepingTabs(data: DataMap): LedgerTab[] {
-  const accounts = rows<BusinessAccount>(data, "accounts");
-  const contacts = rows<BusinessContact>(data, "contacts");
+export function bookkeepingTabs(data: DataMap, businesses: Business[] = [], selectedBusinessId: string | null = null): LedgerTab[] {
+  const liveBusinesses = businesses.filter((business) => !business.deleted);
+  const businessOptions = [
+    { value: "__unassigned__", label: "Unassigned legacy record", raw: true, disabled: true },
+    ...options(selectedBusinessId ? liveBusinesses.filter((business) => business.id === selectedBusinessId) : liveBusinesses),
+  ];
+  const scoped = <T extends { businessId?: string; deleted?: boolean }>(items: T[]) =>
+    selectedBusinessId ? items.filter((item) => item.businessId === selectedBusinessId) : items;
+  const allAccounts = rows<BusinessAccount>(data, "accounts");
+  const allContacts = rows<BusinessContact>(data, "contacts");
+  const accounts = scoped(allAccounts);
+  const contacts = scoped(allContacts);
+  const scopeFilter = (row: BaseRecord) => !selectedBusinessId || (row as BaseRecord & { businessId?: string }).businessId === selectedBusinessId;
+  const businessIdField: FormField = {
+    key: "businessId",
+    label: "Business",
+    type: "select",
+    required: true,
+    options: businessOptions,
+    defaultValue: selectedBusinessId ?? "",
+    help: "Choose which business owns this record.",
+  };
+  const resolveBusiness = (values: Record<string, unknown>) => liveBusinesses.find((business) => business.id === values.businessId);
   return [
     defineTab<BusinessTransaction>({
       id: "transactions",
@@ -48,8 +76,9 @@ export function bookkeepingTabs(data: DataMap): LedgerTab[] {
       emptyDescription:
         "Record money in and out. Owner contributions and loan proceeds are cash movements, not revenue.",
       searchText: (r) => `${r.description} ${r.notes ?? ""}`,
-      defaults: { date: today(), type: "revenue", accountId: accounts[0]?.id },
+      defaults: { date: today(), type: "revenue", accountId: accounts[0]?.id, businessId: selectedBusinessId ?? "" },
       fields: [
+        businessIdField,
         { key: "date", label: "Date", type: "date", required: true, defaultValue: today() },
         { key: "description", label: "Description", type: "text", required: true },
         { key: "amount", label: "Amount", type: "currency", required: true, min: 0 },
@@ -59,9 +88,22 @@ export function bookkeepingTabs(data: DataMap): LedgerTab[] {
         { key: "contactId", label: "Contact", type: "select", options: options(contacts) },
         { key: "notes", label: "Notes", type: "textarea", span: 2 },
       ],
+      filter: scopeFilter,
+      legacyScopeField: "businessId",
+      prepareValues: (values, editing) => {
+        if ((editing as BusinessTransaction | undefined)?.sourceType && (editing as BusinessTransaction).sourceType !== "manual") throw new Error("Linked Bookkeeping entries are managed from their source tool.");
+        const businessId = values.businessId === "__unassigned__" ? undefined : String(values.businessId ?? "");
+        const business = resolveBusiness({ ...values, businessId });
+        const account = allAccounts.find((item) => item.id === values.accountId);
+        const contact = allContacts.find((item) => item.id === values.contactId);
+        if (account && account.businessId !== businessId) throw new Error("Choose an account from the selected business.");
+        if (contact && contact.businessId !== businessId) throw new Error("Choose a contact from the selected business.");
+        return { ...values, businessId, currency: business?.currency ?? values.currency };
+      },
       columns: [
         { key: "date", header: "Date", primary: true, value: (r) => r.date, render: (r) => formatDate(r.date) },
         { key: "description", header: "Description", value: (r) => r.description, render: (r) => <span className="font-medium">{r.description}</span> },
+        { key: "sourceId", header: "Source", value: (r) => r.sourceType ? `${r.sourceType}:${r.sourceId ?? ""}` : "manual", render: (r) => <BookkeepingSourceLabel row={r} /> },
         { key: "type", header: "Type", value: (r) => r.type, render: (r) => <span className="capitalize text-fg-muted">{r.type.replace(/_/g, " ")}</span> },
         {
           key: "amount",
@@ -75,6 +117,14 @@ export function bookkeepingTabs(data: DataMap): LedgerTab[] {
           ),
         },
       ],
+      canEdit: (row) => {
+        const transaction = row as BusinessTransaction;
+        return !transaction.sourceType || transaction.sourceType === "manual";
+      },
+      canDelete: (row) => {
+        const transaction = row as BusinessTransaction;
+        return !transaction.sourceType || transaction.sourceType === "manual";
+      },
     }),
     defineTab<BusinessAccount>({
       id: "accounts",
@@ -84,11 +134,16 @@ export function bookkeepingTabs(data: DataMap): LedgerTab[] {
       addLabel: "Add account",
       emptyTitle: "No business accounts",
       emptyDescription: "Add the bank or cash accounts your business uses.",
+      defaults: { businessId: selectedBusinessId ?? "", kind: "bank", openingBalance: 0 },
       fields: [
+        businessIdField,
         { key: "name", label: "Account", type: "text", required: true },
         { key: "kind", label: "Type", type: "select", options: [{ value: "bank", label: "Bank" }, { value: "cash", label: "Cash" }, { value: "card", label: "Card" }], defaultValue: "bank" },
         { key: "openingBalance", label: "Opening balance", type: "currency", defaultValue: 0 },
       ],
+      filter: scopeFilter,
+      legacyScopeField: "businessId",
+      prepareValues: (values) => ({ ...values, businessId: values.businessId === "__unassigned__" ? undefined : values.businessId }),
       columns: [
         { key: "name", header: "Account", primary: true, value: (r) => r.name, render: (r) => r.name },
         { key: "kind", header: "Type", value: (r) => r.kind, render: (r) => r.kind },
@@ -103,13 +158,18 @@ export function bookkeepingTabs(data: DataMap): LedgerTab[] {
       addLabel: "Add contact",
       emptyTitle: "No contacts",
       emptyDescription: "Customers and suppliers are shared with invoicing, sales and inventory.",
+      defaults: { businessId: selectedBusinessId ?? "", kind: "customer" },
       fields: [
+        businessIdField,
         { key: "name", label: "Name", type: "text", required: true },
         { key: "kind", label: "Kind", type: "select", options: [{ value: "customer", label: "Customer" }, { value: "supplier", label: "Supplier" }, { value: "both", label: "Both" }], defaultValue: "customer" },
         { key: "email", label: "Email", type: "email" },
         { key: "phone", label: "Phone", type: "text" },
         { key: "notes", label: "Notes", type: "textarea", span: 2 },
       ],
+      filter: scopeFilter,
+      legacyScopeField: "businessId",
+      prepareValues: (values) => ({ ...values, businessId: values.businessId === "__unassigned__" ? undefined : values.businessId }),
       columns: [
         { key: "name", header: "Name", primary: true, value: (r) => r.name, render: (r) => r.name },
         { key: "kind", header: "Kind", value: (r) => r.kind, render: (r) => r.kind },
@@ -120,7 +180,14 @@ export function bookkeepingTabs(data: DataMap): LedgerTab[] {
   ];
 }
 
-export function inventoryTabs(data: DataMap): LedgerTab[] {
+function BookkeepingSourceLabel({ row }: { row: BusinessTransaction }) {
+  const { t } = useI18n();
+  if (!row.sourceType || row.sourceType === "manual") return <>{t("Manual")}</>;
+  const label = row.sourceType === "sale" ? t("Sale") : row.sourceType === "invoice_payment" ? t("Invoice payment") : row.sourceType === "property_income" ? t("Rental income") : t("Inventory purchase");
+  return <>{label}{row.sourceId ? ` · ${row.sourceId.slice(-6)}` : ""}</>;
+}
+
+export function inventoryTabs(data: DataMap, businesses: Business[] = [], selectedBusinessId: string | null = null): LedgerTab[] {
   const products = rows<BusinessProduct>(data, "products");
   const suppliers = rows<BusinessContact>(data, "contacts").filter((c) => c.kind !== "customer");
   return [
@@ -164,9 +231,13 @@ export function inventoryTabs(data: DataMap): LedgerTab[] {
         { key: "type", label: "Movement", type: "select", options: MOVEMENT_TYPES, required: true, defaultValue: "receipt" },
         { key: "quantity", label: "Quantity", type: "number", required: true, min: 0, step: "0.01" },
         { key: "unitCost", label: "Unit cost", type: "currency", help: "Required for receipts — drives the weighted-average cost." },
+        { key: "purchasePaid", label: "Paid from business funds", type: "checkbox", placeholder: "Yes", help: "Only paid receipts can be linked as Bookkeeping expenses.", visibleWhen: (values) => values.type === "receipt" },
         { key: "reference", label: "Reference", type: "text" },
         { key: "note", label: "Note", type: "textarea", span: 2 },
       ],
+      renderExtra: (items) => <BookkeepingIntegrationPanel sourceType="inventory_purchase" records={items as InventoryMovement[]} businesses={businesses} products={products} selectedBusinessId={selectedBusinessId} />,
+      canEdit: (row) => !(row as InventoryMovement).bookkeepingTransactionId,
+      canDelete: (row) => !(row as InventoryMovement).bookkeepingTransactionId,
       columns: [
         { key: "date", header: "Date", primary: true, value: (r) => r.date, render: (r) => formatDate(r.date) },
         { key: "productId", header: "Product", value: (r) => products.find((p) => p.id === r.productId)?.name ?? "—", render: (r) => products.find((p) => p.id === r.productId)?.name ?? "—" },
@@ -178,7 +249,7 @@ export function inventoryTabs(data: DataMap): LedgerTab[] {
   ];
 }
 
-export function salesTabs(data: DataMap): LedgerTab[] {
+export function salesTabs(data: DataMap, businesses: Business[] = [], selectedBusinessId: string | null = null): LedgerTab[] {
   const products = rows<BusinessProduct>(data, "products");
   const contacts = rows<BusinessContact>(data, "contacts").filter((c) => c.kind !== "supplier");
   return [
@@ -203,7 +274,11 @@ export function salesTabs(data: DataMap): LedgerTab[] {
         { key: "returned", label: "Returns", type: "currency", defaultValue: 0 },
         { key: "taxRate", label: "Tax rate %", type: "number", defaultValue: 0, min: 0 },
         { key: "status", label: "Status", type: "select", options: [{ value: "order", label: "Order" }, { value: "invoiced", label: "Invoiced" }, { value: "paid", label: "Paid" }], defaultValue: "paid" },
+        { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
       ],
+      renderExtra: (items) => <BookkeepingIntegrationPanel sourceType="sale" records={items as Sale[]} businesses={businesses} invoices={rows<Invoice>(data, "invoices")} products={products} selectedBusinessId={selectedBusinessId} />,
+      canEdit: (row) => !(row as Sale).bookkeepingTransactionId,
+      canDelete: (row) => !(row as Sale).bookkeepingTransactionId,
       columns: [
         { key: "date", header: "Date", primary: true, value: (r) => r.date, render: (r) => formatDate(r.date) },
         { key: "description", header: "Description", value: (r) => r.description, render: (r) => r.description },
@@ -239,9 +314,63 @@ export function salesTabs(data: DataMap): LedgerTab[] {
   ];
 }
 
-export function invoicingTabs(data: DataMap): LedgerTab[] {
+export function invoicingTabs(data: DataMap, businesses: Business[] = [], selectedBusinessId: string | null = null): LedgerTab[] {
   const contacts = rows<BusinessContact>(data, "contacts");
+  const payments = rows<Payment>(data, "payments");
   return [
+    defineTab<Invoice>({
+      id: "invoices",
+      label: "Invoices",
+      icon: "file-text",
+      collection: "invoices",
+      addLabel: "Create invoice",
+      emptyTitle: "No invoices yet",
+      emptyDescription: "Create a business invoice, then record one or more payments against it.",
+      defaults: { number: nextInvoiceNumber(rows<Invoice>(data, "invoices")), customerId: "", issueDate: today(), dueDate: today(), status: "draft", taxRate: 0, discount: 0, currency: "USD", lineDescription: "", lineQuantity: 1, lineUnitPrice: 0 },
+      fields: [
+        { key: "number", label: "Invoice number", type: "text", required: true },
+        { key: "customerId", label: "Customer", type: "select", options: options(contacts.filter((contact) => contact.kind !== "supplier")), required: true },
+        { key: "issueDate", label: "Issue date", type: "date", required: true, defaultValue: today() },
+        { key: "dueDate", label: "Due date", type: "date", required: true, defaultValue: today() },
+        { key: "status", label: "Status", type: "select", options: [{ value: "draft", label: "Draft" }, { value: "sent", label: "Sent" }, { value: "partial", label: "Partial" }, { value: "paid", label: "Paid" }, { value: "void", label: "Void" }], defaultValue: "draft" },
+        { key: "currency", label: "Currency", type: "text", defaultValue: "USD" },
+        { key: "taxRate", label: "Tax rate %", type: "number", min: 0, defaultValue: 0 },
+        { key: "discount", label: "Discount", type: "currency", min: 0, defaultValue: 0 },
+        { key: "lineDescription", label: "First line item", type: "text", required: true, span: 2 },
+        { key: "lineQuantity", label: "Quantity", type: "number", required: true, min: 0.01, defaultValue: 1 },
+        { key: "lineUnitPrice", label: "Unit price", type: "currency", required: true, min: 0 },
+        { key: "notes", label: "Notes", type: "textarea", span: 2 },
+      ],
+      prepareInitial: (record) => {
+        const invoice = record as Invoice;
+        const firstLine = invoice.lines?.[0];
+        return { lineDescription: firstLine?.description ?? "", lineQuantity: firstLine?.quantity ?? 1, lineUnitPrice: firstLine?.unitPrice ?? 0 };
+      },
+      prepareValues: (values, editing) => {
+        const businessId = String(values.businessId ?? "");
+        const number = String(values.number ?? "").trim();
+        const duplicate = rows<Invoice>(data, "invoices").some((invoice) => !invoice.deleted && invoice.id !== editing?.id && invoice.businessId === businessId && invoice.number.toLowerCase() === number.toLowerCase());
+        if (duplicate) throw new Error("Invoice number already exists for this business.");
+        const previousLines = (editing as Invoice | undefined)?.lines ?? [];
+        const line: InvoiceLine = { id: previousLines[0]?.id ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, description: String(values.lineDescription ?? "").trim(), quantity: Number(values.lineQuantity), unitPrice: Number(values.lineUnitPrice) };
+        const lines = previousLines.length ? [line, ...previousLines.slice(1)] : [line];
+        const invoice = { ...values };
+        delete invoice.lineDescription;
+        delete invoice.lineQuantity;
+        delete invoice.lineUnitPrice;
+        return { ...invoice, number, lines };
+      },
+      columns: [
+        { key: "number", header: "Invoice", primary: true, value: (invoice) => invoice.number, render: (invoice) => <span className="font-medium">{invoice.number}</span> },
+        { key: "issueDate", header: "Issued", value: (invoice) => invoice.issueDate, render: (invoice) => formatDate(invoice.issueDate) },
+        { key: "customerId", header: "Customer", value: (invoice) => invoice.customerId ?? "", render: (invoice) => contacts.find((contact) => contact.id === invoice.customerId)?.name ?? "—" },
+        { key: "balance", header: "Total", align: "right", value: (invoice) => invoiceTotals(invoice, [], today()).total, render: (invoice) => formatMoney(invoiceTotals(invoice, [], today()).total, { currency: invoice.currency || "USD" }) },
+        { key: "balanceDue", header: "Balance due", align: "right", value: (invoice) => invoiceTotals(invoice, payments.filter((payment) => payment.invoiceId === invoice.id), today()).balanceDue, render: (invoice) => formatMoney(invoiceTotals(invoice, payments.filter((payment) => payment.invoiceId === invoice.id), today()).balanceDue, { currency: invoice.currency || "USD" }) },
+        { key: "status", header: "Status", value: (invoice) => invoiceTotals(invoice, payments.filter((payment) => payment.invoiceId === invoice.id), today()).status, render: (invoice) => <span className="capitalize text-fg-muted">{invoiceTotals(invoice, payments.filter((payment) => payment.invoiceId === invoice.id), today()).status}</span> },
+      ],
+      canEdit: (invoice) => !payments.some((payment) => payment.invoiceId === invoice.id && payment.bookkeepingTransactionId),
+      canDelete: (invoice) => !payments.some((payment) => payment.invoiceId === invoice.id && payment.bookkeepingTransactionId),
+    }),
     defineTab<BusinessContact>({
       id: "customers",
       label: "Customers",
@@ -271,12 +400,23 @@ export function invoicingTabs(data: DataMap): LedgerTab[] {
       emptyTitle: "No payments yet",
       emptyDescription: "Allocate payments against invoices — partial payments are supported.",
       fields: [
-        { key: "invoiceId", label: "Invoice", type: "select", options: options(rows(data, "invoices")), required: true },
+        { key: "invoiceId", label: "Invoice", type: "select", options: options(rows<Invoice>(data, "invoices")), required: true },
         { key: "date", label: "Date", type: "date", required: true, defaultValue: today() },
         { key: "amount", label: "Amount", type: "currency", required: true, min: 0 },
         { key: "method", label: "Method", type: "select", options: [{ value: "bank", label: "Bank transfer" }, { value: "card", label: "Card" }, { value: "cash", label: "Cash" }, { value: "other", label: "Other" }], defaultValue: "bank" },
         { key: "reference", label: "Reference", type: "text" },
       ],
+      renderExtra: (items) => <BookkeepingIntegrationPanel sourceType="invoice_payment" records={items as Payment[]} businesses={businesses} invoices={rows<Invoice>(data, "invoices")} products={rows<BusinessProduct>(data, "products")} selectedBusinessId={selectedBusinessId} />,
+      canEdit: (row) => !(row as Payment).bookkeepingTransactionId,
+      canDelete: (row) => !(row as Payment).bookkeepingTransactionId,
+      prepareValues: (values, editing) => {
+        const invoice = rows<Invoice>(data, "invoices").find((record) => record.id === values.invoiceId);
+        const unchangedExistingReference = editing && (editing as Payment).invoiceId === invoice?.id;
+        if (!invoice || invoice.status === "draft" || invoice.status === "void") {
+          if (!unchangedExistingReference) throw new Error("Choose an issued invoice for this payment.");
+        }
+        return values;
+      },
       columns: [
         { key: "date", header: "Date", primary: true, value: (r) => r.date, render: (r) => formatDate(r.date) },
         { key: "invoiceId", header: "Invoice", value: (r) => r.invoiceId, render: (r) => <span className="text-fg-muted">{r.invoiceId.slice(-6)}</span> },
@@ -298,6 +438,7 @@ export function cashFlowTabs(data: DataMap): LedgerTab[] {
       emptyTitle: "No forecast items",
       emptyDescription: "Add expected inflows and outflows by week to project closing cash.",
       fields: [
+        { key: "scenarioId", label: "Forecast scenario", type: "select", options: options(rows<CashScenario>(data, "scenarios")), required: true },
         { key: "label", label: "Label", type: "text", required: true },
         { key: "kind", label: "Direction", type: "select", options: [{ value: "inflow", label: "Inflow" }, { value: "outflow", label: "Outflow" }], required: true, defaultValue: "inflow" },
         { key: "amount", label: "Amount", type: "currency", required: true, min: 0 },

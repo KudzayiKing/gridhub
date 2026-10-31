@@ -13,5 +13,5 @@ export default async function ToolRoute({ params }: { params: Promise<{ slug: st
 
   if (!tool) notFound();
 
-  return <ToolView toolId={tool.id} />;
+  return <ToolView key={tool.id} toolId={tool.id} />;
 }

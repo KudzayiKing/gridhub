@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 import { LedgerTool, Panel } from "./ledger-tool";
-import { CompactMetric, MetricCard, Badge, EmptyState } from "@/components/ui/card";
+import { Card, CompactMetric, MetricCard, Badge, EmptyState } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/overlay";
 import {
   ChartContainer,
   ChartEmptyState,
@@ -14,14 +16,18 @@ import {
   HorizontalRankingChart,
 } from "@/components/charts";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/field";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { AnimatedIcon } from "@/components/icons/animated-icon";
 import { useToolData } from "@/lib/use-tool-data";
+import { listArchivedRecords, restoreRecord, subscribe, updateRecord, useCollection } from "@/lib/store";
+import { subscribeWorkspaceScope } from "@/lib/workspaces/context";
 import { buildTabs } from "@/lib/tools";
 import { rows } from "@/lib/tools/shared";
 import { usePrefs } from "@/components/providers";
 import { useI18n } from "@/lib/i18n";
 import { formatMoney, formatPercent, round2 } from "@/lib/money";
-import { downloadFile } from "@/lib/utils";
+import { downloadFile, formatDate } from "@/lib/utils";
 import {
   currentMonth,
   currentYear,
@@ -51,13 +57,24 @@ import { DebtDashboard } from "./debt-dashboard";
 import { SavingsDashboard } from "./savings-dashboard";
 import { NetWorthDashboard } from "./net-worth-dashboard";
 import { OperationsDashboard, OperationsHero } from "./operations-dashboard";
+import { BookkeepingBusinesses } from "./bookkeeping-businesses";
+import { BusinessScopeControl } from "./business-scope-control";
+import { filterProjectTabs, resolveProjectSelection, scopeProjectData } from "@/lib/workspaces/project-scope";
+import { filterContentTabs, resolveContentScope, scopeContentData, type ContentScope } from "@/lib/workspaces/content-scope";
+import { resolveBusinessSelection, resolveScenarioSelection, scopeBusinessData } from "@/lib/workspaces/business-scope";
+import { filterPropertyTabs, resolvePropertySelection, scopePropertyData } from "@/lib/workspaces/property-scope";
+import { filterWeddingTabs, resolveWeddingSelection, scopeWeddingData, unassignedWeddingRecordIds } from "@/lib/workspaces/wedding-scope";
 import type { ToolId } from "@/lib/catalog";
 import type { DataMap } from "@/lib/tools/shared";
 import type { BaseRecord } from "@/lib/types";
 import type {
   CashForecastItem,
   CashScenario,
+  Business,
   ContentPost,
+  ContentPlan,
+  ChannelAccount,
+  ContentPublication,
   Debt,
   GoalMovement,
   Habit,
@@ -75,6 +92,7 @@ import type {
   PropertyBooking,
   PropertyExpense,
   PropertyMaintenance,
+  PropertyUnit,
   Sale,
   SalesTarget,
   SavingsGoal,
@@ -85,6 +103,7 @@ import type {
   WeddingTable,
   WeddingTask,
   WeddingVendor,
+  Wedding,
   BusinessTransaction,
   BusinessProduct,
   InventoryMovement,
@@ -147,6 +166,7 @@ function applyDrill(tabs: ReturnType<typeof buildTabs>, drill: DrillState, toolI
 
 export function ToolView({ toolId }: { toolId: ToolId }) {
   const { data, loading } = useToolData(toolId);
+  const businessCollection = useCollection<Business>("bookkeeping", "businesses");
   const { prefs } = usePrefs();
   const { t } = useI18n();
   const currency = prefs.currency || "USD";
@@ -154,18 +174,58 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
   const [drill, setDrill] = React.useState<DrillState>({});
   const [requestedTab, setRequestedTab] = React.useState<string | undefined>();
   const [requestedAdd, setRequestedAdd] = React.useState<{ tabId: string; id: number } | null>(null);
+  const [projectSelection, setProjectSelection] = React.useState<{ toolId: ToolId; projectId: string | null }>({ toolId, projectId: null });
+  const [contentSelection, setContentSelection] = React.useState<{ toolId: ToolId; scope: ContentScope }>({ toolId, scope: null });
+  const [businessSelection, setBusinessSelection] = React.useState<{ toolId: ToolId; businessId: string | null }>({ toolId, businessId: null });
+  const [forecastSelection, setForecastSelection] = React.useState<{ toolId: ToolId; scenarioId: string | null }>({ toolId, scenarioId: null });
+  const [propertySelection, setPropertySelection] = React.useState<{ toolId: ToolId; propertyId: string | null }>({ toolId, propertyId: null });
+  const [weddingSelection, setWeddingSelection] = React.useState<{ toolId: ToolId; weddingId: string | null }>({ toolId, weddingId: null });
+  const [selectionToolId, setSelectionToolId] = React.useState(toolId);
   const addRequestId = React.useRef(0);
+  if (selectionToolId !== toolId) {
+    setSelectionToolId(toolId);
+    if (toolId === "property") setPropertySelection({ toolId, propertyId: null });
+    if (toolId === "wedding") setWeddingSelection({ toolId, weddingId: null });
+  }
 
-  const tabs = React.useMemo(() => buildTabs(toolId, data), [toolId, data]);
+  const projects = React.useMemo(() => rows<Project>(data, "projects").filter((project) => !project.deleted), [data]);
+  const selectedProjectId = resolveProjectSelection(projects, projectSelection.toolId === toolId ? projectSelection.projectId : null);
+  const contentPlans = React.useMemo(() => rows<ContentPlan>(data, "plans").filter((plan) => !plan.deleted), [data]);
+  const channelAccounts = React.useMemo(() => rows<ChannelAccount>(data, "channels").filter((channel) => !channel.deleted), [data]);
+  const selectedContentScope = resolveContentScope(data, contentSelection.toolId === toolId ? contentSelection.scope : null);
+  const businesses = React.useMemo(() => businessCollection.rows.filter((business) => !business.deleted), [businessCollection.rows]);
+  const selectedBusinessId = resolveBusinessSelection(businesses, businessSelection.toolId === toolId ? businessSelection.businessId : null);
+  const properties = React.useMemo(() => rows<Property>(data, "properties").filter((property) => !property.deleted), [data]);
+  const selectedPropertyId = resolvePropertySelection(properties, propertySelection.toolId === toolId ? propertySelection.propertyId : null);
+  const selectedProperty = properties.find((property) => property.id === selectedPropertyId);
+  const weddings = React.useMemo(() => rows<Wedding>(data, "wedding").filter((wedding) => !wedding.deleted), [data]);
+  const selectedWeddingId = resolveWeddingSelection(weddings, weddingSelection.toolId === toolId ? weddingSelection.weddingId : null);
+  const selectedWedding = weddings.find((wedding) => wedding.id === selectedWeddingId);
+  const forecastChoice = forecastSelection.toolId === toolId ? forecastSelection.scenarioId : null;
+  const selectedScenarioId = resolveScenarioSelection(data, selectedBusinessId, forecastChoice);
+  const businessTool = ["inventory", "sales", "invoicing", "cash-flow"].includes(toolId);
+  const scopedData = React.useMemo(() => toolId === "projects" ? scopeProjectData(data, selectedProjectId) : toolId === "content" ? scopeContentData(data, selectedContentScope) : toolId === "property" ? scopePropertyData(data, selectedPropertyId) : toolId === "wedding" ? scopeWeddingData(data, selectedWeddingId) : businessTool ? scopeBusinessData(data, selectedBusinessId, toolId === "cash-flow" ? selectedScenarioId : null) : data, [toolId, data, selectedProjectId, selectedContentScope, selectedPropertyId, selectedWeddingId, businessTool, selectedBusinessId, selectedScenarioId]);
+  const tabs = React.useMemo(() => {
+    const built = buildTabs(toolId, scopedData, { contentPlanId: selectedContentScope?.kind === "plan" ? selectedContentScope.id : null, businesses, selectedBusinessId, selectedScenarioId, selectedWeddingId });
+    if (toolId === "projects") return filterProjectTabs(built, selectedProjectId, data);
+    if (toolId === "content") return filterContentTabs(built, data, selectedContentScope);
+    if (toolId === "property") return filterPropertyTabs(built, selectedPropertyId);
+    return toolId === "wedding" ? filterWeddingTabs(built, selectedWeddingId) : built;
+  }, [toolId, data, scopedData, selectedProjectId, selectedContentScope, selectedPropertyId, selectedWeddingId, businesses, selectedBusinessId, selectedScenarioId]);
   // These overviews already contain the complete summary, so showing LedgerTool's
   // headline cards above them repeats the same figures with a second time period.
   const operationsTool = ["bookkeeping", "inventory", "sales", "invoicing", "cash-flow", "wedding", "property", "nutrition", "projects", "habits", "content"].includes(toolId);
-  const dashboardMetrics = React.useMemo(() => operationsTool ? computeMetrics(toolId, data, currency, t) : [], [operationsTool, toolId, data, currency, t]);
+  const activeScenarioBusinessId = rows<CashScenario>(data, "scenarios").find((scenario) => scenario.id === selectedScenarioId)?.businessId;
+  const activeCurrency = selectedProperty?.currency ?? selectedWedding?.currency ?? businesses.find((business) => business.id === selectedBusinessId)?.currency
+    ?? businesses.find((business) => business.id === activeScenarioBusinessId)?.currency
+    ?? currency;
+  const dashboardMetrics = React.useMemo(() => operationsTool ? computeMetrics(toolId, scopedData, activeCurrency, t, selectedScenarioId) : [], [operationsTool, toolId, scopedData, activeCurrency, selectedScenarioId, t]);
   const metrics = React.useMemo(
-    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" || toolId === "net-worth" || operationsTool ? [] : computeMetrics(toolId, data, currency, t)),
-    [toolId, data, currency, operationsTool, t],
+    () => (toolId === "budget" || toolId === "debt" || toolId === "savings" || toolId === "nutrition" || toolId === "net-worth" || operationsTool ? [] : computeMetrics(toolId, data, activeCurrency, t, selectedScenarioId)),
+    [toolId, data, activeCurrency, operationsTool, selectedScenarioId, t],
   );
   const displayTabs = React.useMemo(() => applyDrill(tabs, drill, toolId), [tabs, drill, toolId]);
+  const selectedScenarios = React.useMemo(() => rows<CashScenario>(data, "scenarios").filter((scenario) => !scenario.deleted && (!selectedBusinessId || scenario.businessId === selectedBusinessId)), [data, selectedBusinessId]);
 
   if (loading) {
     return (
@@ -181,6 +241,10 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
     );
   }
 
+  if (toolId === "bookkeeping") {
+    return <BookkeepingBusinesses data={data} fallbackCurrency={currency} />;
+  }
+
   return (
     <LedgerTool
       toolId={toolId}
@@ -189,7 +253,23 @@ export function ToolView({ toolId }: { toolId: ToolId }) {
         <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
       ))}
       overview={
-        <Overview toolId={toolId} data={data} currency={currency} drill={drill} onDrill={setDrill} onOpenTab={setRequestedTab} onAddRecord={(tabId) => { setRequestedTab(tabId); setRequestedAdd({ tabId, id: ++addRequestId.current }); }} dashboardMetrics={dashboardMetrics} />
+      <Overview
+        toolId={toolId}
+        data={scopedData}
+        currency={activeCurrency}
+        drill={drill}
+        onDrill={setDrill}
+        onOpenTab={setRequestedTab}
+        onAddRecord={(tabId) => { setRequestedTab(tabId); setRequestedAdd({ tabId, id: ++addRequestId.current }); }}
+        dashboardMetrics={dashboardMetrics}
+        businessPortfolio={businessTool && !selectedBusinessId}
+        propertyPortfolio={toolId === "property" && !selectedPropertyId}
+        weddingPortfolio={toolId === "wedding" && !selectedWeddingId}
+        businesses={businesses}
+        selectedBusinessId={selectedBusinessId}
+        selectedScenarioId={selectedScenarioId}
+        scopeControl={toolId === "projects" ? <ProjectScopeControl projects={projects} selectedProjectId={selectedProjectId} onChange={(projectId) => setProjectSelection({ toolId, projectId })} /> : toolId === "content" ? <ContentScopeControl plans={contentPlans} channels={channelAccounts} scope={selectedContentScope} onChange={(scope) => setContentSelection({ toolId, scope })} onAddPlan={() => { setRequestedTab("plans"); setRequestedAdd({ tabId: "plans", id: ++addRequestId.current }); }} /> : toolId === "property" ? <PropertyScopeControl properties={properties} selectedPropertyId={selectedPropertyId} onChange={(propertyId) => setPropertySelection({ toolId, propertyId })} onAddProperty={() => { setRequestedTab("properties"); setRequestedAdd({ tabId: "properties", id: ++addRequestId.current }); }} /> : toolId === "wedding" ? <WeddingScopeControl data={data} weddings={weddings} selectedWeddingId={selectedWeddingId} onChange={(weddingId) => setWeddingSelection({ toolId, weddingId })} onAddWedding={() => { setRequestedTab("wedding"); setRequestedAdd({ tabId: "wedding", id: ++addRequestId.current }); }} onAssignLegacy={async (weddingId) => { const pending = unassignedWeddingRecordIds(data); let count = 0; for (const [collection, ids] of Object.entries(pending)) for (const id of ids) { const updated = await updateRecord<BaseRecord & { weddingId: string }>("wedding", collection, id, { weddingId }); if (updated) count += 1; } return count; }} /> : businessTool ? <BusinessScopeControl selectedBusinessId={selectedBusinessId} onBusinessChange={(businessId) => { setBusinessSelection({ toolId, businessId }); setForecastSelection({ toolId, scenarioId: null }); }} selectedScenarioId={selectedScenarioId} onScenarioChange={(scenarioId) => { setForecastSelection({ toolId, scenarioId }); const scenarioBusinessId = rows<CashScenario>(data, "scenarios").find((scenario) => scenario.id === scenarioId)?.businessId; if (scenarioBusinessId) setBusinessSelection({ toolId, businessId: scenarioBusinessId }); }} scenarios={selectedScenarios} showScenario={toolId === "cash-flow"} /> : null}
+      />
       }
       addRequest={requestedAdd}
       onAddRequestHandled={(id) => setRequestedAdd((current) => current?.id === id ? null : current)}
@@ -212,6 +292,13 @@ function Overview({
   onOpenTab,
   onAddRecord,
   dashboardMetrics,
+  scopeControl,
+  businessPortfolio,
+  propertyPortfolio,
+  weddingPortfolio,
+  businesses,
+  selectedBusinessId,
+  selectedScenarioId,
 }: {
   toolId: ToolId;
   data: DataMap;
@@ -221,22 +308,346 @@ function Overview({
   onOpenTab: (tab: string) => void;
   onAddRecord: (tab: string) => void;
   dashboardMetrics: ReturnType<typeof computeMetrics>;
+  scopeControl?: React.ReactNode;
+  businessPortfolio: boolean;
+  propertyPortfolio: boolean;
+  weddingPortfolio: boolean;
+  businesses: Business[];
+  selectedBusinessId: string | null;
+  selectedScenarioId: string | null;
 }) {
   const { t } = useI18n();
   const operationsTool = ["bookkeeping", "inventory", "sales", "invoicing", "cash-flow", "wedding", "property", "nutrition", "projects", "habits", "content"].includes(toolId);
   if (operationsTool) {
+    if (propertyPortfolio) return <div className="flex flex-col gap-3">{scopeControl}<PropertyPortfolioOverview data={data} /></div>;
+    if (weddingPortfolio) return <div className="flex flex-col gap-3">{scopeControl}<WeddingPortfolioOverview data={data} /></div>;
+    if (businessPortfolio && ["inventory", "sales", "invoicing", "cash-flow"].includes(toolId)) {
+      return <div className="flex flex-col gap-3">
+        {scopeControl}
+        <BusinessPortfolioOverview toolId={toolId} data={data} businesses={businesses} />
+      </div>;
+    }
     return <div className="flex flex-col gap-3">
+      {scopeControl}
+      {selectedBusinessId && (toolId === "sales" || toolId === "invoicing") ? <BusinessCurrencyNotice toolId={toolId} data={data} currency={currency} /> : null}
       <OperationsDashboard
         title={t(operationsDashboardTitle(toolId))}
         description={t("Live calculations from saved records · no unsupported history or integrations are assumed.")}
         kpis={dashboardMetrics}
-        hero={<OperationsHero toolId={toolId} data={data} currency={currency} />}
+        hero={<OperationsHero toolId={toolId} data={data} currency={currency} selectedScenarioId={selectedScenarioId} />}
         pin={{ chartId: operationsWidgetId(toolId), title: t(operationsWidgetTitle(toolId)), tool: toolId }}
       />
-      <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} />
+      <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} selectedScenarioId={selectedScenarioId} />
     </div>;
   }
-  return <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} />;
+  return <OverviewContent toolId={toolId} data={data} currency={currency} drill={drill} onDrill={onDrill} onOpenTab={onOpenTab} onAddRecord={onAddRecord} selectedScenarioId={selectedScenarioId} />;
+}
+
+function BusinessCurrencyNotice({ toolId, data, currency }: { toolId: ToolId; data: DataMap; currency: string }) {
+  const { t } = useI18n();
+  const collection = toolId === "sales" ? "sales" : "invoices";
+  const count = (data[collection] ?? []).filter((record) => {
+    const recordCurrency = (record as BaseRecord & { currency?: string }).currency;
+    return recordCurrency && recordCurrency !== currency;
+  }).length;
+  if (!count) return null;
+  return <p className="rounded-xl border border-line bg-[var(--surface)]/60 px-3 py-2 text-xs text-fg-muted">{t("{count} records in another currency are shown in tables and excluded from these totals.", { count })}</p>;
+}
+
+function BusinessPortfolioOverview({ toolId, data, businesses }: { toolId: ToolId; data: DataMap; businesses: Business[] }) {
+  const { t } = useI18n();
+  const cardData = businesses.map((business) => ({ business, data: scopeBusinessData(data, business.id) }));
+  const scopedCollections = toolId === "inventory" ? ["products", "movements"] : toolId === "sales" ? ["sales", "targets"] : toolId === "invoicing" ? ["invoices", "payments", "contacts"] : ["items", "scenarios"];
+  const unassignedCount = scopedCollections.reduce((count, collection) => count + (data[collection] ?? []).filter((row) => !(row as BaseRecord & { businessId?: string }).businessId).length, 0);
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {cardData.map(({ business, data: businessData }) => {
+        const prefix = <div className="mb-3 flex items-center justify-between gap-2"><h2 className="truncate text-sm font-semibold">{business.name}</h2><span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-fg-muted">{business.currency}</span></div>;
+        if (toolId === "inventory") {
+          const summary = inventorySummary(rows<BusinessProduct>(businessData, "products"), rows<InventoryMovement>(businessData, "movements"));
+          return <Card key={business.id} className="p-4">{prefix}<div className="grid grid-cols-2 gap-2"><CompactMetric label={t("Active SKUs")} value={String(summary.productCount)} /><CompactMetric label={t("Units in stock")} value={String(summary.totalUnits)} /><CompactMetric label={t("Inventory at cost")} value={formatMoney(summary.inventoryValue, { currency: business.currency })} /><CompactMetric label={t("Low stock")} value={String(summary.lowStock.length)} /></div></Card>;
+        }
+        if (toolId === "sales") {
+          const sales = rows<Sale>(businessData, "sales");
+          const targets = rows<SalesTarget>(businessData, "targets");
+          const currencies = [...new Set([business.currency, ...sales.map((sale) => sale.currency || business.currency), ...targets.map((target) => target.currency || business.currency)])];
+          return <Card key={business.id} className="p-4">{prefix}<div className="grid gap-3">{currencies.map((currency) => {
+            const summary = salesSummary(sales.filter((sale) => (sale.currency || business.currency) === currency), targets.filter((target) => (target.currency || business.currency) === currency), { period: currentMonth() });
+            return <div key={currency} className="rounded-xl border border-line p-3"><p className="mb-2 text-[11px] text-fg-muted">{currency}</p><div className="grid grid-cols-2 gap-2"><CompactMetric label={t("Sales revenue")} value={formatMoney(summary.net, { currency })} /><CompactMetric label={t("Number of sales")} value={String(summary.orders)} /><CompactMetric label={t("Average order")} value={summary.averageOrderValue == null ? "—" : formatMoney(summary.averageOrderValue, { currency })} /><CompactMetric label={t("Target progress")} value={summary.target ? formatPercent(summary.targetProgress ?? 0) : "—"} /></div></div>;
+          })}</div></Card>;
+        }
+        if (toolId === "invoicing") {
+          const allInvoices = rows<Invoice>(businessData, "invoices");
+          const currencies = [...new Set([business.currency, ...allInvoices.map((invoice) => invoice.currency || business.currency)])];
+          return <Card key={business.id} className="p-4">{prefix}<div className="grid gap-3">{currencies.map((currency) => {
+            const invoices = allInvoices.filter((invoice) => (invoice.currency || business.currency) === currency);
+            const invoiceIds = new Set(invoices.map((invoice) => invoice.id));
+            const payments = rows<Payment>(businessData, "payments").filter((payment) => invoiceIds.has(payment.invoiceId));
+            const summary = invoicingSummary(invoices, payments, todayISO());
+            const invoiced = summary.rows.filter((row) => row.invoice.status !== "draft" && row.invoice.status !== "void").reduce((total, row) => total + row.totals.total, 0);
+            const paid = summary.rows.reduce((total, row) => total + row.totals.paid, 0);
+            return <div key={currency} className="rounded-xl border border-line p-3"><p className="mb-2 text-[11px] text-fg-muted">{currency}</p><div className="grid grid-cols-2 gap-2"><CompactMetric label={t("Total invoiced")} value={formatMoney(invoiced, { currency })} /><CompactMetric label={t("Payments collected")} value={formatMoney(paid, { currency })} /><CompactMetric label={t("Outstanding balance")} value={formatMoney(summary.outstanding, { currency })} /><CompactMetric label={t("Overdue balance")} value={formatMoney(summary.overdueAmount, { currency })} /></div></div>;
+          })}</div></Card>;
+        }
+        const scenarios = rows<CashScenario>(businessData, "scenarios").filter((scenario) => !scenario.deleted);
+        return <Card key={business.id} className="p-4">{prefix}{scenarios.length ? <div className="grid gap-2">{scenarios.map((scenario) => {
+          const scenarioItems = rows<CashForecastItem>(businessData, "items").filter((item) => item.scenarioId === scenario.id);
+          const forecast = forecastCashFlow(scenarioItems, scenario, { weeks: 13 });
+          return <div key={scenario.id} className="rounded-xl border border-line p-3"><p className="mb-2 text-xs font-medium">{scenario.name}</p><div className="grid grid-cols-2 gap-2"><CompactMetric label={t("Opening cash")} value={formatMoney(scenario.openingCash, { currency: business.currency })} /><CompactMetric label={t("Projected closing")} value={formatMoney(forecast.closingCash, { currency: business.currency })} /></div></div>;
+        })}</div> : <p className="text-xs text-fg-muted">{t("No forecasts for this business yet.")}</p>}</Card>;
+      })}
+      {unassignedCount ? <Card className="p-4"><h2 className="text-sm font-semibold">{t("Unassigned legacy records")}</h2><p className="mt-1 text-xs text-fg-muted">{t("These records are preserved and are not included in any business total.")}</p><p className="mt-3 text-sm">{t("Records")}: {unassignedCount}</p></Card> : null}
+      {!businesses.length ? <Card className="p-4"><p className="text-sm font-medium">{t("Create a business to start organizing your books.")}</p><p className="mt-1 text-xs text-fg-muted">{t("Use Add Business to create your first business context.")}</p></Card> : null}
+    </div>
+  );
+}
+
+function ProjectScopeControl({ projects, selectedProjectId, onChange }: { projects: Project[]; selectedProjectId: string | null; onChange: (projectId: string | null) => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-[var(--surface)]/70 px-3 py-2">
+      <div>
+        <p className="text-[12px] font-medium">{t("Project scope")}</p>
+        <p className="text-[10.5px] text-fg-subtle">{t("Apply one project selection to the dashboard and records")}</p>
+      </div>
+      <Select aria-label={t("Filter by project")} value={selectedProjectId ?? ""} onChange={(event) => onChange(event.target.value || null)} className="h-9 w-auto min-w-36 max-w-full">
+        <option value="">{t("All Projects")}</option>
+        {projects.map((project) => <option key={project.id} value={project.id} data-raw="">{project.name}</option>)}
+      </Select>
+    </div>
+  );
+}
+
+function PropertyScopeControl({ properties, selectedPropertyId, onChange, onAddProperty }: { properties: Property[]; selectedPropertyId: string | null; onChange: (propertyId: string | null) => void; onAddProperty: () => void }) {
+  const { t } = useI18n();
+  const [manageOpen, setManageOpen] = React.useState(false);
+  const [archived, setArchived] = React.useState<Property[]>([]);
+  React.useEffect(() => {
+    let alive = true;
+    const reload = () => { void listArchivedRecords<Property>("property", "properties").then((rows) => { if (alive) setArchived(rows); }); };
+    reload();
+    const unsubscribeRecords = subscribe("property", "properties", reload);
+    const unsubscribeWorkspace = subscribeWorkspaceScope(reload);
+    return () => { alive = false; unsubscribeRecords(); unsubscribeWorkspace(); };
+  }, []);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-[var(--surface)]/70 px-3 py-2">
+      <div>
+        <p className="text-[12px] font-medium">{t("Property scope")}</p>
+        <p className="text-[10.5px] text-fg-subtle">{t("Apply one property selection to the dashboard and records")}</p>
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+        <AnimatedTabs
+          ariaLabel={t("Filter by property")}
+          value={selectedPropertyId ?? "all"}
+          onChange={(value) => onChange(value === "all" ? null : value)}
+          options={[{ value: "all", label: t("All Properties") }, ...properties.map((property) => ({ value: property.id, label: property.name }))]}
+          className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-[var(--bg-subtle)]/60 p-1 thin-scroll"
+          buttonClassName="h-8 px-3 text-xs"
+        />
+        <Button variant="secondary" size="sm" icon="plus" onClick={onAddProperty}>{t("Add Property")}</Button>
+        {archived.length ? <Button variant="ghost" size="sm" onClick={() => setManageOpen(true)}>{t("Archived properties")} ({archived.length})</Button> : null}
+      </div>
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent title="Archived properties" description="Restore a property to include it in the portfolio again." className="max-w-xl">
+          <div className="grid gap-2">
+            {archived.map((property) => <div key={property.id} className="flex items-center justify-between gap-3 rounded-xl border border-line p-3">
+              <div className="min-w-0"><p className="truncate text-sm font-medium">{property.name}</p><p className="text-xs text-fg-muted">{property.currency || "USD"} · {property.context === "business" ? t("Business") : t("Personal")}</p></div>
+              <Button variant="secondary" size="sm" onClick={() => void restoreRecord("property", "properties", property.id)}>{t("Restore")}</Button>
+            </div>)}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function WeddingScopeControl({ data, weddings, selectedWeddingId, onChange, onAddWedding, onAssignLegacy }: { data: DataMap; weddings: Wedding[]; selectedWeddingId: string | null; onChange: (weddingId: string | null) => void; onAddWedding: () => void; onAssignLegacy: (weddingId: string) => Promise<number> }) {
+  const { t } = useI18n();
+  const [assignOpen, setAssignOpen] = React.useState(false);
+  const [targetWeddingId, setTargetWeddingId] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const legacyCount = Object.values(unassignedWeddingRecordIds(data)).reduce((total, ids) => total + ids.length, 0);
+  const assign = async () => {
+    if (!targetWeddingId || saving) return;
+    setSaving(true);
+    try {
+      const count = await onAssignLegacy(targetWeddingId);
+      toast.success(t("{count} legacy wedding records assigned.", { count }));
+      setAssignOpen(false);
+      setTargetWeddingId("");
+    } catch {
+      toast.error(t("Legacy wedding records could not be assigned."));
+    } finally { setSaving(false); }
+  };
+  return <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-[var(--surface)]/70 px-3 py-2">
+    <div><p className="text-[12px] font-medium">{t("Wedding scope")}</p><p className="text-[10.5px] text-fg-subtle">{t("Choose one event or review the full wedding portfolio")}</p></div>
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+      <AnimatedTabs
+        ariaLabel={t("Filter by wedding")}
+        value={selectedWeddingId ?? "all-weddings"}
+        onChange={(value) => onChange(value === "all-weddings" ? null : value)}
+        options={[{ value: "all-weddings", label: t("All Weddings") }, ...weddings.map((wedding) => ({ value: wedding.id, label: wedding.couple }))]}
+        className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-[var(--bg-subtle)]/60 p-1 thin-scroll"
+        buttonClassName="h-8 px-3 text-xs"
+      />
+      <Button variant="secondary" size="sm" icon="plus" onClick={onAddWedding}>{t("New wedding")}</Button>
+      {legacyCount ? <Button variant="ghost" size="sm" onClick={() => setAssignOpen(true)}>{t("Review unassigned records")} ({legacyCount})</Button> : null}
+    </div>
+    <Dialog open={assignOpen} onOpenChange={(open) => { if (!saving) setAssignOpen(open); }}>
+      <DialogContent title={t("Assign legacy wedding records?")} description={t("{count} existing records have no active wedding assigned. Choose one event only if these records all belong to it; their IDs and details will be preserved.", { count: legacyCount })}>
+        <div className="grid gap-4">
+          <Select aria-label={t("Choose wedding for legacy records")} value={targetWeddingId} onChange={(event) => setTargetWeddingId(event.target.value)}>
+            <option value="">{t("Choose a wedding")}</option>
+            {weddings.map((wedding) => <option key={wedding.id} value={wedding.id} data-raw="">{wedding.couple}</option>)}
+          </Select>
+          <div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setAssignOpen(false)} disabled={saving}>{t("Cancel")}</Button><Button variant="primary" onClick={() => void assign()} disabled={!targetWeddingId || saving}>{saving ? t("Saving…") : t("Assign records")}</Button></div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </div>;
+}
+
+function WeddingPortfolioOverview({ data }: { data: DataMap }) {
+  const { t } = useI18n();
+  const weddings = rows<Wedding>(data, "wedding").filter((wedding) => !wedding.deleted);
+  const today = todayISO();
+  const children = {
+    expenses: rows<WeddingExpense>(data, "expenses"),
+    guests: rows<WeddingGuest>(data, "guests"),
+    vendors: rows<WeddingVendor>(data, "vendors"),
+    payments: rows<WeddingPayment>(data, "payments"),
+    tables: rows<WeddingTable>(data, "tables"),
+  };
+  const summaries = weddings.map((wedding) => ({
+    wedding,
+    summary: weddingSummary({
+      eventDate: wedding.eventDate,
+      totalBudget: wedding.totalBudget,
+      expenses: children.expenses.filter((row) => row.weddingId === wedding.id),
+      guests: children.guests.filter((row) => row.weddingId === wedding.id),
+      vendors: children.vendors.filter((row) => row.weddingId === wedding.id),
+      payments: children.payments.filter((row) => row.weddingId === wedding.id),
+      tables: children.tables.filter((row) => row.weddingId === wedding.id),
+      today,
+    }),
+  }));
+  const currencies = [...new Set(weddings.map((wedding) => wedding.currency || "USD"))];
+  const legacyCount = Object.values(unassignedWeddingRecordIds(data)).reduce((total, ids) => total + ids.length, 0);
+  return <div className="grid gap-3">
+    {summaries.length ? currencies.map((currencyCode) => {
+      const lane = summaries.filter(({ wedding }) => (wedding.currency || "USD") === currencyCode);
+      const budget = metricSum(lane.map(({ wedding }) => wedding.totalBudget));
+      const committed = metricSum(lane.map(({ summary }) => summary.committed));
+      const actual = metricSum(lane.map(({ summary }) => summary.actualExpenses));
+      const paid = metricSum(lane.map(({ summary }) => summary.paid));
+      return <Card key={currencyCode} className="p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t("Wedding portfolio")}</h2><span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-fg-muted">{currencyCode}</span></div>
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4"><CompactMetric label={t("Events")} value={String(lane.length)} /><CompactMetric label={t("Combined budgets")} value={formatMoney(budget, { currency: currencyCode })} /><CompactMetric label={t("Committed costs") } value={formatMoney(committed, { currency: currencyCode })} /><CompactMetric label={t("Actual spend / paid") } value={`${formatMoney(actual, { currency: currencyCode })} / ${formatMoney(paid, { currency: currencyCode })}`} /></div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{lane.map(({ wedding, summary }) => <div key={wedding.id} className="rounded-xl border border-line bg-[var(--bg-subtle)]/30 p-3">
+          <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{wedding.couple}</p><p className="text-xs text-fg-muted">{formatDate(wedding.eventDate)}{wedding.venue ? ` · ${wedding.venue}` : ""}</p></div><span className="shrink-0 text-xs">{summary.daysUntil < 0 ? t("Past event") : t("{count} days", { count: summary.daysUntil })}</span></div>
+          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs"><span className="text-fg-muted">{t("Guests accepted")}</span><span className="text-right">{summary.guestSeatsAccepted}/{summary.guestSeatsInvited}</span><span className="text-fg-muted">{t("Budget remaining")}</span><span className="text-right tnum">{formatMoney(summary.budgetRemaining, { currency: currencyCode })}</span><span className="text-fg-muted">{t("Unseated guests")}</span><span className="text-right">{summary.unseated}</span></div>
+        </div>)}</div>
+      </Card>;
+    }) : <Card className="p-4"><EmptyState title={t("No weddings yet")} description={t("Create a wedding to organize guests, vendors, costs, and tasks.")} icon="heart" /></Card>}
+    {legacyCount ? <Card className="border-[color-mix(in_oklab,var(--warning)_35%,transparent)] p-4"><h2 className="text-sm font-semibold">{t("Unassigned legacy records")}</h2><p className="mt-1 text-xs text-fg-muted">{t("These existing planning records have no active event link. They remain preserved until you explicitly assign them from the wedding selector.")}</p><p className="mt-2 text-sm">{t("Records")}: {legacyCount}</p></Card> : null}
+  </div>;
+}
+
+function PropertyPortfolioOverview({ data }: { data: DataMap }) {
+  const { t } = useI18n();
+  const properties = rows<Property>(data, "properties").filter((property) => !property.deleted);
+  const units = rows<PropertyUnit>(data, "units").filter((unit) => !unit.deleted);
+  const activePropertyIds = new Set(properties.map((property) => property.id));
+  const bookings = rows<PropertyBooking>(data, "bookings").filter((booking) => !booking.deleted && booking.status !== "cancelled" && activePropertyIds.has(booking.propertyId));
+  const expenses = rows<PropertyExpense>(data, "expenses").filter((expense) => !expense.deleted);
+  const maintenance = rows<PropertyMaintenance>(data, "maintenance").filter((item) => !item.deleted);
+  const today = todayISO();
+  const year = today.slice(0, 4);
+  const yearStart = `${year}-01-01`;
+  const elapsedDays = Math.max(1, Math.floor((new Date(`${today}T00:00:00`).getTime() - new Date(`${yearStart}T00:00:00`).getTime()) / 86400000) + 1);
+  const activeUnitIds = new Set(units.filter((unit) => activePropertyIds.has(unit.propertyId)).map((unit) => unit.id));
+  const occupiedUnitIds = new Set(bookings.filter((booking) => booking.checkIn <= today && booking.checkOut > today && activeUnitIds.has(booking.unitId)).map((booking) => booking.unitId));
+  const propertySummaries = properties.map((property) => {
+    const propertyUnits = units.filter((unit) => unit.propertyId === property.id);
+    const propertyBookings = bookings.filter((booking) => booking.propertyId === property.id);
+    const summary = propertySummary({
+      bookings: propertyBookings,
+      expenses: expenses.filter((expense) => expense.propertyId === property.id),
+      maintenance: maintenance.filter((item) => item.propertyId === property.id),
+      availableNights: elapsedDays * propertyUnits.length,
+      period: year,
+    });
+    return { property, units: propertyUnits, summary, occupied: propertyUnits.filter((unit) => occupiedUnitIds.has(unit.id)).length };
+  });
+  const currencies = [...new Set(properties.map((property) => property.currency || "USD"))];
+  const upcomingBookings = bookings.filter((booking) => booking.checkIn >= today).length;
+  const attentionMaintenance = maintenance.filter((item) => !item.done).length;
+  const totalUnits = units.filter((unit) => activePropertyIds.has(unit.propertyId)).length;
+
+  return <div className="grid gap-3">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <CompactMetric label={t("Properties")} value={String(properties.length)} />
+      <CompactMetric label={t("Total units")} value={String(totalUnits)} />
+      <CompactMetric label={t("Occupied units")} value={String(occupiedUnitIds.size)} />
+      <CompactMetric label={t("Vacant units")} value={String(Math.max(0, totalUnits - occupiedUnitIds.size))} />
+      <CompactMetric label={t("Upcoming bookings")} value={String(upcomingBookings)} />
+      <CompactMetric label={t("Maintenance requiring attention")} value={String(attentionMaintenance)} />
+    </div>
+    {properties.length ? currencies.map((currencyCode) => {
+      const lane = propertySummaries.filter(({ property }) => (property.currency || "USD") === currencyCode);
+      const revenue = metricSum(lane.map(({ summary }) => summary.accommodationRevenue));
+      const expensesTotal = metricSum(lane.map(({ summary }) => summary.operatingExpenses));
+      const net = metricSum(lane.map(({ summary }) => summary.netOperatingIncome));
+      return <Card key={currencyCode} className="p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t("Portfolio totals")}</h2><span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-fg-muted">{currencyCode} · {year}</span></div>
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <CompactMetric label={t("Rental revenue")} value={formatMoney(revenue, { currency: currencyCode })} />
+          <CompactMetric label={t("Operating expenses")} value={formatMoney(expensesTotal, { currency: currencyCode })} />
+          <CompactMetric label={t("Net operating income")} value={formatMoney(net, { currency: currencyCode })} tone={net >= 0 ? "positive" : "negative"} />
+        </div>
+        <div className="mb-4 grid gap-4 sm:grid-cols-2">
+          <div><p className="mb-2 text-xs font-medium">{t("Revenue by property")}</p><div className="grid gap-2">{lane.map(({ property, summary }) => {
+            const maxRevenue = Math.max(1, ...lane.map((item) => item.summary.accommodationRevenue));
+            return <div key={property.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1"><span className="truncate text-xs text-fg-muted">{property.name}</span><span className="text-xs tnum">{formatMoney(summary.accommodationRevenue, { currency: currencyCode })}</span><div className="col-span-2 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full rounded-full bg-[var(--positive)]" style={{ width: `${Math.max(0, summary.accommodationRevenue / maxRevenue * 100)}%` }} /></div></div>;
+          })}</div></div>
+          <div><p className="mb-2 text-xs font-medium">{t("Occupancy by property")}</p><div className="grid gap-2">{lane.map(({ property, summary }) => <div key={property.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1"><span className="truncate text-xs text-fg-muted">{property.name}</span><span className="text-xs tnum">{summary.occupancyRate == null ? "—" : formatPercent(summary.occupancyRate)}</span><div className="col-span-2 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.max(0, Math.min(100, summary.occupancyRate ?? 0))}%` }} /></div></div>)}</div></div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {lane.map(({ property, units: propertyUnits, summary, occupied }) => <div key={property.id} className="rounded-xl border border-line bg-[var(--bg-subtle)]/30 p-3">
+            <div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-medium">{property.name}</p><span className="shrink-0 text-xs text-fg-muted">{property.currency || "USD"}</span></div>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs"><span className="text-fg-muted">{t("Rental revenue")}</span><span className="text-right tnum">{formatMoney(summary.accommodationRevenue, { currency: currencyCode })}</span><span className="text-fg-muted">{t("Occupancy")}</span><span className="text-right">{formatPercent(summary.occupancyRate)}</span><span className="text-fg-muted">{t("Occupied units")}</span><span className="text-right">{occupied}/{propertyUnits.length}</span></div>
+          </div>)}
+        </div>
+      </Card>;
+    }) : <Card className="p-4"><EmptyState title={t("No properties")} description={t("Add a property to see your portfolio overview.")} icon="home" /></Card>}
+  </div>;
+}
+
+function ContentScopeControl({ plans, channels, scope, onChange, onAddPlan }: { plans: ContentPlan[]; channels: ChannelAccount[]; scope: ContentScope; onChange: (scope: ContentScope) => void; onAddPlan: () => void }) {
+  const { t } = useI18n();
+  const value = scope ? `${scope.kind}:${scope.id}` : "";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-[var(--surface)]/70 px-3 py-2">
+      <div>
+        <p className="text-[12px] font-medium">{t("Content scope")}</p>
+        <p className="text-[10.5px] text-fg-subtle">{t("Filter content, publications, charts and KPIs by plan or account")}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select aria-label={t("Filter content by plan or channel")} value={value} onChange={(event) => {
+          const [kind, ...parts] = event.target.value.split(":");
+          const id = parts.join(":");
+          onChange((kind === "plan" || kind === "channel") && id ? { kind, id } : null);
+        }} className="h-9 w-auto min-w-40 max-w-full">
+          <option value="">{t("All Content")}</option>
+          {plans.map((plan) => <option key={`plan:${plan.id}`} value={`plan:${plan.id}`} data-raw="">{t("Content plans")}: {plan.name}</option>)}
+          {channels.map((channel) => <option key={`channel:${channel.id}`} value={`channel:${channel.id}`} data-raw="">{t("Channel")}: {channel.name}</option>)}
+        </Select>
+        <Button variant="secondary" size="sm" icon="plus" onClick={onAddPlan}>{t("New plan")}</Button>
+      </div>
+    </div>
+  );
 }
 
 function operationsDashboardTitle(toolId: ToolId) {
@@ -257,6 +668,7 @@ function OverviewContent({
   onDrill,
   onOpenTab,
   onAddRecord,
+  selectedScenarioId,
 }: {
   toolId: ToolId;
   data: DataMap;
@@ -265,6 +677,7 @@ function OverviewContent({
   onDrill: (next: DrillState) => void;
   onOpenTab: (tab: string) => void;
   onAddRecord: (tab: string) => void;
+  selectedScenarioId: string | null;
 }) {
   switch (toolId) {
     case "paycheck":
@@ -292,13 +705,13 @@ function OverviewContent({
     case "wedding":
     case "property":
     case "content":
-      return <ToolCharts toolId={toolId} data={data} currency={currency} />;
+      return <ToolCharts toolId={toolId} data={data} currency={currency} selectedScenarioId={selectedScenarioId} />;
     default:
       return null;
   }
 }
 
-function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap; currency: string }) {
+function ToolCharts({ toolId, data, currency, selectedScenarioId }: { toolId: ToolId; data: DataMap; currency: string; selectedScenarioId: string | null }) {
   const { t } = useI18n();
   const money = (value: number | string | undefined) => formatMoney(Number(value ?? 0), { currency, maximumFractionDigits: 0 });
   if (toolId === "bookkeeping") {
@@ -327,9 +740,10 @@ function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap;
     return <ChartContainer title={t("Sales revenue trend")} subtitle={t("Net sales by month, after discounts and returns")} icon="trending-up"><TrendChart data={summary.byMonth.map((item) => ({ label: monthLong(item.month), net: item.net }))} xKey="label" series={[{ key: "net", name: t("Net sales") }]} formatValue={money} type="line" height={240} /></ChartContainer>;
   }
   if (toolId === "cash-flow") {
-    const scenario = rows<CashScenario>(data, "scenarios")[0];
+    const scenario = selectedScenarioId ? rows<CashScenario>(data, "scenarios").find((row) => row.id === selectedScenarioId) : undefined;
     if (!scenario) return null;
-    const forecast = forecastCashFlow(rows<CashForecastItem>(data, "items"), scenario, { weeks: 13 });
+    const scenarioItems = rows<CashForecastItem>(data, "items").filter((row) => row.scenarioId === scenario.id);
+    const forecast = forecastCashFlow(scenarioItems, scenario, { weeks: 13 });
     return <ChartContainer title={t("13-week cash forecast")} subtitle={t("Projected closing balance with weekly inflows and outflows")} icon="waves"><TrendChart data={forecast.weeks.map((week) => ({ label: new Date(`${week.label}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }), closing: week.closing, minimum: scenario.minimumCash }))} xKey="label" series={[{ key: "closing", name: t("Closing cash") }, { key: "minimum", name: t("Minimum cash") }]} formatValue={money} type="area" height={240} /></ChartContainer>;
   }
   if (toolId === "wedding") {
@@ -354,10 +768,15 @@ function ToolCharts({ toolId, data, currency }: { toolId: ToolId; data: DataMap;
   }
   if (toolId === "content") {
     const posts = rows<ContentPost>(data, "posts");
-    if (!posts.length) return null;
+    const publications = rows<ContentPublication>(data, "publications");
+    if (!posts.length && !publications.length) return null;
+    const publicationPostIds = new Set(publications.map((publication) => publication.contentId));
+    const legacyPosts = posts.filter((post) => !publicationPostIds.has(post.id));
+    const hasDestinations = publications.length > 0;
+    const source = hasDestinations ? [...publications, ...legacyPosts] : posts;
     const statusOrder = ["idea", "draft", "scheduled", "published"] as const;
-    const counts = statusOrder.map((status) => ({ id: status, label: t(status[0].toUpperCase() + status.slice(1)), value: posts.filter((post) => post.status === status).length }));
-    return <ChartContainer title={t("Publishing pipeline")} subtitle={t("Content count by current status")} icon="calendar-range"><HorizontalRankingChart data={counts} formatValue={(value) => t("{count} posts", { count: Number(value ?? 0) })} height={175} /></ChartContainer>;
+    const counts = statusOrder.map((status) => ({ id: status, label: t(status[0].toUpperCase() + status.slice(1)), value: source.filter((item) => item.status === status).length }));
+    return <ChartContainer title={t(hasDestinations ? "Publishing destinations" : "Publishing pipeline")} subtitle={t(hasDestinations ? "Status and counts for channel-specific publications" : "Content count by current status")} icon="calendar-range"><HorizontalRankingChart data={counts} formatValue={(value) => t(hasDestinations ? "{count} destinations" : "{count} posts", { count: Number(value ?? 0) })} height={175} /></ChartContainer>;
   }
   return null;
 }
@@ -1019,6 +1438,7 @@ function computeMetrics(
   data: DataMap,
   currency: string,
   t: (source: string, values?: Record<string, string | number>) => string,
+  selectedScenarioId: string | null = null,
 ) {
   const m = (label: string, value: string, icon: string, hint?: string, tone?: "neutral" | "positive" | "negative" | "warning") => ({
     label,
@@ -1153,9 +1573,11 @@ function computeMetrics(
       ];
     }
     case "cash-flow": {
-      const scenario = rows<CashScenario>(data, "scenarios")[0];
-      if (!scenario) return [m(t("Opening cash"), t("Not set"), "waves", t("Set a scenario to project"))];
-      const f = forecastCashFlow(rows<CashForecastItem>(data, "items"), scenario, { weeks: 13 });
+      const scenarios = rows<CashScenario>(data, "scenarios").filter((row) => !row.deleted);
+      const scenario = selectedScenarioId ? scenarios.find((row) => row.id === selectedScenarioId) : undefined;
+      if (!scenario) return [m(t("Forecast scenarios"), String(scenarios.length), "waves", t("Select a forecast to view its financial metrics"))];
+      const items = rows<CashForecastItem>(data, "items").filter((row) => row.scenarioId === scenario.id);
+      const f = forecastCashFlow(items, scenario, { weeks: 13 });
       return [
         m(t("Opening cash"), formatMoney(scenario.openingCash, { currency }), "wallet", t("Saved scenario balance")),
         m(t("Forecast inflows"), formatMoney(metricSum(f.weeks.map((week) => week.inflows)), { currency }), "arrowUp", t("Certainty-weighted · 13 weeks")),
@@ -1188,6 +1610,7 @@ function computeMetrics(
     case "property": {
       const properties = rows<Property>(data, "properties").filter((row) => !row.deleted && (row.currency || "USD") === currency);
       const propertyIds = new Set(properties.map((row) => row.id));
+      const propertyUnits = rows<PropertyUnit>(data, "units").filter((unit) => !unit.deleted && propertyIds.has(unit.propertyId));
       const bookings = rows<PropertyBooking>(data, "bookings").filter((row) => propertyIds.has(row.propertyId));
       const yearStart = todayISO().slice(0, 4) + "-01-01";
       const elapsedDays = Math.max(1, Math.floor((new Date(todayISO() + "T00:00:00").getTime() - new Date(yearStart + "T00:00:00").getTime()) / 86400000) + 1);
@@ -1195,7 +1618,7 @@ function computeMetrics(
         bookings,
         expenses: rows<PropertyExpense>(data, "expenses").filter((row) => propertyIds.has(row.propertyId)),
         maintenance: rows<PropertyMaintenance>(data, "maintenance").filter((row) => propertyIds.has(row.propertyId)),
-        availableNights: elapsedDays * Math.max(properties.length, 1),
+        availableNights: elapsedDays * propertyUnits.length,
         period: todayISO().slice(0, 4),
       });
       return [
@@ -1243,13 +1666,30 @@ function computeMetrics(
     case "content": {
       const s = contentSummary(rows<ContentPost>(data, "posts"), currentMonth());
       const posts = rows<ContentPost>(data, "posts").filter((row) => !row.deleted);
+      const publications = rows<ContentPublication>(data, "publications").filter((row) => !row.deleted);
+      const publishedPostIds = new Set(publications.map((row) => row.contentId));
+      const legacyPosts = posts.filter((post) => !publishedPostIds.has(post.id));
+      const scheduled = publications.filter((row) => row.status === "scheduled").length + legacyPosts.filter((row) => row.status === "scheduled").length;
+      const published = publications.filter((row) => row.status === "published").length + legacyPosts.filter((row) => row.status === "published").length;
+      const dueRecords = [
+        ...publications.map((row) => ({ status: row.status, date: row.scheduledDate })),
+        ...legacyPosts.map((row) => ({ status: row.status, date: row.scheduledDate })),
+      ];
+      const measuredPublications = publications.filter((row) => row.status === "published" && row.reach && row.reach > 0 && row.engagements !== undefined);
+      const measuredLegacyPosts = legacyPosts.filter((row) => row.status === "published" && row.reach && row.reach > 0 && row.engagements !== undefined);
+      const measuredReach = measuredPublications.length || measuredLegacyPosts.length
+        ? metricSum([...measuredPublications.map((row) => row.reach ?? 0), ...measuredLegacyPosts.map((row) => row.reach ?? 0)])
+        : s.totalReach;
+      const measuredEngagements = measuredPublications.length || measuredLegacyPosts.length
+        ? metricSum([...measuredPublications.map((row) => row.engagements ?? 0), ...measuredLegacyPosts.map((row) => row.engagements ?? 0)])
+        : s.totalEngagements;
       return [
         m(t("Planned posts"), String(posts.length), "calendar-days", t("All saved content records")),
-        m(t("Scheduled"), String(s.scheduled), "calendar-days", t("Not yet marked published")),
-        m(t("Published"), String(s.published), "circle-check", t("User-confirmed status")),
-        m(t("Upcoming this week"), String(posts.filter((row) => row.status === "scheduled" && row.scheduledDate && row.scheduledDate >= todayISO() && row.scheduledDate <= addDaysISO(todayISO(), 7)).length), "clock", t("Scheduled date")),
-        m(t("Overdue content"), String(posts.filter((row) => row.status !== "published" && row.scheduledDate && row.scheduledDate < todayISO()).length), "alert", t("Past schedule; awaiting confirmation")),
-        m(t("Engagement"), formatPercent(s.engagementRate), "trendingUp", s.totalReach ? t("{count} manually recorded reach", { count: s.totalReach }) : t("No metrics recorded")),
+        m(t("Scheduled"), String(scheduled), "calendar-days", t("Destination-level and legacy schedules")),
+        m(t("Published"), String(published), "circle-check", t("User-confirmed destination status")),
+        m(t("Upcoming this week"), String(dueRecords.filter((row) => row.status === "scheduled" && row.date && row.date >= todayISO() && row.date <= addDaysISO(todayISO(), 7)).length), "clock", t("Per-channel scheduled date")),
+        m(t("Overdue content"), String(dueRecords.filter((row) => row.status !== "published" && row.date && row.date < todayISO()).length), "alert", t("Past schedule; awaiting confirmation")),
+        m(t("Engagement"), formatPercent(measuredReach ? (measuredEngagements / measuredReach) * 100 : null), "trendingUp", measuredReach ? t("{count} manually recorded reach", { count: measuredReach }) : t("No metrics recorded")),
       ];
     }
     default:

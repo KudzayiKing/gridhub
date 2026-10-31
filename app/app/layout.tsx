@@ -44,6 +44,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         user={
           user
             ? {
+                id: user.id,
                 email: user.email,
                 name:
                   (user.user_metadata?.full_name as string | undefined) ??

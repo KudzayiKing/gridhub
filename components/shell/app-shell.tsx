@@ -29,6 +29,8 @@ import { useActiveTools } from "@/lib/use-tools";
 import { cn } from "@/lib/utils";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { WorkspaceSwitcher } from "./workspace-switcher";
+import { getLocalWorkspaceId, setWorkspaceScope } from "@/lib/workspaces/context";
 
 const PRIMARY_NAV = [
   { href: "/app", label: "Overview", icon: "dashboard" },
@@ -101,7 +103,7 @@ export interface AppShellProps {
   children: React.ReactNode;
   buildVersion?: string;
   isAdmin?: boolean;
-  user?: { email?: string | null; name?: string | null } | null;
+  user?: { id?: string | null; email?: string | null; name?: string | null } | null;
   workspaceName?: string;
 }
 
@@ -114,6 +116,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const [workspaceReady, setWorkspaceReady] = React.useState(false);
   const [openCollections, setOpenCollections] = React.useState<Record<string, boolean>>(
     () => Object.fromEntries(COLLECTIONS.map((collection) => [collection.id, true])),
   );
@@ -144,6 +147,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
   }, [ai]);
 
   const signOut = async () => {
+    setWorkspaceScope({ workspaceId: getLocalWorkspaceId(), ownerUserId: null });
     if (isSupabaseConfigured()) {
       await getSupabaseBrowserClient()?.auth.signOut();
     }
@@ -169,12 +173,14 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
    * primary way around on a phone.
    */
   const sidebar = (onNavigate?: () => void) => (
-    <div className="flex h-full flex-col gap-4 p-3">
+    <div className="flex h-full flex-col gap-4 px-3 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
       <div className="flex items-center justify-between px-1 pt-1">
         <Link href="/app" aria-label={t("Gridhub home")} className="press" onClick={onNavigate}>
           <LogoMark size={28} />
         </Link>
       </div>
+
+      <WorkspaceSwitcher userId={user?.id ?? null} onReady={setWorkspaceReady} />
 
       <button
         onClick={() => setCommandOpen(true)}
@@ -394,7 +400,10 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
         </header>
 
         <main className="mx-auto w-full max-w-[1400px] px-3 pb-28 pt-4 sm:px-5 sm:pt-5 lg:pb-10">
-          {children}
+          {workspaceReady ? children : <div className="glass-card mx-auto mt-10 max-w-lg p-6 text-center" aria-live="polite">
+            <p className="text-sm font-medium text-fg">{t("Loading your workspace")}</p>
+            <p className="mt-1 text-xs text-fg-muted">{t("Your records stay hidden until workspace ownership is verified.")}</p>
+          </div>}
         </main>
       </div>
 

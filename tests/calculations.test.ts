@@ -400,6 +400,13 @@ describe("inventory valuation", () => {
     ]).items[0].valuation;
     expect(v.quantity).toBe(0);
   });
+
+  it("counts opening stock before applying later movements", () => {
+    const openingProduct = { ...product, quantity: 8 };
+    const summary = inventorySummary([openingProduct], []);
+    expect(summary.totalUnits).toBe(8);
+    expect(summary.inventoryValue).toBe(80);
+  });
 });
 
 describe("sales", () => {

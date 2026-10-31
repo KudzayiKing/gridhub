@@ -228,6 +228,7 @@ export interface BusinessAccount extends BaseRecord {
   name: string;
   kind: "bank" | "cash" | "card";
   openingBalance: number;
+  businessId?: string;
 }
 
 export type BusinessTxType =
@@ -243,19 +244,23 @@ export interface BusinessTransaction extends BaseRecord {
   date: string;
   description: string;
   amount: number;
+  /** Currency is normally inherited from the linked business; retained for safe historical reporting. */
+  currency?: string;
   type: BusinessTxType;
+  businessId?: string;
   categoryId?: string;
   accountId?: string;
   contactId?: string;
   notes?: string;
   /** Source record id when this entry mirrors an invoice payment or sale. */
-  sourceType?: "invoice_payment" | "sale" | "manual";
+  sourceType?: "invoice_payment" | "sale" | "inventory_purchase" | "property_income" | "manual";
   sourceId?: string;
 }
 
 export interface BusinessContact extends BaseRecord {
   name: string;
   kind: "customer" | "supplier" | "both";
+  businessId?: string;
   email?: string;
   phone?: string;
   notes?: string;
@@ -271,8 +276,9 @@ export interface BusinessProduct extends BaseRecord {
   reorderThreshold: number;
   supplierId?: string;
   category?: string;
-  /** Quantity on hand derived from posted movements. */
+  /** Opening stock on hand before the recorded movement history begins. */
   quantity: number;
+  businessId?: string;
 }
 
 export type InventoryMovementType =
@@ -292,6 +298,11 @@ export interface InventoryMovement extends BaseRecord {
   unitCost?: number;
   reference?: string;
   note?: string;
+  businessId?: string;
+  /** Optional Bookkeeping mirror ID. The inventory movement remains canonical. */
+  bookkeepingTransactionId?: string;
+  /** Explicit confirmation that a receipt cost was paid from business funds. */
+  purchasePaid?: boolean;
 }
 
 export interface Sale extends BaseRecord {
@@ -308,12 +319,16 @@ export interface Sale extends BaseRecord {
   /** Invoice reference when this sale was billed through Invoicing. */
   invoiceId?: string;
   currency: string;
+  businessId?: string;
+  /** Optional Bookkeeping mirror ID. Invoice-linked sales use their payments as cash revenue. */
+  bookkeepingTransactionId?: string;
 }
 
 export interface SalesTarget extends BaseRecord {
   period: string;
   target: number;
   currency: string;
+  businessId?: string;
 }
 
 export interface Invoice extends BaseRecord {
@@ -329,6 +344,7 @@ export interface Invoice extends BaseRecord {
   lines: InvoiceLine[];
   /** True once the user confirms the invoice was actually delivered. */
   sentAt?: string;
+  businessId?: string;
 }
 
 export interface InvoiceLine {
@@ -344,6 +360,9 @@ export interface Payment extends BaseRecord {
   amount: number;
   method: "bank" | "card" | "cash" | "other";
   reference?: string;
+  businessId?: string;
+  /** Optional Bookkeeping mirror ID. The invoice payment remains canonical. */
+  bookkeepingTransactionId?: string;
 }
 
 export interface CashForecastItem extends BaseRecord {
@@ -354,6 +373,8 @@ export interface CashForecastItem extends BaseRecord {
   week: number;
   certainty: "committed" | "likely" | "possible";
   category?: string;
+  businessId?: string;
+  scenarioId?: string;
 }
 
 export interface CashScenario extends BaseRecord {
@@ -363,6 +384,7 @@ export interface CashScenario extends BaseRecord {
   optimisticFactor: number;
   conservativeFactor: number;
   minimumCash: number;
+  businessId?: string;
 }
 
 /* -------------------------------- LIFE ---------------------------------- */
@@ -376,6 +398,7 @@ export interface Wedding extends BaseRecord {
 }
 
 export interface WeddingGuest extends BaseRecord {
+  weddingId?: string;
   name: string;
   household: string;
   seats: number;
@@ -386,6 +409,7 @@ export interface WeddingGuest extends BaseRecord {
 }
 
 export interface WeddingVendor extends BaseRecord {
+  weddingId?: string;
   name: string;
   category: string;
   contractedAmount: number;
@@ -394,6 +418,7 @@ export interface WeddingVendor extends BaseRecord {
 }
 
 export interface WeddingPayment extends BaseRecord {
+  weddingId?: string;
   vendorId: string;
   date: string;
   amount: number;
@@ -401,6 +426,7 @@ export interface WeddingPayment extends BaseRecord {
 }
 
 export interface WeddingExpense extends BaseRecord {
+  weddingId?: string;
   category: string;
   label: string;
   committed: number;
@@ -409,11 +435,13 @@ export interface WeddingExpense extends BaseRecord {
 }
 
 export interface WeddingTable extends BaseRecord {
+  weddingId?: string;
   name: string;
   capacity: number;
 }
 
 export interface WeddingTask extends BaseRecord {
+  weddingId?: string;
   title: string;
   dueDate?: string;
   done: boolean;
@@ -425,6 +453,8 @@ export interface Property extends BaseRecord {
   address?: string;
   currency: string;
   context: "personal" | "business";
+  /** Optional link for business-owned rentals; personal properties stay unassigned. */
+  businessId?: string;
   purchasePrice?: number;
 }
 
@@ -448,6 +478,8 @@ export interface PropertyBooking extends BaseRecord {
   status: "booked" | "stayed" | "cancelled";
   paid: boolean;
   channel: "direct" | "airbnb" | "booking" | "other";
+  /** Optional Bookkeeping mirror ID; the paid booking remains canonical. */
+  bookkeepingTransactionId?: string;
 }
 
 export interface PropertyExpense extends BaseRecord {
@@ -572,6 +604,9 @@ export interface HabitCompletion extends BaseRecord {
 export interface ContentPost extends BaseRecord {
   title: string;
   platform: string;
+  /** Explicit content calendar. Missing only on legacy, unassigned content. */
+  planId?: string;
+  category?: string;
   contentType: "post" | "story" | "reel" | "video" | "article" | "newsletter";
   status: "idea" | "draft" | "scheduled" | "published";
   scheduledDate?: string;
@@ -588,6 +623,46 @@ export interface ContentCampaign extends BaseRecord {
   startDate?: string;
   endDate?: string;
   goal?: string;
+}
+
+/** Workspace-level identity used to group plans and owned channel accounts. */
+export interface ContentBrand extends BaseRecord {
+  name: string;
+  description?: string;
+  website?: string;
+}
+
+/** A named strategy/calendar. It is distinct from a campaign and channel account. */
+export interface ContentPlan extends BaseRecord {
+  name: string;
+  brandId?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  archived?: boolean;
+}
+
+/** A particular account, not merely a platform such as YouTube or Instagram. */
+export interface ChannelAccount extends BaseRecord {
+  name: string;
+  platform: string;
+  handle?: string;
+  brandId?: string;
+  active: boolean;
+}
+
+/** One destination for a shared content item. Status and metrics belong to this destination. */
+export interface ContentPublication extends BaseRecord {
+  contentId: string;
+  channelAccountId: string;
+  status: "draft" | "scheduled" | "published";
+  scheduledDate?: string;
+  publishedDate?: string;
+  url?: string;
+  notes?: string;
+  reach?: number;
+  engagements?: number;
+  metricBasis?: "reach" | "impressions" | "followers";
 }
 
 /* ------------------------------ PLATFORM -------------------------------- */
@@ -621,6 +696,10 @@ export interface ToolActivation {
 
 export interface LocalRecord {
   id: string;
+  /** Workspace envelope. Missing only on pre-workspace legacy rows. */
+  workspaceId?: string;
+  /** Authenticated owner for cloud workspaces; null for device-only workspaces. */
+  ownerUserId?: string | null;
   toolId: string;
   collection: string;
   data: Record<string, unknown>;
@@ -633,6 +712,9 @@ export interface LocalRecord {
 
 export interface OutboxEntry {
   id: string;
+  /** Workspace and owner are copied into the mutation so retries stay in scope. */
+  workspaceId?: string;
+  ownerUserId?: string | null;
   toolId: string;
   collection: string;
   recordId: string;

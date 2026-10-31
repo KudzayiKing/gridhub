@@ -9,7 +9,7 @@ import { rows, type DataMap } from "@/lib/tools/shared";
 import { bookkeepingSummary, inventorySummary, salesSummary, invoicingSummary, forecastCashFlow } from "@/lib/calc/business";
 import { dailyTotals } from "@/lib/calc/life";
 import { contentSummary } from "@/lib/calc/work";
-import type { BusinessProduct, BusinessTransaction, CashForecastItem, CashScenario, ContentPost, Habit, HabitCompletion, InventoryMovement, Invoice, MoneyCategory, NutritionLog, Payment, PropertyExpense, Sale, SalesTarget, Task, WeddingExpense } from "@/lib/types";
+import type { BusinessProduct, BusinessTransaction, CashForecastItem, CashScenario, ContentPost, ContentPublication, Habit, HabitCompletion, InventoryMovement, Invoice, MoneyCategory, NutritionLog, Payment, PropertyExpense, Sale, SalesTarget, Task, WeddingExpense } from "@/lib/types";
 import type { ToolId } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n";
 
@@ -61,7 +61,7 @@ const asSlices = (entries: Array<{ id: string; name: string; value: number }>) =
 const sum = (values: number[]) => round2(values.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0));
 
 /** Signature visualization for non-Money tools, sourced from their existing domain records. */
-export function OperationsHero({ toolId, data, currency }: { toolId: ToolId; data: DataMap; currency: string }) {
+export function OperationsHero({ toolId, data, currency, selectedScenarioId = null }: { toolId: ToolId; data: DataMap; currency: string; selectedScenarioId?: string | null }) {
   const { t } = useI18n();
   const fmt = (value: number | string | undefined) => formatMoney(Number(value ?? 0), { currency });
   let name = "Record breakdown";
@@ -97,11 +97,12 @@ export function OperationsHero({ toolId, data, currency }: { toolId: ToolId; dat
     chart = <CategoryBreakdownChart data={asSlices(status)} formatValue={fmt} centerLabel="Total invoiced" centerValue={fmt(value)} height={290} />;
   } else if (toolId === "cash-flow") {
     name = "Projected cash balance";
-    const scenario = rows<CashScenario>(data, "scenarios").find((row) => !row.deleted);
+    const scenario = selectedScenarioId ? rows<CashScenario>(data, "scenarios").find((row) => !row.deleted && row.id === selectedScenarioId) : undefined;
     if (scenario) {
-      const forecast = forecastCashFlow(rows<CashForecastItem>(data, "items"), scenario, { weeks: 13 }); value = forecast.closingCash;
+      const scenarioItems = rows<CashForecastItem>(data, "items").filter((row) => row.scenarioId === scenario.id);
+      const forecast = forecastCashFlow(scenarioItems, scenario, { weeks: 13 }); value = forecast.closingCash;
       chart = <TrendChart data={forecast.weeks.map((row) => ({ week: new Date(row.label + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }), closing: row.closing }))} xKey="week" series={[{ key: "closing", name: "Projected closing cash" }]} formatValue={fmt} height={290} />;
-    } else chart = <ChartEmptyState label="Add a cash scenario to see projected balances." />;
+    } else chart = <ChartEmptyState label="Select a forecast to see projected balances." />;
   } else if (toolId === "wedding") {
     name = "Wedding budget allocation";
     const expenses = all(rows<WeddingExpense>(data, "expenses")); value = sum(expenses.map((row) => row.committed));
@@ -130,10 +131,15 @@ export function OperationsHero({ toolId, data, currency }: { toolId: ToolId; dat
     const completed = Math.min(scheduled, new Set(completions.filter((row) => row.date === date).map((row) => row.habitId)).size); value = completed;
     chart = <CategoryBreakdownChart data={asSlices([{ id: "done", name: "Done", value: completed }, { id: "remaining", name: "Remaining today", value: Math.max(0, scheduled - completed) }])} formatValue={(amount) => Number(amount ?? 0) + " check-ins"} centerLabel="Completed" centerValue={completed + " / " + scheduled} height={290} />;
   } else if (toolId === "content") {
-    name = "Content status";
+    name = "Content and publication status";
     const posts = all(rows<ContentPost>(data, "posts")); const summary = contentSummary(posts); value = posts.length;
-    const items = ["idea", "draft", "scheduled", "published"].map((status) => ({ id: status, name: status[0].toUpperCase() + status.slice(1), value: posts.filter((row) => row.status === status).length }));
-    chart = <CategoryBreakdownChart data={asSlices(items)} formatValue={(amount) => Number(amount ?? 0) + " posts"} centerLabel="Publishing rate" centerValue={summary.publishingRate == null ? "—" : Math.round(summary.publishingRate) + "%"} height={290} />;
+    const publications = all(rows<ContentPublication>(data, "publications"));
+    const publishedPostIds = new Set(publications.map((publication) => publication.contentId));
+    const legacyPosts = posts.filter((post) => !publishedPostIds.has(post.id));
+    const source = publications.length ? [...publications, ...legacyPosts] : posts;
+    value = source.length;
+    const items = ["idea", "draft", "scheduled", "published"].map((status) => ({ id: status, name: status[0].toUpperCase() + status.slice(1), value: source.filter((row) => row.status === status).length }));
+    chart = <CategoryBreakdownChart data={asSlices(items)} formatValue={(amount) => Number(amount ?? 0) + (publications.length ? " destinations" : " posts")} centerLabel={publications.length ? "Items tracked" : "Publishing rate"} centerValue={publications.length ? String(value) : summary.publishingRate == null ? "—" : Math.round(summary.publishingRate) + "%"} height={290} />;
   }
   return <div><p className="mb-1 text-[11px] font-medium text-fg-muted">{t(name)}</p>{chart ?? <ChartEmptyState label="No records available yet." />}</div>;
 }

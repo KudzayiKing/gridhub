@@ -55,9 +55,9 @@ export async function POST(request: Request) {
   const auth = await authenticate(request);
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  let body: { mutations?: IncomingMutation[] };
+  let body: { protocolVersion?: number; workspaceId?: string; mutations?: IncomingMutation[] };
   try {
-    body = (await request.json()) as { mutations?: IncomingMutation[] };
+    body = (await request.json()) as { protocolVersion?: number; workspaceId?: string; mutations?: IncomingMutation[] };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -71,6 +71,20 @@ export async function POST(request: Request) {
   }
 
   const { supabase, user } = auth;
+  let workspaceId = body.workspaceId;
+  if (body.protocolVersion === 2) {
+    if (!workspaceId) return NextResponse.json({ error: "Workspace ID is required for scoped sync." }, { status: 400 });
+  } else {
+    // Compatibility window: older clients remain limited to the default workspace.
+    const { data: defaultWorkspace } = await supabase.from("workspaces")
+      .select("id").eq("owner_id", user.id).eq("is_default", true).is("archived_at", null).maybeSingle();
+    workspaceId = defaultWorkspace?.id;
+    if (!workspaceId) return NextResponse.json({ error: "Default workspace unavailable." }, { status: 409 });
+  }
+  const { data: ownedWorkspace, error: workspaceError } = await supabase.from("workspaces")
+    .select("id").eq("id", workspaceId).eq("owner_id", user.id).is("archived_at", null).maybeSingle();
+  if (workspaceError || !ownedWorkspace) return NextResponse.json({ error: "Workspace access denied." }, { status: 403 });
+
   const acked: string[] = [];
   const conflicts: { recordId: string; reason: string }[] = [];
 
@@ -82,7 +96,20 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const { data: applied, error } = await supabase.rpc("upsert_sync_record_if_newer", {
+    const rpcName = body.protocolVersion === 2
+      ? "upsert_workspace_sync_record_if_newer"
+      : "upsert_sync_record_if_newer";
+    const rpcArgs = body.protocolVersion === 2 ? {
+      p_user_id: user.id,
+      p_workspace_id: workspaceId,
+      p_record_id: mutation.recordId,
+      p_tool_id: mutation.toolId,
+      p_collection: mutation.collection,
+      p_data: mutation.payload,
+      p_deleted: mutation.op === "delete",
+      p_version: version,
+      p_client_mutation_id: mutation.id,
+    } : {
       p_user_id: user.id,
       p_record_id: mutation.recordId,
       p_tool_id: mutation.toolId,
@@ -91,7 +118,8 @@ export async function POST(request: Request) {
       p_deleted: mutation.op === "delete",
       p_version: version,
       p_client_mutation_id: mutation.id,
-    });
+    };
+    const { data: applied, error } = await supabase.rpc(rpcName, rpcArgs);
 
     if (error) {
       console.error("Sync mutation could not be applied:", error.message);
@@ -112,12 +140,25 @@ export async function GET(request: Request) {
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { supabase, user } = auth;
-  const since = new URL(request.url).searchParams.get("since") ?? "";
+  const params = new URL(request.url).searchParams;
+  const since = params.get("since") ?? "";
+  let workspaceId = params.get("workspaceId");
+  if (!workspaceId) {
+    // Compatibility window: old clients see only the default workspace.
+    const { data: defaultWorkspace } = await supabase.from("workspaces")
+      .select("id").eq("owner_id", user.id).eq("is_default", true).is("archived_at", null).maybeSingle();
+    workspaceId = defaultWorkspace?.id ?? null;
+  }
+  if (!workspaceId) return NextResponse.json({ error: "Workspace unavailable." }, { status: 409 });
+  const { data: ownedWorkspace } = await supabase.from("workspaces")
+    .select("id").eq("id", workspaceId).eq("owner_id", user.id).is("archived_at", null).maybeSingle();
+  if (!ownedWorkspace) return NextResponse.json({ error: "Workspace access denied." }, { status: 403 });
 
   let query = supabase
     .from("sync_records")
     .select("record_id, tool_id, collection, data, deleted, version, updated_at")
     .eq("user_id", user.id)
+    .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: true })
     .limit(500);
 

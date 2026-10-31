@@ -20,6 +20,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { UI_LANGUAGES, useI18n } from "@/lib/i18n";
 import { PHASE_COPY } from "@/components/shell/sync-indicator";
+import { getWorkspaceScope } from "@/lib/workspaces/context";
 
 /** Theme choices. `label` is the English source string, resolved with `t()` at render time. */
 const THEME_OPTIONS = [
@@ -40,7 +41,11 @@ export default function SettingsPage() {
 
   const exportAll = async () => {
     if (!dbAvailable()) return;
-    const rows = await getDB().records.toArray();
+    const scope = getWorkspaceScope();
+    const allRows = await getDB().records.toArray();
+    const rows = allRows.filter((row) => scope.ownerUserId
+      ? row.ownerUserId === scope.ownerUserId
+      : row.ownerUserId === null || row.ownerUserId === undefined);
     downloadFile(
       `gridhub-export-${new Date().toISOString().slice(0, 10)}.json`,
       JSON.stringify({ exportedAt: new Date().toISOString(), records: rows.map((r) => r.data) }, null, 2),
@@ -51,8 +56,13 @@ export default function SettingsPage() {
 
   const clearLocal = async () => {
     if (!dbAvailable()) return;
-    await getDB().records.clear();
-    await getDB().outbox.clear();
+    const scope = getWorkspaceScope();
+    await getDB().transaction("rw", getDB().records, getDB().outbox, async () => {
+      await getDB().records.where("workspaceId").equals(scope.workspaceId)
+        .filter((row) => row.ownerUserId === scope.ownerUserId).delete();
+      await getDB().outbox.where("workspaceId").equals(scope.workspaceId)
+        .filter((row) => row.ownerUserId === scope.ownerUserId).delete();
+    });
     toast.success(t("Local cache cleared"));
     setConfirmClear(false);
     router.refresh();
@@ -67,9 +77,16 @@ export default function SettingsPage() {
         return;
       }
       if (dbAvailable()) {
-        await getDB().records.clear();
-        await getDB().outbox.clear();
-        await getDB().meta.clear();
+        const ownerUserId = getWorkspaceScope().ownerUserId;
+        await getDB().transaction("rw", getDB().records, getDB().outbox, getDB().meta, async () => {
+          await getDB().records.where("ownerUserId").equals(ownerUserId ?? "").delete();
+          await getDB().outbox.where("ownerUserId").equals(ownerUserId ?? "").delete();
+          const keys = (await getDB().meta.toArray()).map((row) => row.key)
+            .filter((key) => ownerUserId
+              ? key.includes(`:${ownerUserId}:`) || key.endsWith(`:${ownerUserId}`)
+              : key.startsWith("workspace:selected:local"));
+          await getDB().meta.bulkDelete(keys);
+        });
       }
       if (isSupabaseConfigured()) await getSupabaseBrowserClient()?.auth.signOut();
       router.push("/");

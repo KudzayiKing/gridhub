@@ -34,6 +34,17 @@ export interface LedgerTab {
   filter?: (row: BaseRecord) => boolean;
   /** Human-readable description of the active filter, shown as a dismissible chip. */
   filterLabel?: string;
+  /** Field used to preserve legacy rows without silently assigning them to a business. */
+  legacyScopeField?: string;
+  /** Derive immutable/domain defaults such as business currency at submit time. */
+  prepareValues?: (values: Record<string, unknown>, editing?: BaseRecord) => Record<string, unknown>;
+  /** Map domain records into form-only fields without changing the stored record shape. */
+  prepareInitial?: (record: BaseRecord) => Record<string, unknown>;
+  /** Disable direct editing for records whose canonical source lives in another tool. */
+  canEdit?: (row: BaseRecord) => boolean;
+  /** Disable direct deletion for linked mirrors; unlink or correct them at their source. */
+  canDelete?: (row: BaseRecord) => boolean;
+  deleteConfirmation?: { title: string; description: string; confirmLabel: string };
 }
 
 /**
@@ -63,6 +74,8 @@ function TabPanel({
   tab: LedgerTab;
   showToolbarAdd?: boolean;
   onClearFilter?: () => void;
+  /** Optional real records to include in the tool-level JSON export. */
+  exportPayload?: unknown;
   addRequest?: { tabId: string; id: number } | null;
   onAddRequestHandled?: (id: number) => void;
 }) {
@@ -80,8 +93,9 @@ function TabPanel({
   };
 
   const handleSubmit = async (values: FormValues) => {
-    if (editing) await update(editing.id, values as Partial<BaseRecord>);
-    else await add(values as Omit<BaseRecord, "id" | "createdAt" | "updatedAt">);
+    const prepared = (tab.prepareValues?.(values, editing ?? undefined) ?? values) as FormValues;
+    if (editing) await update(editing.id, prepared as Partial<BaseRecord>);
+    else await add(prepared as Omit<BaseRecord, "id" | "createdAt" | "updatedAt">);
   };
 
   const singular = tab.label.replace(/ies$/, "y").replace(/s$/, "").toLowerCase();
@@ -115,11 +129,15 @@ function TabPanel({
         emptyTitle={tab.emptyTitle}
         emptyDescription={tab.emptyDescription}
         pageSize={tab.pageSize ?? 12}
+        canEdit={tab.canEdit}
+        canDelete={tab.canDelete}
         onEdit={(row) => {
+          if (tab.canEdit?.(row) === false) return;
           setEditing(row);
           setFormOpen(true);
         }}
-        onDelete={(row) => remove(row.id)}
+        onDelete={(row) => { if (tab.canDelete?.(row) !== false) void remove(row.id); }}
+        deleteConfirmation={tab.deleteConfirmation}
         emptyAction={
           <Button variant="primary" size="sm" icon="plus" onClick={openNew}>
             {tab.addLabel ? t(tab.addLabel) : t("Add {item}", { item: t(singularLabel) })}
@@ -143,7 +161,15 @@ function TabPanel({
         }}
         title={editing ? t("Edit {item}", { item: t(singularLabel) }) : tab.addLabel ? t(tab.addLabel) : t("New {item}", { item: t(singularLabel) })}
         fields={tab.fields}
-        initial={(editing as FormValues | null) ?? tab.defaults}
+        initial={editing
+          ? ({
+              ...(tab.prepareInitial?.(editing) ?? {}),
+              ...(editing as unknown as FormValues),
+              ...(tab.legacyScopeField && !(editing as unknown as FormValues)[tab.legacyScopeField]
+                ? { [tab.legacyScopeField]: "__unassigned__" }
+                : {}),
+            } as FormValues)
+          : tab.defaults}
         onSubmit={handleSubmit}
       />
     </div>
@@ -167,6 +193,8 @@ export interface LedgerToolProps {
   onAddRequestHandled?: (id: number) => void;
   /** Called when the user dismisses an active tab filter chip. */
   onClearFilter?: () => void;
+  /** Optional real records to include in the tool-level JSON export. */
+  exportPayload?: unknown;
 }
 
 /**
@@ -187,6 +215,7 @@ export function LedgerTool({
   onClearFilter,
   addRequest,
   onAddRequestHandled,
+  exportPayload,
 }: LedgerToolProps) {
   const { t: translateText } = useI18n();
   const tool = TOOL_MAP[toolId];
@@ -248,7 +277,7 @@ export function LedgerTool({
                 onSelect={() =>
                   downloadFile(
                     `gridhub-${toolId}-export.json`,
-                    JSON.stringify({ tool: toolId, exportedAt: new Date().toISOString() }, null, 2),
+                    JSON.stringify(exportPayload ?? { tool: toolId, exportedAt: new Date().toISOString() }, null, 2),
                     "application/json",
                   )
                 }

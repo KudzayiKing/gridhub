@@ -166,7 +166,7 @@ export function valuationForProduct(
 export function inventorySummary(products: BusinessProduct[], movements: InventoryMovement[]) {
   const valuations = products
     .filter((p) => !p.deleted)
-    .map((p) => ({ product: p, valuation: valuationForProduct(p, movements) }));
+    .map((p) => ({ product: p, valuation: valuationForProduct(p, movements, p.quantity) }));
   return {
     items: valuations,
     totalUnits: round2(sumBy(valuations, (v) => v.valuation.quantity)),
