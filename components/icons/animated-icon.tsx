@@ -56,6 +56,7 @@ export const AnimatedIcon = React.forwardRef<HTMLSpanElement, AnimatedIconProps>
       onPointerDown,
       onClick,
       onMouseEnter,
+      onMouseLeave,
       onFocus,
       ...rest
     },
@@ -96,6 +97,17 @@ export const AnimatedIcon = React.forwardRef<HTMLSpanElement, AnimatedIconProps>
       onMouseEnter?.(e);
     };
 
+    const handleMouseLeave = (e: React.MouseEvent<HTMLSpanElement>) => {
+      if (trigger === "hover" || trigger === "both") {
+        try {
+          iconRef.current?.stopAnimation?.();
+        } catch {
+          /* stopping an animation must never break the surrounding control */
+        }
+      }
+      onMouseLeave?.(e);
+    };
+
     // Keyboard parity: focusing a control animates exactly like hovering it.
     const handleFocus = (e: React.FocusEvent<HTMLSpanElement>) => {
       if (trigger === "hover" || trigger === "both" || trigger === "click") play();
@@ -125,6 +137,7 @@ export const AnimatedIcon = React.forwardRef<HTMLSpanElement, AnimatedIconProps>
         onPointerDown={handlePointerDown}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onFocus={handleFocus}
         {...rest}
       >
