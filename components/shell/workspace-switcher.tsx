@@ -15,6 +15,8 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
 const WORKSPACES_UPDATED_EVENT = "gridhub:workspaces-updated";
+const WORKSPACES_RETRY_EVENT = "gridhub:workspaces-retry";
+const remoteWorkspaceRequests = new Map<string, Promise<WorkspaceSummary[]>>();
 
 function localWorkspaceListKey(userId: string | null) {
   return `workspaces:local:${userId ?? "device"}`;
@@ -22,6 +24,32 @@ function localWorkspaceListKey(userId: string | null) {
 
 function remoteWorkspaceListKey(userId: string) {
   return `workspaces:remote:${userId}`;
+}
+
+function fetchRemoteWorkspaces(userId: string, t: (key: string) => string) {
+  const inFlight = remoteWorkspaceRequests.get(userId);
+  if (inFlight) return inFlight;
+
+  const request = (async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8_000);
+    try {
+      const response = await fetch("/api/workspaces", { cache: "no-store", signal: controller.signal });
+      const body = await response.json() as { workspaces?: WorkspaceSummary[]; error?: string };
+      if (!response.ok) throw new Error(body.error ?? t("Could not load workspaces."));
+      const remote = body.workspaces ?? [];
+      await setMeta(remoteWorkspaceListKey(userId), remote);
+      return remote;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  })();
+
+  remoteWorkspaceRequests.set(userId, request);
+  void request.finally(() => {
+    if (remoteWorkspaceRequests.get(userId) === request) remoteWorkspaceRequests.delete(userId);
+  }).catch(() => undefined);
+  return request;
 }
 
 function announceWorkspaceListChange() {
@@ -32,18 +60,22 @@ function selectedKey(userId: string | null) {
   return `workspace:selected:${userId ?? "local"}`;
 }
 
-export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; onReady: (ready: boolean) => void }) {
+export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; onReady: (ready: boolean, error?: string) => void }) {
   const { t } = useI18n();
   const [workspaces, setWorkspaces] = React.useState<WorkspaceSummary[]>([]);
   const [active, setActive] = React.useState<WorkspaceSummary | null>(null);
   const [ready, setReady] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [manageOpen, setManageOpen] = React.useState(false);
+  const [renameOpen, setRenameOpen] = React.useState(false);
+  const [renameName, setRenameName] = React.useState("");
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [newName, setNewName] = React.useState("");
   const [newKind, setNewKind] = React.useState<"personal" | "business">("personal");
   const [legacyCounts, setLegacyCounts] = React.useState({ records: 0, mutations: 0 });
   const [busy, setBusy] = React.useState(false);
+  const readyRef = React.useRef(false);
+  const loadedUserRef = React.useRef<string | null>(null);
 
   const activate = React.useCallback((workspace: WorkspaceSummary) => {
     setActive(workspace);
@@ -53,24 +85,46 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
   }, [userId]);
 
   const reload = React.useCallback(async (preferredId?: string) => {
-    setReady(false);
-    onReady(false);
+    if (loadedUserRef.current !== userId) {
+      loadedUserRef.current = userId;
+      readyRef.current = false;
+    }
+    if (!readyRef.current) {
+      setReady(false);
+      onReady(false);
+    }
     try {
       let next: WorkspaceSummary[];
       if (userId) {
-        let remote: WorkspaceSummary[];
-        try {
-          const response = await fetch("/api/workspaces", { cache: "no-store" });
-          const body = await response.json() as { workspaces?: WorkspaceSummary[]; error?: string };
-          if (!response.ok) throw new Error(body.error ?? t("Could not load workspaces."));
-          remote = body.workspaces ?? [];
-          await setMeta(remoteWorkspaceListKey(userId), remote);
-        } catch (error) {
-          remote = await getMeta<WorkspaceSummary[]>(remoteWorkspaceListKey(userId), []);
-          if (!remote.length) throw error;
+        const [cachedRemote, deviceOnly] = await Promise.all([
+          getMeta<WorkspaceSummary[]>(remoteWorkspaceListKey(userId), []),
+          getMeta<WorkspaceSummary[]>(localWorkspaceListKey(userId), []),
+        ]);
+        const cached = [...cachedRemote, ...deviceOnly.filter((local) => !cachedRemote.some((workspace) => workspace.id === local.id))];
+        const cachedSelectable = cached.filter((workspace) => !workspace.archivedAt);
+        const savedId = preferredId ?? localStorage.getItem(selectedKey(userId)) ?? null;
+        const cachedSelection = cachedSelectable.find((workspace) => workspace.id === savedId)
+          ?? cachedSelectable.find((workspace) => workspace.isDefault)
+          ?? cachedSelectable[0];
+
+        // Restore this account's last known workspace immediately. Refresh the remote list
+        // below without making the app wait on a network round trip.
+        if (cachedSelection) {
+          setWorkspaces(cached);
+          activate(cachedSelection);
+          void countLegacyLocalRows().then(setLegacyCounts).catch(() => undefined);
+          setReady(true);
+          readyRef.current = true;
+          onReady(true);
         }
-        const deviceOnly = await getMeta<WorkspaceSummary[]>(localWorkspaceListKey(userId), []);
-        next = [...remote, ...deviceOnly.filter((local) => !remote.some((workspace) => workspace.id === local.id))];
+
+        try {
+          const remote = await fetchRemoteWorkspaces(userId, t);
+          next = [...remote, ...deviceOnly.filter((local) => !remote.some((workspace) => workspace.id === local.id))];
+        } catch (error) {
+          if (cachedSelection) return;
+          throw error;
+        }
       } else {
         const local = await getMeta<WorkspaceSummary[]>(localWorkspaceListKey(null), [LOCAL_PERSONAL_WORKSPACE]);
         next = local.length ? local : [LOCAL_PERSONAL_WORKSPACE];
@@ -86,13 +140,14 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
       activate(selected);
       setLegacyCounts(await countLegacyLocalRows());
       setReady(true);
+      readyRef.current = true;
       onReady(true);
     } catch (error) {
       setWorkspaces([]);
       setActive(null);
       setReady(false);
-      onReady(false);
-      toast.error(error instanceof Error ? error.message : t("Could not load workspaces."));
+      readyRef.current = false;
+      onReady(false, error instanceof Error ? error.message : t("Could not load workspaces."));
     }
   }, [activate, onReady, t, userId]);
 
@@ -101,7 +156,11 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
   React.useEffect(() => {
     const refreshList = () => { void reload(); };
     window.addEventListener(WORKSPACES_UPDATED_EVENT, refreshList);
-    return () => window.removeEventListener(WORKSPACES_UPDATED_EVENT, refreshList);
+    window.addEventListener(WORKSPACES_RETRY_EVENT, refreshList);
+    return () => {
+      window.removeEventListener(WORKSPACES_UPDATED_EVENT, refreshList);
+      window.removeEventListener(WORKSPACES_RETRY_EVENT, refreshList);
+    };
   }, [reload]);
 
   React.useEffect(() => subscribeWorkspaceScope(() => {
@@ -148,7 +207,7 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
     } finally { setBusy(false); }
   };
 
-  const updateWorkspace = async (workspace: WorkspaceSummary, change: { name?: string; archive?: boolean }) => {
+  const updateWorkspace = async (workspace: WorkspaceSummary, change: { name?: string; archive?: boolean }): Promise<boolean> => {
     setBusy(true);
     try {
       let updated: WorkspaceSummary;
@@ -170,11 +229,22 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
       if (active?.id === workspace.id && updated.archivedAt) {
         const fallback = workspaces.find((row) => row.isDefault && !row.archivedAt);
         if (fallback) activate(fallback);
+      } else if (active?.id === workspace.id) {
+        setActive(updated);
       }
       toast.success(change.archive ? t("Workspace archived.") : t("Workspace updated."));
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("Workspace could not be updated."));
+      return false;
     } finally { setBusy(false); }
+  };
+
+  const renameActiveWorkspace = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = renameName.trim();
+    if (!active || !name || name === active.name) return;
+    if (await updateWorkspace(active, { name })) setRenameOpen(false);
   };
 
   const deleteWorkspace = async (workspace: WorkspaceSummary) => {
@@ -330,6 +400,7 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
           {activeWorkspaces.map((workspace) => <DropdownItem key={workspace.id} onSelect={() => activate(workspace)}>
             <span className="truncate">{workspace.name}</span>{workspace.isDefault ? <span className="ml-auto text-[10px] text-fg-subtle">{t("Default")}</span> : null}
           </DropdownItem>)}
+          <DropdownItem icon="edit" onSelect={() => { setRenameName(active.name); setRenameOpen(true); }}>{t("Rename workspace")}</DropdownItem>
           <DropdownItem icon="plus" onSelect={() => setCreateOpen(true)}>{t("Create workspace")}</DropdownItem>
           <DropdownItem icon="layers" onSelect={() => setManageOpen(true)}>{t("Manage workspaces")}</DropdownItem>
         </DropdownContent>
@@ -347,6 +418,18 @@ export function WorkspaceSwitcher({ userId, onReady }: { userId: string | null; 
             <option value="personal">{t("Personal")}</option><option value="business">{t("Business")}</option>
           </Select></Field>
           <div className="flex justify-end"><Button disabled={busy || !newName.trim()} variant="primary" type="submit">{t("Create workspace")}</Button></div>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+      <DialogContent title={t("Rename workspace")} description={t("Choose a new name for this workspace.")}>
+        <form onSubmit={(event) => void renameActiveWorkspace(event)} className="flex flex-col gap-3">
+          <Field label={t("Workspace name")}><Input autoFocus maxLength={80} value={renameName} onChange={(event) => setRenameName(event.target.value)} /></Field>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => setRenameOpen(false)}>{t("Cancel")}</Button>
+            <Button disabled={busy || !renameName.trim() || renameName.trim() === active?.name} variant="primary" type="submit">{t("Save")}</Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

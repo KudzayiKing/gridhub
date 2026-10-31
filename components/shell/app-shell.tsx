@@ -117,6 +117,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [workspaceReady, setWorkspaceReady] = React.useState(false);
+  const [workspaceError, setWorkspaceError] = React.useState(false);
   const [openCollections, setOpenCollections] = React.useState<Record<string, boolean>>(
     () => Object.fromEntries(COLLECTIONS.map((collection) => [collection.id, true])),
   );
@@ -165,6 +166,10 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
 
   const initials = (user?.name || user?.email || "G").slice(0, 1).toUpperCase();
   const mobileNav = isAdmin ? [...MOBILE_NAV, ADMIN_NAV_ITEM] : MOBILE_NAV;
+  const onWorkspaceReady = React.useCallback((ready: boolean, error?: string) => {
+    setWorkspaceReady(ready);
+    setWorkspaceError(!ready && Boolean(error));
+  }, []);
 
   /*
    * Rendered as a function so the mobile drawer can close itself on navigation. Without
@@ -180,7 +185,7 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
         </Link>
       </div>
 
-      <WorkspaceSwitcher userId={user?.id ?? null} onReady={setWorkspaceReady} />
+      <WorkspaceSwitcher userId={user?.id ?? null} onReady={onWorkspaceReady} />
 
       <button
         onClick={() => setCommandOpen(true)}
@@ -401,8 +406,9 @@ export function AppShell({ children, user, isAdmin = false, buildVersion = "loca
 
         <main className="mx-auto w-full max-w-[1400px] px-3 pb-28 pt-4 sm:px-5 sm:pt-5 lg:pb-10">
           {workspaceReady ? children : <div className="glass-card mx-auto mt-10 max-w-lg p-6 text-center" aria-live="polite">
-            <p className="text-sm font-medium text-fg">{t("Loading your workspace")}</p>
-            <p className="mt-1 text-xs text-fg-muted">{t("Your records stay hidden until workspace ownership is verified.")}</p>
+            <p className="text-sm font-medium text-fg">{workspaceError ? t("Your workspace could not be loaded") : t("Loading your workspace")}</p>
+            <p className="mt-1 text-xs text-fg-muted">{workspaceError ? t("Check your connection and try again. Your records are still safe.") : t("Your records stay hidden until workspace ownership is verified.")}</p>
+            {workspaceError ? <Button className="mt-4" variant="outline" onClick={() => window.dispatchEvent(new Event("gridhub:workspaces-retry"))}>{t("Try again")}</Button> : null}
           </div>}
         </main>
       </div>
