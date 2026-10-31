@@ -646,6 +646,8 @@ const catalog: Record<string, Translation> = {
   "Direct": ["Directo", "直接", "Direto", "Direct", "Прямой"],
   "Direction": ["Dirección", "方向", "Direção", "Direction", "Направление"],
   "Done": ["Hecho", "已完成", "Concluído", "Terminé", "Готово"],
+  "Move to {status}": ["Mover a {status}", "移至{status}", "Mover para {status}", "Déplacer vers {status}", "Переместить: {status}"],
+  "Task could not be moved.": ["No se pudo mover la tarea.", "无法移动任务。", "Não foi possível mover a tarefa.", "La tâche n’a pas pu être déplacée.", "Не удалось переместить задачу."],
   "Draft": ["Borrador", "草稿", "Rascunho", "Brouillon", "Черновик"],
   "Due": ["Pendiente", "到期", "A vencer", "À payer", "Срок погашения"],
   "Due date": ["Fecha de vencimiento", "到期日期", "Data de vencimento", "Date d’échéance", "Срок сдачи"],
@@ -1730,6 +1732,8 @@ const catalog: Record<string, Translation> = {
 
 // Arabic translations for the interface phrase catalog.
 const arabicCatalog: Record<string, string> = {
+  "Move to {status}": "نقل إلى {status}",
+  "Task could not be moved.": "تعذر نقل المهمة.",
   "Let's create a workspace built around what matters to you. Pick a few collections, then choose the tools you want inside each one.": "لننشئ مساحة عمل تناسب أولوياتك. اختر بعض المجموعات، ثم حدد الأدوات التي تريدها في كل مجموعة.",
   "You're all caught up.": "لقد أنجزت كل شيء.",
   "Ideas for a more organized life.": "أفكار لحياة أكثر تنظيمًا.",

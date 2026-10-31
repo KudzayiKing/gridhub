@@ -201,6 +201,7 @@ export function contentTabs(data: DataMap, selectedPlanId?: string | null): Ledg
       label: "Content",
       icon: "image",
       collection: "posts",
+      initialSort: { key: "scheduledDate", dir: "asc" },
       addLabel: "Add content",
       emptyTitle: "No content planned",
       emptyDescription: "Capture ideas, drafts and scheduled posts. Nothing is marked published until you confirm it.",
@@ -282,6 +283,7 @@ export function contentTabs(data: DataMap, selectedPlanId?: string | null): Ledg
     }),
     defineTab<ContentPublication>({
       id: "publications", label: "Publications", icon: "send", collection: "publications",
+      initialSort: { key: "scheduledDate", dir: "asc" },
       addLabel: "Add publication", emptyTitle: "No publication destinations", emptyDescription: "Connect one content item to one channel account per destination. The content itself stays shared.",
       defaults: { status: "draft", metricBasis: "reach" },
       fields: [

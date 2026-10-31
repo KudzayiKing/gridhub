@@ -29,6 +29,7 @@ export interface LedgerTab {
   searchText?: (row: BaseRecord) => string;
   addLabel?: string;
   pageSize?: number;
+  initialSort?: { key: string; dir: "asc" | "desc" };
   renderExtra?: (rows: BaseRecord[], helpers: { reload: () => Promise<void> }) => React.ReactNode;
   /** When set, only rows matching the predicate are shown — used by chart drill-down (spec #21). */
   filter?: (row: BaseRecord) => boolean;
@@ -129,6 +130,7 @@ function TabPanel({
         emptyTitle={tab.emptyTitle}
         emptyDescription={tab.emptyDescription}
         pageSize={tab.pageSize ?? 12}
+        initialSort={tab.initialSort}
         canEdit={tab.canEdit}
         canDelete={tab.canDelete}
         onEdit={(row) => {

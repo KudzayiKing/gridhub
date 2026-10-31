@@ -58,6 +58,8 @@ export interface DataTableProps<T extends { id: string }> {
   /** Rendered instead of the built-in empty state. */
   emptyIcon?: string;
   dense?: boolean;
+  /** Optional default ordering for workflows where chronological order matters. */
+  initialSort?: { key: string; dir: "asc" | "desc" };
 }
 
 export function DataTable<T extends { id: string }>({
@@ -81,10 +83,11 @@ export function DataTable<T extends { id: string }>({
   pageSize = 12,
   emptyIcon = "inbox",
   dense,
+  initialSort,
 }: DataTableProps<T>) {
   const { t } = useI18n();
   const [query, setQuery] = React.useState("");
-  const [sort, setSort] = React.useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const [sort, setSort] = React.useState<{ key: string; dir: "asc" | "desc" } | null>(initialSort ?? null);
   const [filterState, setFilterState] = React.useState<Record<string, string>>({});
   const [page, setPage] = React.useState(0);
   const [hidden, setHidden] = React.useState<string[]>(

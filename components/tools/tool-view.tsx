@@ -1242,13 +1242,41 @@ function BudgetCalendar({
 function ProjectsBoard({ data }: { data: DataMap }) {
   const { t } = useI18n();
   const tasks = rows<Task>(data, "tasks");
+  const [movingTaskIds, setMovingTaskIds] = React.useState<Set<string>>(() => new Set());
   if (!tasks.length) return null;
+
+  const moveTask = async (task: Task, status: Task["status"]) => {
+    if (movingTaskIds.has(task.id)) return;
+    setMovingTaskIds((current) => new Set(current).add(task.id));
+    try {
+      const updated = await updateRecord<Task>("projects", "tasks", task.id, {
+        status,
+        ...(status === "done" ? { completedAt: todayISO() } : { completedAt: undefined }),
+      });
+      if (!updated) toast.error(t("Task could not be moved."));
+    } catch {
+      toast.error(t("Task could not be moved."));
+    } finally {
+      setMovingTaskIds((current) => {
+        const next = new Set(current);
+        next.delete(task.id);
+        return next;
+      });
+    }
+  };
+
+  const orderedTasks = [...tasks].sort((a, b) => {
+    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate) || a.order - b.order;
+    if (a.dueDate) return -1;
+    if (b.dueDate) return 1;
+    return a.order - b.order;
+  });
 
   return (
     <Panel title={t("Board")} description={t("Move work with the arrow buttons — fully keyboard accessible")} icon="kanban">
       <div className="thin-scroll grid gap-2 overflow-x-auto sm:grid-cols-2 lg:grid-cols-4">
         {KANBAN_COLUMNS.map((col) => {
-          const items = tasks.filter((task) => task.status === col.id);
+          const items = orderedTasks.filter((task) => task.status === col.id);
           return (
             <div key={col.id} className="rounded-xl border border-line bg-[var(--bg-subtle)]/40 p-2">
               <div className="mb-2 flex items-center justify-between px-1">
@@ -1256,18 +1284,26 @@ function ProjectsBoard({ data }: { data: DataMap }) {
                 <span className="tnum text-[11px] text-fg-subtle">{items.length}</span>
               </div>
               <div className="flex flex-col gap-1.5">
-                {items.slice(0, 5).map((task) => (
+                {items.map((task) => {
+                  const statusIndex = KANBAN_COLUMNS.findIndex((column) => column.id === task.status);
+                  const isMoving = movingTaskIds.has(task.id);
+                  return (
                   <div key={task.id} className="rounded-lg border border-line bg-[var(--surface-strong)] p-2">
                     <p className="text-[12.5px] leading-snug">{task.title}</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-[10.5px] text-fg-subtle">{task.dueDate ?? t("No due date")}</span>
                       <span className="flex items-center gap-1">
-                        <AnimatedIcon name="chevronLeft" size={12} trigger="click" className="text-fg-subtle" />
-                        <AnimatedIcon name="chevronRight" size={12} trigger="click" className="text-fg-subtle" />
+                        <button type="button" disabled={statusIndex <= 0 || isMoving} aria-label={t("Move to {status}", { status: t(KANBAN_COLUMNS[statusIndex - 1]?.label ?? "To do") })} title={t("Move to {status}", { status: t(KANBAN_COLUMNS[statusIndex - 1]?.label ?? "To do") })} onClick={() => { const previous = KANBAN_COLUMNS[statusIndex - 1]; if (previous) void moveTask(task, previous.id); }} className="grid h-6 w-6 place-items-center rounded-md text-fg-subtle hover:bg-[var(--surface)] hover:text-fg disabled:pointer-events-none disabled:opacity-30">
+                          <AnimatedIcon name="chevronLeft" size={12} trigger="click" />
+                        </button>
+                        <button type="button" disabled={statusIndex < 0 || statusIndex >= KANBAN_COLUMNS.length - 1 || isMoving} aria-label={t("Move to {status}", { status: t(KANBAN_COLUMNS[statusIndex + 1]?.label ?? "Done") })} title={t("Move to {status}", { status: t(KANBAN_COLUMNS[statusIndex + 1]?.label ?? "Done") })} onClick={() => { const next = KANBAN_COLUMNS[statusIndex + 1]; if (next) void moveTask(task, next.id); }} className="grid h-6 w-6 place-items-center rounded-md text-fg-subtle hover:bg-[var(--surface)] hover:text-fg disabled:pointer-events-none disabled:opacity-30">
+                          <AnimatedIcon name="chevronRight" size={12} trigger="click" />
+                        </button>
                       </span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {!items.length ? <p className="px-1 py-3 text-[11.5px] text-fg-subtle">{t("Empty")}</p> : null}
               </div>
             </div>
