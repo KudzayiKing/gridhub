@@ -349,7 +349,6 @@ export function LedgerTool({
                 key={`modal:${activeTab.id}:${addRequest?.tabId === activeTab.id ? addRequest.id : ""}`}
                 toolId={toolId}
                 tab={activeTab}
-                showToolbarAdd={false}
                 onClearFilter={onClearFilter}
                 addRequest={addRequest}
                 onAddRequestHandled={onAddRequestHandled}
