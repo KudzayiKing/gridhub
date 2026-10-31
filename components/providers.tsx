@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/overlay";
 import { useMeta } from "@/lib/store";
@@ -50,6 +50,26 @@ export function usePrefs() {
 
 export function useSyncState() {
   return React.useContext(SyncContext);
+}
+
+function GridhubToaster() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      theme={resolvedTheme === "dark" ? "dark" : resolvedTheme === "light" ? "light" : "system"}
+      position="bottom-right"
+      toastOptions={{
+        className: "glass-strong !rounded-xl !text-fg",
+        style: {
+          background: "var(--surface-strong)",
+          borderColor: "var(--border)",
+          color: "var(--fg)",
+          backdropFilter: "blur(24px) saturate(150%)",
+          WebkitBackdropFilter: "blur(24px) saturate(150%)",
+        },
+      }}
+    />
+  );
 }
 
 function detectBrowserLanguage(): NonNullable<UserPreferences["uiLanguage"]> {
@@ -189,12 +209,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <SyncContext.Provider value={sync}>
           <TooltipProvider>
             {children}
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                className: "glass-strong !rounded-xl !text-fg",
-              }}
-            />
+            <GridhubToaster />
           </TooltipProvider>
         </SyncContext.Provider>
       </PrefsContext.Provider>
