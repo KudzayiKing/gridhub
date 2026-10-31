@@ -14,8 +14,8 @@ export function rows<T extends BaseRecord>(data: DataMap, collection: string): T
  * or account name exactly as the user typed it — otherwise a category called "Savings"
  * would silently render as "Сбережения" in Russian.
  */
-export function options(list: { id: string; name?: string; label?: string }[]): { value: string; label: string; raw: true }[] {
-  return list.map((item) => ({ value: item.id, label: item.label ?? item.name ?? item.id, raw: true as const }));
+export function options(list: { id: string; name?: string; title?: string; label?: string }[]): { value: string; label: string; raw: true }[] {
+  return list.map((item) => ({ value: item.id, label: item.label ?? item.name ?? item.title ?? item.id, raw: true as const }));
 }
 
 export function sumOf<T>(list: T[], pick: (row: T) => number): number {
